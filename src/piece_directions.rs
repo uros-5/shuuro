@@ -1,4 +1,4 @@
-use crate::piece_enums::PieceName;
+use crate::piece_enums::{PieceName, TypeOfSearch};
 use PieceName::*;
 
 pub fn get_directions(piece: &PieceName) -> Vec<i32> {
@@ -41,14 +41,20 @@ pub fn get_directions(piece: &PieceName) -> Vec<i32> {
     }
 }
 
-pub fn get_directions_length(piece: &PieceName) -> bool {
-    match piece {
-        King => false,
-        Queen => true,
-        Rook => true,
-        Bishop => true,
-        Night => false,
-        Pawn => true,
-        _ => false,
+pub fn get_directions_length(type_of: &TypeOfSearch, piece_name: &PieceName) -> bool {
+    fn right_piece(piece: &PieceName) -> bool {
+        match piece {
+            King => false,
+            Queen => true,
+            Rook => true,
+            Bishop => true,
+            Night => false,
+            Pawn => true,
+            _ => false,
+        }
+    }
+    match type_of {
+        TypeOfSearch::Check => right_piece(piece_name),
+        TypeOfSearch::MyMoves => right_piece(piece_name),
     }
 }
