@@ -36,15 +36,15 @@ impl MoveGenerator {
             self.enemy_moves(&enemy_color);
             self.find_pins(king);
             let is_check = self.is_check();
-            if king == self.my_pos {
-                let a = self.fix_check(&mut king_moves.0);
-                return a;
-            } else if self.pin.start == true {
+            self.checks.retain(|x| !x.is_empty());
+            if self.my_pos == king {
+                self.fix_check_by_king(is_check, &mut king_moves.0);
+                return king_moves.0;
+            }
+            if self.pin.start == true {
                 self.fixed_pin(is_check, &mut my_moves.0);
             } else if is_check == true {
-                self.checks.retain(|x| !x.is_empty());
-                println!("{:?}", self.checks);
-                self.fix_check2(&mut my_moves.0);
+                self.fix_check_by_piece(&mut my_moves.0);
             }
             my_moves.0
         } else {
@@ -61,8 +61,6 @@ impl MoveGenerator {
             }
         }
     }
-
-    
 
     // helper functions
 
@@ -103,8 +101,10 @@ impl MoveGenerator {
                                     dir_moves.push(new_position);
                                     &checks.push(pos);
                                     &checks.append(&mut dir_moves);
-                                    
-                                    break;
+                                    //final_moves.append(&mut dir_moves);
+                                    //dir_moves.clear();
+                                    //break;
+                                    continue;
                                 }
                             }
                             dir_moves.push(new_position);
@@ -115,6 +115,10 @@ impl MoveGenerator {
                     }
                 }
                 if length == true {
+                    if dir_moves.len() > 0 {
+                        final_moves.append(&mut dir_moves);
+                        dir_moves.clear();
+                    }
                     continue;
                 } else {
                     if dir_moves.len() > 0 {
@@ -129,58 +133,58 @@ impl MoveGenerator {
     }
 
     fn find_pins(&mut self, pos: i32) {
-            let piece = get(pos, &self.board);
-            let directions = get_directions(&piece.piece);
-            let mut new_position = pos;
-            let mut dir_moves: Vec<i32> = Vec::new();
-            for direction in directions {
-                new_position = pos;
-                if !dir_moves.is_empty() {
-                    dir_moves.clear();
+        let piece = get(pos, &self.board);
+        let directions = get_directions(&piece.piece);
+        let mut new_position = pos;
+        let mut dir_moves: Vec<i32> = Vec::new();
+        for direction in directions {
+            new_position = pos;
+            if !dir_moves.is_empty() {
+                dir_moves.clear();
+            }
+            loop {
+                new_position += direction;
+                if !self.possible_range.contains(&new_position) {
+                    break;
                 }
-                loop {
-                    new_position += direction;
-                    if !self.possible_range.contains(&new_position) {
+
+                let other_piece = get(new_position, &self.board);
+                match other_piece.piece {
+                    PieceName::NoPiece => dir_moves.push(new_position),
+                    PieceName::Plynth => {
                         break;
                     }
-
-                    let other_piece = get(new_position, &self.board);
-                    match other_piece.piece {
-                        PieceName::NoPiece => dir_moves.push(new_position),
-                        PieceName::Plynth => {
-                            break;
-                        }
-                        _ => {
-                            if other_piece.color == piece.color {
-                                if new_position == self.my_pos && self.pin.start == false {
-                                    self.pin.start = true;
-                                    dir_moves.push(new_position);
-                                    continue;
-                                }
-                                break;
-                            } else {
-                                if self.pin.start == true {
-                                    let dirs_check =
-                                        get_directions(&other_piece.piece).contains(&direction);
-                                    let enemy_length = get_directions_length(
-                                        &TypeOfSearch::MyMoves,
-                                        &other_piece.piece,
-                                    );
-                                    if dirs_check && enemy_length == true {
-                                        dir_moves.push(new_position);
-                                        self.pin.fix = dir_moves.to_vec();
-                                        return ();
-                                    }
-                                    self.pin.reset();
-                                }
-                                dir_moves.clear();
-                                break;
+                    _ => {
+                        if other_piece.color == piece.color {
+                            if new_position == self.my_pos && self.pin.start == false {
+                                self.pin.start = true;
+                                dir_moves.push(new_position);
+                                continue;
                             }
+                            break;
+                        } else {
+                            if self.pin.start == true {
+                                let dirs_check =
+                                    get_directions(&other_piece.piece).contains(&direction);
+                                let enemy_length = get_directions_length(
+                                    &TypeOfSearch::MyMoves,
+                                    &other_piece.piece,
+                                );
+                                if dirs_check && enemy_length == true {
+                                    dir_moves.push(new_position);
+                                    self.pin.fix = dir_moves.to_vec();
+                                    return ();
+                                }
+                                self.pin.reset();
+                            }
+                            dir_moves.clear();
+                            break;
                         }
                     }
                 }
             }
         }
+    }
 
     fn get_my_king(&self, color: &Color) -> i32 {
         for (pos, piece) in &self.board {
@@ -200,25 +204,31 @@ impl MoveGenerator {
         return false;
     }
 
-    fn fix_check(&self, king_moves: &mut Vec<i32>) -> Vec<i32> {
-        king_moves.retain(|x| !self.enemy_moves.contains(x));
-        king_moves.to_vec()
+    fn fix_check_by_king(&self, check: bool, moves: &mut Vec<i32>) {
+        if check {
+            for checks in &self.checks {
+                moves.retain(|x| !checks.contains(x));
+                if moves.is_empty() {
+                    break;
+                }
+            }
+        }
+        moves.retain(|x| !self.enemy_moves.contains(x));
     }
 
-    fn fix_check2(&self, my_moves: &mut Vec<i32>) {
+    fn fix_check_by_piece(&self, moves: &mut Vec<i32>) {
         for checks in &self.checks {
-            my_moves.retain(|x| checks.contains(x));
-            if my_moves.is_empty() {
+            moves.retain(|x| checks.contains(x));
+            if moves.is_empty() {
                 break;
             }
         }
     }
 
     fn fixed_pin(&self, is_check: bool, my_moves: &mut Vec<i32>) {
+        my_moves.retain(|x| self.pin.fix.contains(x));
         if is_check == true {
-            self.fix_check2(my_moves);
-        } else {
-            my_moves.retain(|x| self.pin.fix.contains(x));
+            self.fix_check_by_piece(my_moves);
         }
     }
 
