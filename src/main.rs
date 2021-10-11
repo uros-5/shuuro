@@ -7,7 +7,7 @@ mod piece_enums;
 mod piece_moves;
 
 fn main() {
-    let mut a = MoveGenerator::new(54);
+    let mut a = MoveGenerator::new(24);
     let b = &a.run();
     println!("{:?}", b);
 }

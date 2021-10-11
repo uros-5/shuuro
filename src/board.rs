@@ -5,41 +5,49 @@ use crate::piece_enums::{Color, PieceName, ServerPiece};
 pub fn add_pieces() -> HashMap<i32, ServerPiece> {
     let mut table2: HashMap<i32, ServerPiece> = HashMap::new();
     table2.insert(
-        54,
+        22,
         ServerPiece {
             color: Color::Blue,
+            piece: PieceName::Rook,
+        },
+    );
+
+    table2.insert(
+        18,
+        ServerPiece {
+            color: Color::Blue,
+            piece: PieceName::King,
+        },
+    );
+
+    table2.insert(
+        24,
+        ServerPiece {
+            color: Color::Red,
+            piece: PieceName::King,
+        },
+    );
+
+    table2.insert(
+        150,
+        ServerPiece {
+            color: Color::Red,
             piece: PieceName::Queen,
         },
     );
 
     table2.insert(
-        57,
+        11,
         ServerPiece {
             color: Color::Blue,
-            piece: PieceName::King,
+            piece: PieceName::Rook,
         },
     );
 
     table2.insert(
-        105,
+        43,
         ServerPiece {
-            color: Color::Red,
-            piece: PieceName::Bishop,
-        },
-    );
-
-    table2.insert(
-        154,
-        ServerPiece {
-            color: Color::Red,
-            piece: PieceName::King,
-        },
-    );
-
-    table2.insert(
-        48,
-        ServerPiece {
-            color: Color::Red,
+            color: Color::Blue,
             piece: PieceName::Rook,
         },
     );

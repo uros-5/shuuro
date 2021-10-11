@@ -31,15 +31,14 @@ impl MoveGenerator {
         if exist {
             let king = self.get_my_king(&my_piece.color);
             let enemy_color = self.opposite_color(&my_piece.color);
-            let mut king_moves = self.generate_moves(king, &TypeOfSearch::MyMoves);
             let mut my_moves = self.generate_moves(self.my_pos, &TypeOfSearch::MyMoves);
             self.enemy_moves(&enemy_color);
             self.find_pins(king);
             let is_check = self.is_check();
             self.checks.retain(|x| !x.is_empty());
             if self.my_pos == king {
-                self.fix_check_by_king(is_check, &mut king_moves.0);
-                return king_moves.0;
+                self.fix_check_by_king(is_check, &mut my_moves.0);
+                return my_moves.0;
             }
             if self.pin.start == true {
                 self.fixed_pin(is_check, &mut my_moves.0);
@@ -65,6 +64,11 @@ impl MoveGenerator {
     // helper functions
 
     fn generate_moves(&self, pos: i32, type_of_search: &TypeOfSearch) -> (Vec<i32>, Vec<i32>) {
+        fn clear(dir_moves: &mut Vec<i32>, final_moves: &mut Vec<i32>) {
+            final_moves.append(dir_moves);
+            dir_moves.clear();
+        }
+
         let mut final_moves = Vec::<i32>::new();
         let mut checks = Vec::<i32>::new();
         let piece = get(pos, &self.board);
@@ -74,8 +78,7 @@ impl MoveGenerator {
         let mut dir_moves: Vec<i32> = Vec::new();
         for direction in directions {
             if dir_moves.len() > 0 {
-                final_moves.append(&mut dir_moves);
-                dir_moves.clear();
+                clear(&mut dir_moves, &mut final_moves);
             }
             new_position = pos;
             loop {
@@ -108,17 +111,12 @@ impl MoveGenerator {
                                 }
                             }
                             dir_moves.push(new_position);
-                            final_moves.append(&mut dir_moves);
-                            dir_moves.clear();
+                            clear(&mut dir_moves, &mut final_moves);
                             break;
                         }
                     }
                 }
                 if length == true {
-                    if dir_moves.len() > 0 {
-                        final_moves.append(&mut dir_moves);
-                        dir_moves.clear();
-                    }
                     continue;
                 } else {
                     if dir_moves.len() > 0 {
@@ -129,6 +127,7 @@ impl MoveGenerator {
                 }
             }
         }
+        clear(&mut dir_moves, &mut final_moves);
         (final_moves, checks)
     }
 
