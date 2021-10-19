@@ -17,7 +17,7 @@ pub enum Piece {
     King,
     Pawn,
     Bishop,
-    Night,
+    Knight,
     Rook,
     Queen,
     Plynth,

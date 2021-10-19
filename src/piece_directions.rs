@@ -33,7 +33,7 @@ pub fn get_directions(piece: &Piece, _color: &Color) -> Vec<i32> {
             calc.append(&mut vec2);
             calc
         }
-        Night => {
+        Knight => {
             calc.append(&mut vec3);
             calc
         }
@@ -48,7 +48,7 @@ pub fn get_directions_length(type_of: &Searching, piece_name: &Piece) -> bool {
             Queen => true,
             Rook => true,
             Bishop => true,
-            Night => false,
+            Knight => false,
             Pawn => true,
             _ => false,
         }

@@ -132,7 +132,7 @@ impl<'a> MoveGenerator<'a> {
                                 Some(other_piece) => {
                                     if other_piece.name == Piece::Plynth {
                                         // this is just for knight
-                                        if my_piece.name == Piece::Night {
+                                        if my_piece.name == Piece::Knight {
                                             dir_moves.push(new_pos);
                                             break;
                                         }
