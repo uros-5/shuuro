@@ -1,7 +1,7 @@
-use crate::piece_enums::{PieceName, TypeOfSearch};
-use PieceName::*;
+use crate::board::{Color, Piece, Searching};
+use Piece::*;
 
-pub fn get_directions(piece: &PieceName) -> Vec<i32> {
+pub fn get_directions(piece: &Piece, _color: &Color) -> Vec<i32> {
     const ORTHOGONAL: [i32; 4] = [-1, 1, -16, 16];
     const DIAGONAL: [i32; 4] = [-17, -15, 17, 15];
     const JUMP: [i32; 8] = [31, 33, 14, 18, -14, -18, -31, -33];
@@ -41,8 +41,8 @@ pub fn get_directions(piece: &PieceName) -> Vec<i32> {
     }
 }
 
-pub fn get_directions_length(type_of: &TypeOfSearch, piece_name: &PieceName) -> bool {
-    fn right_piece(piece: &PieceName) -> bool {
+pub fn get_directions_length(type_of: &Searching, piece_name: &Piece) -> bool {
+    fn right_piece(piece: &Piece) -> bool {
         match piece {
             King => false,
             Queen => true,
@@ -54,7 +54,8 @@ pub fn get_directions_length(type_of: &TypeOfSearch, piece_name: &PieceName) -> 
         }
     }
     match type_of {
-        TypeOfSearch::Check => right_piece(piece_name),
-        TypeOfSearch::MyMoves => right_piece(piece_name),
+        Searching::Check => right_piece(piece_name),
+        Searching::Regular => right_piece(piece_name),
+        Searching::Pin => true,
     }
 }
