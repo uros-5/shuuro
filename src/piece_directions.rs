@@ -5,39 +5,26 @@ pub fn get_directions(piece: &Piece, _color: &Color) -> Vec<i32> {
     const ORTHOGONAL: [i32; 4] = [-1, 1, -16, 16];
     const DIAGONAL: [i32; 4] = [-17, -15, 17, 15];
     const JUMP: [i32; 8] = [31, 33, 14, 18, -14, -18, -31, -33];
-    let mut vec1 = ORTHOGONAL.to_vec();
-    let mut vec2 = DIAGONAL.to_vec();
-    let mut vec3 = JUMP.to_vec();
-    let mut calc = Vec::<i32>::new();
     match piece {
         King => {
-            calc.append(&mut vec1);
-            calc.append(&mut vec2);
-            calc
+            [ORTHOGONAL,DIAGONAL].concat()
         }
         Queen => {
-            calc.append(&mut vec1);
-            calc.append(&mut vec2);
-            calc
+            [ORTHOGONAL,DIAGONAL].concat()
         }
         Bishop => {
-            calc.append(&mut vec2);
-            calc
+            DIAGONAL.to_vec()
         }
         Rook => {
-            calc.append(&mut vec1);
-            calc
+            ORTHOGONAL.to_vec()
         }
         Pawn => {
-            calc.append(&mut vec1);
-            calc.append(&mut vec2);
-            calc
+            [ORTHOGONAL,DIAGONAL].concat()
         }
         Knight => {
-            calc.append(&mut vec3);
-            calc
+            JUMP.to_vec()
         }
-        _ => calc,
+        _ => [].to_vec(),
     }
 }
 
