@@ -2,11 +2,9 @@ use piece_moves::MoveGenerator;
 
 use crate::board::Board;
 
-//mod board;
 mod board;
 mod piece_directions;
 mod piece_moves;
-//mod piece_moves;
 
 fn main() {
     let mut board = Board::new();
