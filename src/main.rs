@@ -1,14 +1,18 @@
-use piece_moves::MoveGenerator;
+#![recursion_limit = "144"]
+pub mod bitboard;
+pub mod board_defs;
+pub mod color;
+pub mod piece_type;
+pub mod square;
+pub mod attacks;
 
-use crate::board::Board;
-
-mod board;
-mod piece_directions;
-mod piece_moves;
+pub use self::bitboard::SQUARE_BB;
+pub use self::color::Color;
+pub use self::piece_type::PieceType;
+pub use self::square::Square;
+pub use board_defs::{EMPTY_BB, FILE_BB, RANK_BB};
+pub use attacks::init;
 
 fn main() {
-    let mut board = Board::new();
-    board.add_data();
-    let mut a = MoveGenerator::new(54, &board);
-    a.run();
+    init();
 }
