@@ -96,6 +96,22 @@ impl Square {
     }
 }
 
+impl fmt::Display for Square {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        debug_assert!(
+            self.file() < 12 && self.rank() < 12,
+            "trying to stringify an invalid square: {:?}",
+            self
+        );
+        write!(
+            f,
+            "{}{}",
+            (self.file() + ASCII_1) as char,
+            (self.rank() + ASCII_LOWER_A) as char
+        )
+    }
+}
+
 pub mod consts {
 /*
     macro_rules! make_square {

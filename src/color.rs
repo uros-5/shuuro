@@ -1,6 +1,6 @@
 use std::iter;
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Color {
     Blue = 0,
     Red = 1,
@@ -8,7 +8,6 @@ pub enum Color {
 }
 
 impl Color {
-
     pub fn from_char(ch: char) -> Option<Color> {
         match ch {
             'b' => Some(Color::Blue),

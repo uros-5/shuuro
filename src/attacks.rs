@@ -247,7 +247,7 @@ fn init_north_east_ray() {
     }
 }
 
-pub fn init_north_west_ray() {
+fn init_north_west_ray() {
     for i in 0..144 {
         let mut all = EMPTY_BB;
         let mut new_index: i32 = i;

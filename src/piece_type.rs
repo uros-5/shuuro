@@ -1,4 +1,6 @@
-use std::iter;
+use std::{fmt, iter};
+
+use crate::piece::Piece;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PieceType {
@@ -31,6 +33,42 @@ impl PieceType {
 
     pub fn index(self) -> usize {
         self as usize
+    }
+
+    pub fn promote(self) -> Option<PieceType> {
+        use self::PieceType::Plynth;
+
+        match self {
+            Plynth => return None,
+            _ => return Some(PieceType::Queen),
+        }
+    }
+
+    pub fn unpromote(self) -> Option<PieceType> {
+        use self::PieceType::Plynth;
+
+        match self {
+            Plynth => return None,
+            _ => return Some(self),
+        }
+    }
+}
+
+impl fmt::Display for PieceType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match *self {
+                PieceType::Bishop => "b",
+                PieceType::King => "k",
+                PieceType::Knight => "n",
+                PieceType::Pawn => "p",
+                PieceType::Rook => "r",
+                PieceType::Queen => "q",
+                PieceType::Plynth => "l",
+            }
+        )
     }
 }
 
