@@ -1,8 +1,8 @@
 use crate::bitboard::BitBoard;
 use crate::board_defs::{EMPTY_BB, FILE_BB, RANK_BB};
 use crate::piece_type::PieceType;
-use crate::Color;
 use crate::SQUARE_BB;
+use crate::{Color, Square};
 
 #[derive(Clone, Copy)]
 pub enum Ray {
@@ -33,18 +33,20 @@ pub fn init() {
     init_north_west_ray();
     init_south_east_ray();
     init_south_west_ray();
+
+    init_between();
 }
 
-pub fn get_non_sliding_attacks(piece_type: PieceType, square: usize, color: Color) -> BitBoard {
-    unsafe { NON_SLIDING_ATTACKS[color as usize][piece_type as usize][square] }
+pub fn get_non_sliding_attacks(piece_type: PieceType, square: Square, color: Color) -> BitBoard {
+    unsafe { NON_SLIDING_ATTACKS[color as usize][piece_type as usize][square.index()] }
 }
 
-pub fn get_sliding_attacks(piece_type: PieceType, square: usize, blockers: BitBoard) -> BitBoard {
+pub fn get_sliding_attacks(piece_type: PieceType, square: Square, blockers: BitBoard) -> BitBoard {
     match piece_type {
-        PieceType::Bishop => get_bishop_attacks(square, blockers),
-        PieceType::Rook => get_rook_attacks(square, blockers),
+        PieceType::Bishop => get_bishop_attacks(square.index(), blockers),
+        PieceType::Rook => get_rook_attacks(square.index(), blockers),
         PieceType::Queen => {
-            &get_bishop_attacks(square, blockers) | &get_rook_attacks(square, blockers)
+            &get_bishop_attacks(square.index(), blockers) | &get_rook_attacks(square.index(), blockers)
         }
         _ => EMPTY_BB,
     }
@@ -314,4 +316,34 @@ fn init_south_west_ray() {
             RAYS[Ray::SouthWest as usize][i as usize] = all;
         }
     }
+}
+
+static mut BETWEEN_BB: [[BitBoard; 144]; 144] = [[BitBoard([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 144];
+
+fn init_between() {
+    for from in Square::iter() {
+        for to in Square::iter() {
+            if from == to {
+                continue;
+            }
+
+            let df = from.file() as i8 - to.file() as i8;
+            let dr = from.rank() as i8 - to.rank() as i8;
+            unsafe {
+                if df == 0 || dr == 0 {
+                    BETWEEN_BB[from.index()][to.index()] =
+                        &get_sliding_attacks(PieceType::Rook, from, SQUARE_BB[to.index()])
+                            & &get_sliding_attacks(PieceType::Rook, to, SQUARE_BB[from.index()]);
+                } else if df.abs() == dr.abs() {
+                    BETWEEN_BB[from.index()][to.index()] =
+                        &get_sliding_attacks(PieceType::Bishop, from, SQUARE_BB[to.index()])
+                            & &get_sliding_attacks(PieceType::Bishop, to, SQUARE_BB[from.index()]);
+                }
+            }
+        }
+    }
+}
+
+pub fn between(square1: Square, square2: Square) -> BitBoard {
+    unsafe { BETWEEN_BB[square1.index()][square2.index()] }
 }
