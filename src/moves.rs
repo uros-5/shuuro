@@ -18,12 +18,11 @@ impl Move {
             return None;
         }
 
-        let first = s.chars().next().unwrap();
-        if first.is_digit(10) {
+        let second = s.chars().next().unwrap();
+        if second.is_digit(10) {
             if let Some(from) = Square::from_sfen(&s[0..2]) {
                 if let Some(to) = Square::from_sfen(&s[2..4]) {
-                    let promote = s.len() == 5;
-
+                    let promote = s.chars().nth(4).unwrap() != '+';
                     return Some(Move::Normal { from, to, promote });
                 }
             }
@@ -39,10 +38,7 @@ impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
             Move::Normal { from, to, promote } => {
-                write!(f, "{}{}{}", from, to, if promote { "+" } else { "" })
-            }
-            Move::Drop { to, piece_type } => {
-                write!(f, "{}*{}", piece_type.to_string().to_uppercase(), to)
+                write!(f, "{}{}{}", from, to, if promote { "" } else { "" })
             }
         }
     }

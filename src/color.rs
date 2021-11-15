@@ -1,5 +1,18 @@
 use std::iter;
 
+///  Represents each side of player. Blue player moves first.
+///
+/// # Examples
+///
+/// ```
+/// use shuuro::Color;
+///
+/// let c = Color::Blue;
+/// match c {
+///    Color::Blue => assert!(true),
+///    Color::Red => unreachable!(),
+/// }
+/// ```
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Color {
     Blue = 0,
@@ -8,6 +21,7 @@ pub enum Color {
 }
 
 impl Color {
+    /// Returns an iterator of all variants.
     pub fn from_char(ch: char) -> Option<Color> {
         match ch {
             'b' => Some(Color::Blue),
@@ -15,7 +29,15 @@ impl Color {
             _ => Some(Color::NoColor),
         }
     }
-
+    /// Returns the color of the opposite side.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shuuro::Color;
+    ///
+    /// assert_eq!(Color::Red, Color::Blue.flip());
+    /// assert_eq!(Color::Blue, Color::Red.flip());
     pub fn flip(&self) -> Color {
         match self {
             Color::Red => Color::Blue,

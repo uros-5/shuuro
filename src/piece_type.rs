@@ -1,7 +1,6 @@
 use std::{fmt, iter};
 
-use crate::piece::Piece;
-
+/// Represents a kind of pieces.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PieceType {
     King = 0,
@@ -14,10 +13,12 @@ pub enum PieceType {
 }
 
 impl PieceType {
+    /// Returns an iterator over all variants.
     pub fn iter() -> PieceTypeIter {
         PieceTypeIter::new()
     }
 
+    /// Creates a new instance of `PieceType` from SFEN formatted string.
     pub fn from_sfen(c: char) -> Option<PieceType> {
         Some(match c {
             'k' | 'K' => PieceType::King,
@@ -31,10 +32,17 @@ impl PieceType {
         })
     }
 
-    pub fn index(self) -> usize {
-        self as usize
-    }
 
+    /// Returns an instance of `PieceType` after promotion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shuuro::PieceType;
+    ///
+    /// assert_eq!(Some(PieceType::ProPawn), PieceType::Pawn.promote());
+    /// assert_eq!(None, PieceType::ProPawn.promote());
+    /// ```
     pub fn promote(self) -> Option<PieceType> {
         use self::PieceType::Plynth;
 
@@ -44,6 +52,16 @@ impl PieceType {
         }
     }
 
+    /// Returns an instance of `PieceType` before promotion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shuuro::PieceType;
+    ///
+    /// assert_eq!(Some(PieceType::Pawn), PieceType::ProPawn.unpromote());
+    /// assert_eq!(None, PieceType::Pawn.unpromote());
+    /// ```
     pub fn unpromote(self) -> Option<PieceType> {
         use self::PieceType::Plynth;
 
@@ -51,6 +69,24 @@ impl PieceType {
             Plynth => return None,
             _ => return Some(self),
         }
+    }
+
+    /// Checks if this piece type can be a part of hand pieces.
+    pub fn is_hand_piece(self) -> bool {
+        matches!(
+            self,
+            PieceType::Rook
+                | PieceType::Bishop
+                | PieceType::Queen
+                | PieceType::King
+                | PieceType::Knight
+                | PieceType::Pawn
+        )
+    }
+
+    /// Converts the instance into the unique number for array indexing purpose.
+    pub fn index(self) -> usize {
+        self as usize
     }
 }
 

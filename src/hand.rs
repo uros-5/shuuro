@@ -1,8 +1,25 @@
 use crate::{Color, Piece, PieceType};
 
+/// Manages the number of each pieces in each player's hand.
+///
+/// # Examples
+///
+/// ```
+/// use shuuro::{Color, Hand, Piece, PieceType};
+///
+/// let mut hand: Hand = Default::default();
+/// let blue_pawn = Piece{piece_type: PieceType::Pawn, color: Color::Blue};
+/// let red_pawn = Piece{piece_type: PieceType::Pawn, color: Color::Red};
+///
+/// hand.set(blue_pawn, 2);
+/// hand.increment(blue_pawn);
+/// assert_eq!(3, hand.get(blue_pawn));
+/// assert_eq!(0, hand.get(red_pawn));
+/// ```
+
 #[derive(Debug, Default)]
 pub struct Hand {
-    inner: [u8; 14],
+    inner: [u8; 12],
 }
 
 impl Hand {
@@ -49,7 +66,7 @@ impl Hand {
             PieceType::Pawn => 5,
             _ => return None,
         };
-        let offset = if p.color == Color::Blue { 0 } else { 10 };
+        let offset = if p.color == Color::Blue { 0 } else { 6 };
 
         Some(base + offset)
     }
