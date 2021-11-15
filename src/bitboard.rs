@@ -1,9 +1,9 @@
 use std::fmt;
 use std::ops;
 
-use super::{Square};
+use super::Square;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct BitBoard(pub [u16; 9]);
 
 impl BitBoard {
@@ -66,7 +66,7 @@ impl BitBoard {
             if self.0[i] != 0 {
                 let sq = Square::from_index(self.0[i].trailing_zeros() as u8);
                 self.0[i] &= self.0[i] - 1;
-                return sq
+                return sq;
             }
         }
 
@@ -76,7 +76,8 @@ impl BitBoard {
     pub fn pop_reverse(&mut self) -> Option<Square> {
         for i in (0..9).rev() {
             if self.0[i] != 0 {
-                let sq = Square::from_index( (15 * (1+i)+i) as u8 - self.0[i].leading_zeros() as u8);
+                let sq =
+                    Square::from_index((15 * (1 + i) + i) as u8 - self.0[i].leading_zeros() as u8);
                 self.clear_at(sq.unwrap());
                 return sq;
             }
@@ -100,18 +101,19 @@ impl BitBoard {
 
 impl fmt::Display for BitBoard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "l   k   j   i   h   g   f   e   d   c   b   a   ")?;
+        
         writeln!(f, "+---+---+---+---+---+---+---+---+---+---+---+---+")?;
 
-        for file in 0..12 {
+        for file in (0..12).rev() {
             write!(f, "|")?;
-            for rank in (0..12).rev() {
+            for rank in 0..12 {
                 let sq = Square::new(rank, file).unwrap();
                 write!(f, " {} |", if (self & sq).is_empty() { " " } else { "X" })?;
             }
             //writeln!(f, " {}", (b'a' + rank) as char)?;
             writeln!(f, "\n+---+---+---+---+---+---+---+---+---+---+---+---+")?;
         }
+        writeln!(f, "a   b   c   d   e   f   g   h   i   j   k   l")?;
 
         Ok(())
     }
@@ -276,6 +278,19 @@ impl<'a> ops::BitXorAssign<Square> for BitBoard {
     #[inline(always)]
     fn bitxor_assign(&mut self, rhs: Square) {
         *self ^= &square_bb(rhs)
+    }
+}
+
+impl Iterator for BitBoard {
+    type Item = Square;
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.is_any() {
+            self.pop()
+        } else {
+            None
+        }
     }
 }
 
