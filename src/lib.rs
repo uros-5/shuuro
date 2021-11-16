@@ -12,7 +12,6 @@ pub mod piece_type;
 pub mod position;
 pub mod square;
 
-use std::collections::HashMap;
 
 pub use self::bitboard::{BitBoard, SQUARE_BB};
 pub use self::color::{Color, ColorIter};
@@ -27,6 +26,4 @@ pub use hand::Hand;
 pub use moves::Move;
 pub use position::{MoveRecord, Position};
 
-fn main() {
-    init();
-}
+

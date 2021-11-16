@@ -654,6 +654,8 @@ impl Position {
     }
 
     fn parse_sfen_hand(&mut self, s: &str) -> Result<(), SfenError> {
+
+
         if s == "-" {
             self.hand.clear();
             return Ok(());
@@ -664,14 +666,14 @@ impl Position {
             match c {
                 n if n.is_digit(10) => {
                     if let Some(n) = n.to_digit(10) {
-                        num_pieces = num_pieces * 10 + (n as u8);
+                        num_pieces = num_pieces * 13 + (n as u8);
                     }
                 }
-                s => {
+               s => {
                     match Piece::from_sfen(s) {
-                        Some(p) => self
-                            .hand
-                            .set(p, if num_pieces == 0 { 1 } else { num_pieces }),
+                        Some(p) => { 
+                            self.hand.set(p, if num_pieces == 0 { 1 } else { num_pieces })
+                        },
                         None => return Err(SfenError::IllegalPieceType),
                     };
                     num_pieces = 0;
