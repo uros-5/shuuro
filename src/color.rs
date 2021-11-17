@@ -72,3 +72,14 @@ impl iter::Iterator for ColorIter {
         current
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn flip() {
+        assert_eq!(Color::Red, Color::Blue.flip());
+        assert_eq!(Color::Blue, Color::Red.flip());
+    }
+}

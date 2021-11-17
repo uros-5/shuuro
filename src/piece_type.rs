@@ -41,7 +41,6 @@ impl PieceType {
     /// use shuuro::PieceType;
     ///
     /// assert_eq!(Some(PieceType::ProPawn), PieceType::Pawn.promote());
-    /// assert_eq!(None, PieceType::ProPawn.promote());
     /// ```
     pub fn promote(self) -> Option<PieceType> {
         use self::PieceType::Plynth;

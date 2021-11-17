@@ -104,7 +104,7 @@ impl fmt::Display for BitBoard {
         
         writeln!(f, "+---+---+---+---+---+---+---+---+---+---+---+---+")?;
 
-        for file in (0..12).rev() {
+        for file in  (0..12).rev()  {
             write!(f, "|")?;
             for rank in 0..12 {
                 let sq = Square::new(rank, file).unwrap();

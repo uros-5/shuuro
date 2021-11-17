@@ -10,3 +10,13 @@ edition = "2021"
 itertools = "0.10"
 bitintr = "0.3"
 thiserror = "1.0"
+
+[profile.test]
+opt-level = 0
+debug = true
+lto = false
+debug-assertions = true
+codegen-units = 1
+
+[lib]
+doctest = false

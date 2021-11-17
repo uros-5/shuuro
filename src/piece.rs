@@ -12,9 +12,9 @@ impl Piece {
     /// Creates a new instance of `Piece` from SFEN formatted string.
     pub fn from_sfen(c: char) -> Option<Piece> {
         let color = if c.is_uppercase() {
-            Color::Blue
-        } else {
             Color::Red
+        } else {
+            Color::Blue
         };
 
         PieceType::from_sfen(c).map(|piece_type| Piece { piece_type, color })
@@ -89,10 +89,12 @@ impl Piece {
 
 impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        if self.color == Color::Blue {
+        if self.color == Color::Red {
             write!(f, "{}", self.piece_type.to_string().to_uppercase())
         } else {
             write!(f, "{}", self.piece_type)
         }
     }
 }
+
+

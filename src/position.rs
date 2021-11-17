@@ -193,6 +193,7 @@ impl Position {
     /// Checks if the king with the given color is in check.
     pub fn in_check(&self, c: Color) -> bool {
         if let Some(king_sq) = self.find_king(c) {
+            println!("{}", king_sq);
             self.is_attacked_by(king_sq, c.flip())
         } else {
             false
@@ -226,7 +227,7 @@ impl Position {
     fn find_king(&self, c: Color) -> Option<Square> {
         let mut bb = &self.type_bb[PieceType::King.index()] & &self.color_bb[c.index()];
         if bb.is_any() {
-            bb.pop()
+            bb.pop_reverse()
         } else {
             None
         }
@@ -593,19 +594,20 @@ impl Position {
             let mut j = 0;
 
             let mut is_promoted = false;
-            for c in row.chars().rev() {
+            for c in row.chars() {
                 match c {
                     '+' => {
                         is_promoted = true;
                     }
-                    n if n.is_digit(10) => {
-                        if let Some(n) = n.to_digit(10) {
+                    n if n.is_digit(11) => {
+                        if let Some(n) = n.to_digit(11) {
                             for _ in 0..n {
                                 if j >= 12 {
                                     return Err(SfenError::IllegalBoardState);
                                 }
 
-                                let sq = Square::new(11 - j, i as u8).unwrap();
+                                let sq = Square::new(j, i as u8).unwrap();
+
                                 self.set_piece(sq, None);
 
                                 j += 1;
@@ -626,13 +628,12 @@ impl Position {
                                 }
                             }
 
-                            let sq = Square::new(11 - j, i as u8).unwrap();
+                            let sq = Square::new(j, i as u8).unwrap();
                             self.set_piece(sq, Some(piece));
                             self.occupied_bb |= sq;
                             self.color_bb[piece.color.index()] |= sq;
                             self.type_bb[piece.piece_type.index()] |= sq;
                             j += 1;
-
                             is_promoted = false;
                         }
                         None => return Err(SfenError::IllegalPieceType),
@@ -654,8 +655,6 @@ impl Position {
     }
 
     fn parse_sfen_hand(&mut self, s: &str) -> Result<(), SfenError> {
-
-
         if s == "-" {
             self.hand.clear();
             return Ok(());
@@ -664,16 +663,16 @@ impl Position {
         let mut num_pieces: u8 = 0;
         for c in s.chars() {
             match c {
-                n if n.is_digit(10) => {
-                    if let Some(n) = n.to_digit(10) {
+                n if n.is_digit(11) => {
+                    if let Some(n) = n.to_digit(11) {
                         num_pieces = num_pieces * 13 + (n as u8);
                     }
                 }
-               s => {
+                s => {
                     match Piece::from_sfen(s) {
-                        Some(p) => { 
-                            self.hand.set(p, if num_pieces == 0 { 1 } else { num_pieces })
-                        },
+                        Some(p) => self
+                            .hand
+                            .set(p, if num_pieces == 0 { 1 } else { num_pieces }),
                         None => return Err(SfenError::IllegalPieceType),
                     };
                     num_pieces = 0;
@@ -694,7 +693,7 @@ impl Position {
             .map(|row| {
                 let mut s = String::new();
                 let mut num_spaces = 0;
-                for file in (0..12).rev() {
+                for file in (0..12) {
                     match *self.piece_at(Square::new(file, row).unwrap()) {
                         Some(pc) => {
                             if num_spaces > 0 {
@@ -827,5 +826,61 @@ impl fmt::Display for Position {
         write!(f, "Ply: {}", self.ply)?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use crate::{init, BitBoard, Color, Piece, PieceType, Position, Square, EMPTY_BB, SQUARE_BB};
+    pub const START_POS: &str = "KR10/12/12/12/12/12/12/12/12/12/12/kr10 b - 1";
+    fn setup() {
+        init();
+    }
+
+    #[test]
+    fn piece_exist() {
+        setup();
+        let mut pos = Position::new();
+        pos.set_sfen(START_POS).unwrap();
+        let sq = Square::from_index(132).unwrap();
+        let piece = Piece {
+            piece_type: PieceType::King,
+            color: Color::Blue,
+        };
+
+        assert_eq!(Some(piece), *pos.piece_at(sq));
+    }
+
+    #[test]
+    fn in_check() {
+        setup();
+
+        let test_cases = [
+            (
+                "KQR9/1PPP8/12/12/12/12/12/12/12/12/1ppp8/qkb9 b - 1",
+                false,
+                true,
+            ),
+            /*
+            ("9/3r5/9/9/6B2/9/9/9/3K5 b P 1", true, false),
+            (
+                "ln2r1knl/2gb1+Rg2/4Pp1p1/p1pp1sp1p/1N2pN1P1/2P2PP2/PP1G1S2R/1SG6/LK6L w 2PSp 1",
+                false,
+                true,
+            ),
+            (
+                "lnsg1gsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSG1GSNL b - 1",
+                false,
+                false,
+            ),
+            */
+        ];
+
+        let mut pos = Position::new();
+        for case in test_cases.iter() {
+            pos.set_sfen(case.0).expect("failed to parse SFEN string");
+            assert_eq!(case.1, pos.in_check(Color::Blue));
+            assert_eq!(case.2, pos.in_check(Color::Red));
+        }
     }
 }
