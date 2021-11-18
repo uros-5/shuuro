@@ -287,7 +287,7 @@ impl Iterator for BitBoard {
     #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_any() {
-            self.pop()
+            self.pop_reverse()
         } else {
             None
         }

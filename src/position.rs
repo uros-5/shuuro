@@ -193,7 +193,6 @@ impl Position {
     /// Checks if the king with the given color is in check.
     pub fn in_check(&self, c: Color) -> bool {
         if let Some(king_sq) = self.find_king(c) {
-            println!("{}", king_sq);
             self.is_attacked_by(king_sq, c.flip())
         } else {
             false
@@ -831,6 +830,7 @@ impl fmt::Display for Position {
 
 #[cfg(test)]
 pub mod tests {
+    use crate::consts::*;
     use crate::{init, BitBoard, Color, Piece, PieceType, Position, Square, EMPTY_BB, SQUARE_BB};
     pub const START_POS: &str = "KR10/12/12/12/12/12/12/12/12/12/12/kr10 b - 1";
     fn setup() {
@@ -857,23 +857,20 @@ pub mod tests {
 
         let test_cases = [
             (
-                "KQR9/1PPP8/12/12/12/12/12/12/12/12/1ppp8/qkb9 b - 1",
-                false,
-                true,
-            ),
-            /*
-            ("9/3r5/9/9/6B2/9/9/9/3K5 b P 1", true, false),
-            (
-                "ln2r1knl/2gb1+Rg2/4Pp1p1/p1pp1sp1p/1N2pN1P1/2P2PP2/PP1G1S2R/1SG6/LK6L w 2PSp 1",
+                "KQR9/1PPP8/12/12/12/12/12/12/12/12/1ppp8/qkb9 r - 1",
                 false,
                 true,
             ),
             (
-                "lnsg1gsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSG1GSNL b - 1",
+                "5QR5/10K1/12/12/12/12/12/12/12/12/12/5k6 b - 1",
+                true,
+                false,
+            ),
+            (
+                "2RNBKQBNR2/12/2PPPPPPPP2/12/12/12/12/12/12/2pppppppp2/12/2rnbkqbnr2 b - 1",
                 false,
                 false,
             ),
-            */
         ];
 
         let mut pos = Position::new();
@@ -881,6 +878,69 @@ pub mod tests {
             pos.set_sfen(case.0).expect("failed to parse SFEN string");
             assert_eq!(case.1, pos.in_check(Color::Blue));
             assert_eq!(case.2, pos.in_check(Color::Red));
+        }
+    }
+
+    #[test]
+    fn player_bb() {
+        setup();
+
+        let cases: &[(&str, &[Square], &[Square])] = &[
+            (
+                "BBQ9/12/12/4R7/12/12/12/5ppp4/nnq/12/12/12 b - 1",
+                &[A9, B9, C9, F8, G8, H8],
+                &[A1, B1, C1, E4],
+            ),
+            (
+                "12/12/6PPPP2/3Q6N1/12/12/12/5ppp4/7qk3/12/12/12 b P 1",
+                &[H9, I9, F8, G8, H8],
+                &[G3, H3, I3, J3, D4, K4],
+            ),
+        ];
+
+        let mut pos = Position::new();
+        for case in cases {
+            pos.set_sfen(case.0).expect("faled to parse SFEN string");
+            let blue = pos.player_bb(Color::Blue);
+            let red = pos.player_bb(Color::Red);
+
+            assert_eq!(case.1.len(), blue.count() as usize);
+            for sq in case.1 {
+                assert!((blue & *sq).is_any());
+            }
+
+            assert_eq!(case.2.len(), red.count() as usize);
+            for sq in case.2 {
+                assert!((red & *sq).is_any());
+            }
+        }
+    }
+
+    #[test]
+    fn pinned_bb() {
+        setup();
+
+        let cases: &[(&str, &[Square], &[Square])] = &[(
+            "5NNQK3/8B3/12/12/12/8r3/12/12/pp10/1k10/12/12 r - 1",
+            &[],
+            &[I2],
+        )];
+
+        let mut pos = Position::new();
+        for case in cases {
+            pos.set_sfen(case.0).expect("faled to parse SFEN string");
+            let blue = pos.pinned_bb(Color::Blue);
+            let red = pos.pinned_bb(Color::Red);
+
+            assert_eq!(case.1.len(), blue.count());
+            for sq in case.1 {
+                assert!((&blue & *sq).is_any());
+            }
+
+            assert_eq!(case.2.len(), red.count());
+            for sq in case.2 {
+                assert!((&red & *sq).is_any());
+            }
         }
     }
 }
