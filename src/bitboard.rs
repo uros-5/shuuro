@@ -64,8 +64,9 @@ impl BitBoard {
     pub fn pop(&mut self) -> Option<Square> {
         for i in 0..9 {
             if self.0[i] != 0 {
-                let sq = Square::from_index(self.0[i].trailing_zeros() as u8);
-                self.0[i] &= self.0[i] - 1;
+                let sq =
+                    Square::from_index((15 * (1 + i) + i) as u8 - self.0[i].leading_zeros() as u8);
+                self.clear_at(sq.unwrap());
                 return sq;
             }
         }
@@ -101,10 +102,9 @@ impl BitBoard {
 
 impl fmt::Display for BitBoard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        
         writeln!(f, "+---+---+---+---+---+---+---+---+---+---+---+---+")?;
 
-        for file in  (0..12).rev()  {
+        for file in (0..12).rev() {
             write!(f, "|")?;
             for rank in 0..12 {
                 let sq = Square::new(rank, file).unwrap();
@@ -441,6 +441,6 @@ pub const SQUARE_BB: [BitBoard; 144] = [
     BitBoard([0, 0, 0, 0, 0, 0, 0, 0, 1 << 15]),
 ];
 
-fn square_bb(sq: Square) -> BitBoard {
+pub fn square_bb(sq: Square) -> BitBoard {
     SQUARE_BB[sq.index()]
 }

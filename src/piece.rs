@@ -96,5 +96,3 @@ impl fmt::Display for Piece {
         }
     }
 }
-
-

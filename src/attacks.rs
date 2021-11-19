@@ -33,7 +33,6 @@ pub fn init() {
     init_north_west_ray();
     init_south_east_ray();
     init_south_west_ray();
-
     init_between();
 }
 
@@ -46,7 +45,8 @@ pub fn get_sliding_attacks(piece_type: PieceType, square: Square, blockers: BitB
         PieceType::Bishop => get_bishop_attacks(square.index(), blockers),
         PieceType::Rook => get_rook_attacks(square.index(), blockers),
         PieceType::Queen => {
-            &get_bishop_attacks(square.index(), blockers) | &get_rook_attacks(square.index(), blockers)
+            &get_bishop_attacks(square.index(), blockers)
+                | &get_rook_attacks(square.index(), blockers)
         }
         _ => EMPTY_BB,
     }

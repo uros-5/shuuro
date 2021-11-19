@@ -165,7 +165,6 @@ impl fmt::Display for Square {
     }
 }
 
-
 pub mod consts {
     use crate::Square;
 

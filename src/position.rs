@@ -692,7 +692,7 @@ impl Position {
             .map(|row| {
                 let mut s = String::new();
                 let mut num_spaces = 0;
-                for file in (0..12) {
+                for file in 0..12 {
                     match *self.piece_at(Square::new(file, row).unwrap()) {
                         Some(pc) => {
                             if num_spaces > 0 {
@@ -830,7 +830,7 @@ impl fmt::Display for Position {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::consts::*;
+    use crate::{between, consts::*};
     use crate::{init, BitBoard, Color, Piece, PieceType, Position, Square, EMPTY_BB, SQUARE_BB};
     pub const START_POS: &str = "KR10/12/12/12/12/12/12/12/12/12/12/kr10 b - 1";
     fn setup() {
@@ -920,11 +920,23 @@ pub mod tests {
     fn pinned_bb() {
         setup();
 
-        let cases: &[(&str, &[Square], &[Square])] = &[(
-            "5NNQK3/8B3/12/12/12/8r3/12/12/pp10/1k10/12/12 r - 1",
-            &[],
-            &[I2],
-        )];
+        let cases: &[(&str, &[Square], &[Square])] = &[
+            (
+                "5NNQK3/8B3/12/12/12/8r3/12/12/pp10/1k10/12/12 r - 1",
+                &[],
+                &[I2],
+            ),
+            (
+                "5NNQK3/8B3/8R3/12/12/8r3/12/12/pp10/1k10/12/12 r - 1",
+                &[],
+                &[],
+            ),
+            (
+                "12/12/2K9/PPPPPP/12/12/2R2B6/12/2rn8/2k3q2R2/12/12 b - 1",
+                &[C9, D9, G10],
+                &[],
+            ),
+        ];
 
         let mut pos = Position::new();
         for case in cases {

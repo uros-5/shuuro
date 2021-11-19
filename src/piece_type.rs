@@ -32,7 +32,6 @@ impl PieceType {
         })
     }
 
-
     /// Returns an instance of `PieceType` after promotion.
     ///
     /// # Examples
