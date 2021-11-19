@@ -105,10 +105,10 @@ fn init_pawn_attacks() {
             if new_index > 0 && new_index < 144 {
                 current_attack = SQUARE_BB[new_index as usize];
                 match dir {
-                    13 => add(new_index, Color::Red, &current_attack & &!&FILE_BB[0]),
-                    11 => add(new_index, Color::Red, &current_attack & &!&FILE_BB[11]),
-                    -11 => add(new_index, Color::Blue, &current_attack & &!&FILE_BB[0]),
-                    -13 => add(new_index, Color::Blue, &current_attack & &!&FILE_BB[11]),
+                    13 => add(i, Color::Red, &current_attack & &!&RANK_BB[0]),
+                    11 => add(i, Color::Red, &current_attack & &!&RANK_BB[11]),
+                    -11 => add(i, Color::Blue, &current_attack & &!&RANK_BB[0]),
+                    -13 => add(i, Color::Blue, &current_attack & &!&RANK_BB[11]),
                     _ => (),
                 }
             }

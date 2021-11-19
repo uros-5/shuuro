@@ -830,8 +830,8 @@ impl fmt::Display for Position {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{between, consts::*};
-    use crate::{init, BitBoard, Color, Piece, PieceType, Position, Square, EMPTY_BB, SQUARE_BB};
+    use crate::{consts::*, get_non_sliding_attacks};
+    use crate::{init, Color, Piece, PieceType, Position, Square};
     pub const START_POS: &str = "KR10/12/12/12/12/12/12/12/12/12/12/kr10 b - 1";
     fn setup() {
         init();
@@ -954,5 +954,32 @@ pub mod tests {
                 assert!((&red & *sq).is_any());
             }
         }
+    }
+
+    #[test]
+    fn move_candidates() {
+        setup();
+
+        let mut pos = Position::new();
+        pos.set_sfen("R3N7/4K7/12/12/12/12/12/bppp8/4k7/12/12/12 b - 1")
+            .expect("failed to parse SFEN string");
+
+        let mut sum = 0;
+        for sq in Square::iter() {
+            let pc = pos.piece_at(sq);
+
+            if let Some(pc) = *pc {
+                if pc.color == pos.side_to_move() {
+                    println!(
+                        "piece: {}, count: {}",
+                        pc,
+                        pos.move_candidates(sq, pc).count(),
+                    );
+                    sum += pos.move_candidates(sq, pc).count();
+                }
+            }
+        }
+
+        assert_eq!(24, sum);
     }
 }
