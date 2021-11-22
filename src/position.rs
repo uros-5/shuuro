@@ -287,7 +287,6 @@ impl Position {
                 "The piece is not for the side to move",
             ));
         }
-
         if !self.move_candidates(from, moved).any(|sq| sq == to) {
             return Err(MoveError::Inconsistent("The piece cannot move to there"));
         }
@@ -493,11 +492,11 @@ impl Position {
                     let prev = self.sfen_history.get(self.sfen_history.len() - 2).unwrap();
 
                     if cur.1 * 2 >= (i as u16) {
-                        return Err(MoveError::PerpetualCheckLose);
+                        return Err(MoveError::Draw);
                     } else if prev.1 * 2 >= (i as u16) {
-                        return Err(MoveError::PerpetualCheckWin);
+                        return Err(MoveError::Draw);
                     } else {
-                        return Err(MoveError::Repetition);
+                        return Err(MoveError::RepetitionDraw);
                     }
                 }
             }
@@ -830,7 +829,7 @@ impl fmt::Display for Position {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{consts::*, get_non_sliding_attacks};
+    use crate::{consts::*, get_non_sliding_attacks, Move, MoveError};
     use crate::{init, Color, Piece, PieceType, Position, Square};
     pub const START_POS: &str = "KR10/12/12/12/12/12/12/12/12/12/12/kr10 b - 1";
     fn setup() {
@@ -981,5 +980,218 @@ pub mod tests {
         }
 
         assert_eq!(24, sum);
+    }
+
+    #[test]
+    fn make_normal_move() {
+        setup();
+
+        let base_sfen = "12/3KRRB5/5PP5/12/12/12/12/qbbn8/12/6k5/12/12 r 1K2R1B2P 1";
+        let test_cases = [
+            (D2, E1, false, true),
+            (E2, E7, false, true),
+            (G2, I4, false, true),
+            (F2, F1, false, true),
+            (G3, H4, false, true),
+        ];
+
+        for case in test_cases.iter() {
+            let mut pos = Position::new();
+            pos.set_sfen(base_sfen)
+                .expect("failed to parse SFEN string");
+            assert_eq!(case.3, pos.make_normal_move(case.0, case.1, case.2).is_ok());
+        }
+
+        let mut pos = Position::new();
+        // Leaving the checked king is illegal.
+        pos.set_sfen("12/1K8RR/12/12/12/r9k1/12/12/12/12/12/12 b kr 1")
+            .expect("failed to parse SFEN string");
+        assert!(pos.make_normal_move(A6, A1, false).is_err());
+
+        pos.set_sfen("12/10RR/12/12/12/r9k1/12/12/12/12/12/12 b kr 1")
+            .expect("failed to parse SFEN string");
+        assert!(pos.make_normal_move(K6, K5, false).is_ok());
+    }
+
+    #[test]
+    fn repetition() {
+        setup();
+
+        let mut pos = Position::new();
+        pos.set_sfen("12/12/PPPQP4K2/7RR3/12/12/12/4pp6/2kr8/12/12/12 b 1r2R 1")
+            .expect("failed to parse SFEN string");
+        for _ in 0..2 {
+            assert!(pos.make_normal_move(D9, I9, false).is_ok());
+            assert!(pos.make_normal_move(H4, A4, false).is_ok());
+            assert!(pos.make_normal_move(I9, D9, false).is_ok());
+            assert!(pos.make_normal_move(A4, H4, false).is_ok());
+        }
+
+        assert!(pos.make_normal_move(D9, I9, false).is_ok());
+        assert!(pos.make_normal_move(H4, A4, false).is_ok());
+        assert!(pos.make_normal_move(I9, D9, false).is_ok());
+
+        assert_eq!(
+            Some(MoveError::RepetitionDraw),
+            pos.make_normal_move(A4, H4, false).err()
+        );
+    }
+
+    #[test]
+    fn unmake_move() {
+        setup();
+
+        let mut pos = Position::new();
+        let base_sfen = "RRQNN3K3/PP1P4PP2/2P9/12/12/B11/1n3q4PP/4qq6/rq3r5r/12/4k7/12 b 3q3r 1";
+        pos.set_sfen(base_sfen)
+            .expect("failed to parse SFEN string");
+        let base_state = format!("{}", pos);
+        println!("{}", base_state);
+        let test_cases = [
+            Move::Normal {
+                from: E8,
+                to: E5,
+                promote: false,
+            },
+            Move::Normal {
+                from: L9,
+                to: I9,
+                promote: false,
+            },
+            Move::Normal {
+                from: B7,
+                to: D6,
+                promote: false,
+            },
+            Move::Normal {
+                from: F7,
+                to: F4,
+                promote: false,
+            },
+            Move::Normal {
+                from: E8,
+                to: E1,
+                promote: false,
+            },
+            Move::Normal {
+                from: A9,
+                to: A7,
+                promote: false,
+            },
+        ];
+
+        for case in test_cases.iter() {
+            pos.set_sfen(base_sfen)
+                .expect("failed to parse SFEN string");
+            pos.make_move(*case)
+                .unwrap_or_else(|_| panic!("failed to make a move: {}", case));
+            pos.unmake_move()
+                .unwrap_or_else(|_| panic!("failed to unmake a move: {}", case));
+            assert_eq!(
+                base_sfen,
+                pos.to_sfen(),
+                "{}",
+                format!("sfen unmatch for {}", case).as_str()
+            );
+            assert_eq!(
+                base_state,
+                format!("{}", pos),
+                "{}",
+                format!("state unmatch for {}", case).as_str()
+            );
+        }
+    }
+
+    #[test]
+    fn set_sfen_normal() {
+        setup();
+
+        let mut pos = Position::new();
+
+        pos.set_sfen("2RNBKQBNR2/12/2PPPPPPPP2/12/12/12/12/12/12/2pppppppp2/12/2rnbkqbnr2 b - 1")
+            .expect("failed to parse SFEN string");
+        let filled_squares = [
+            (0, 2, PieceType::Rook, Color::Red),
+            (0, 3, PieceType::Knight, Color::Red),
+            (0, 4, PieceType::Bishop, Color::Red),
+            (0, 5, PieceType::King, Color::Red),
+            (0, 6, PieceType::Queen, Color::Red),
+            (0, 7, PieceType::Bishop, Color::Red),
+            (0, 8, PieceType::Knight, Color::Red),
+            (0, 9, PieceType::Rook, Color::Red),
+            (2, 2, PieceType::Pawn, Color::Red),
+            (2, 3, PieceType::Pawn, Color::Red),
+            (2, 4, PieceType::Pawn, Color::Red),
+            (2, 5, PieceType::Pawn, Color::Red),
+            (2, 6, PieceType::Pawn, Color::Red),
+            (2, 7, PieceType::Pawn, Color::Red),
+            (2, 8, PieceType::Pawn, Color::Red),
+            (2, 9, PieceType::Pawn, Color::Red),
+            (9, 2, PieceType::Pawn, Color::Blue),
+            (9, 3, PieceType::Pawn, Color::Blue),
+            (9, 4, PieceType::Pawn, Color::Blue),
+            (9, 5, PieceType::Pawn, Color::Blue),
+            (9, 6, PieceType::Pawn, Color::Blue),
+            (9, 7, PieceType::Pawn, Color::Blue),
+            (9, 8, PieceType::Pawn, Color::Blue),
+            (9, 9, PieceType::Pawn, Color::Blue),
+            (11, 2, PieceType::Rook, Color::Blue),
+            (11, 3, PieceType::Knight, Color::Blue),
+            (11, 4, PieceType::Bishop, Color::Blue),
+            (11, 5, PieceType::King, Color::Blue),
+            (11, 6, PieceType::Queen, Color::Blue),
+            (11, 7, PieceType::Bishop, Color::Blue),
+            (11, 8, PieceType::Knight, Color::Blue),
+            (11, 9, PieceType::Rook, Color::Blue),
+        ];
+
+        let empty_squares = [(0, 0, 12), (0, 11, 12), (5, 5, 4)];
+
+        let hand_pieces = [
+            (PieceType::Pawn, 0),
+            (PieceType::Queen, 0),
+            (PieceType::Knight, 0),
+            (PieceType::Rook, 0),
+            (PieceType::Bishop, 0),
+        ];
+
+        for case in filled_squares.iter() {
+            let (row, file, pt, c) = *case;
+            assert_eq!(
+                Some(Piece {
+                    piece_type: pt,
+                    color: c,
+                }),
+                *pos.piece_at(Square::new(file, row).unwrap())
+            );
+        }
+
+        for case in empty_squares.iter() {
+            let (row, file, len) = *case;
+            for i in row..(row + len) {
+                assert_eq!(None, *pos.piece_at(Square::new(file, i).unwrap()));
+            }
+        }
+
+        for case in hand_pieces.iter() {
+            let (pt, n) = *case;
+            assert_eq!(
+                n,
+                pos.hand(Piece {
+                    piece_type: pt,
+                    color: Color::Blue,
+                })
+            );
+            assert_eq!(
+                n,
+                pos.hand(Piece {
+                    piece_type: pt,
+                    color: Color::Red,
+                })
+            );
+        }
+
+        assert_eq!(Color::Blue, pos.side_to_move());
+        assert_eq!(1, pos.ply());
     }
 }
