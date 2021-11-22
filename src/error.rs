@@ -32,10 +32,7 @@ pub enum MoveError {
     Nifu,
 
     #[error("perpetual check detected")]
-    PerpetualCheckWin,
-
-    #[error("perpetual check detected")]
-    PerpetualCheckLose,
+    Draw,
 
     #[error("not your turn")]
     EnemysTurn,
@@ -47,5 +44,5 @@ pub enum MoveError {
     Inconsistent(&'static str),
 
     #[error("repetition detected")]
-    Repetition,
+    RepetitionDraw,
 }
