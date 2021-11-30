@@ -14,22 +14,20 @@ pub enum Move {
 impl Move {
     /// Creates a new instance of `Move` from SFEN formatted string.
     pub fn from_sfen(s: &str) -> Option<Move> {
-        if s.len() != 4 && (s.len() != 5 || s.chars().nth(4).unwrap() != '+') {
+        if s.len() > 7 {
             return None;
         }
+        let mut fen_parts = s.split("_");
 
-        let second = s.chars().next().unwrap();
-        if second.is_digit(10) {
-            if let Some(from) = Square::from_sfen(&s[0..2]) {
-                if let Some(to) = Square::from_sfen(&s[2..4]) {
-                    let promote = s.chars().nth(4).unwrap() != '+';
-                    return Some(Move::Normal { from, to, promote });
-                }
+        if let Some(from) = Square::from_sfen(fen_parts.next().unwrap()) {
+            if let Some(to) = Square::from_sfen(fen_parts.next().unwrap()) {
+                return Some(Move::Normal {
+                    from,
+                    to,
+                    promote: false,
+                });
             }
-
-            return None;
         }
-
         None
     }
 }
@@ -40,6 +38,73 @@ impl fmt::Display for Move {
             Move::Normal { from, to, promote } => {
                 write!(f, "{}{}{}", from, to, if promote { "" } else { "" })
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::square::consts::*;
+
+    #[test]
+    fn from_sfen() {
+        let ok_cases = [
+            (
+                "a10_b10",
+                Move::Normal {
+                    from: A10,
+                    to: B10,
+                    promote: false,
+                },
+            ),
+            (
+                "a9_a1",
+                Move::Normal {
+                    from: A9,
+                    to: A1,
+                    promote: false,
+                },
+            ),
+            (
+                "b4_j12",
+                Move::Normal {
+                    from: B4,
+                    to: J12,
+                    promote: false,
+                },
+            ),
+        ];
+
+        for (i, case) in ok_cases.iter().enumerate() {
+            let m = Move::from_sfen(case.0);
+            assert!(m.is_some(), "failed at #{}", i);
+            assert_eq!(case.1, m.unwrap(), "failed at #{}", i);
+        }
+    }
+    #[test]
+    fn to_sfen() {
+        let cases = [
+            (
+                "c7e9",
+                Move::Normal {
+                    from: C7,
+                    to: E9,
+                    promote: false,
+                },
+            ),
+            (
+                "f9j5",
+                Move::Normal {
+                    from: F9,
+                    to: J5,
+                    promote: false,
+                },
+            ),
+        ];
+
+        for (i, case) in cases.iter().enumerate() {
+            assert_eq!(case.1.to_string(), case.0, "failed at #{}", i);
         }
     }
 }
