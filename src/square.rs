@@ -1,5 +1,5 @@
 use crate::color::Color;
-use std::{fmt, iter};
+use std::{fmt, iter, num::ParseIntError};
 
 const ASCII_1: u8 = 1;
 const ASCII_12: u8 = 12;
@@ -46,31 +46,41 @@ impl Square {
     }
     /// Creates a new instance of `Square` from SFEN formatted string.
     pub fn from_sfen(s: &str) -> Option<Square> {
+        println!("{}", s);
         let bytes: &[u8] = s.as_bytes();
+        let mut chars = s.chars();
 
-        if bytes.len() != 2
-            || bytes[0] < ASCII_LOWER_A
+        if bytes.len() > 3
+            || bytes.len() == 0 && bytes[0] < ASCII_LOWER_A
             || bytes[0] > ASCII_LOWER_L
-            || bytes[1] < ASCII_1
-            || bytes[1] > ASCII_12
+        //|| bytes[1] < ASCII_1
+        //|| bytes[1] > ASCII_12
         {
             return None;
         }
 
         let file = bytes[0] - ASCII_LOWER_A;
-        let rank = bytes[1] - ASCII_1;
+        let _first = chars.nth(0).unwrap();
+        let rank: String = chars.take(2).collect();
+        let rank = rank.parse::<u8>();
+        match rank {
+            Ok(i) => {
+                debug_assert!(
+                    file < 13 && i < 13,
+                    "{} parsed as (file: {}, rank: {})",
+                    s,
+                    file,
+                    i - ASCII_1
+                );
 
-        debug_assert!(
-            file < 11 && rank < 11,
-            "{} parsed as (file: {}, rank: {})",
-            s,
-            file,
-            rank
-        );
+                Some(Square {
+                    inner: (i - ASCII_1) * 12 + file,
+                })
+            }
+            Err(_i) => None,
+        }
 
-        Some(Square {
-            inner: rank * 12 + file,
-        })
+        //let rank = bytes[1] - ASCII_1;
     }
     /// Creates a new instance of `Square` with the given index value.
     pub fn from_index(index: u8) -> Option<Square> {

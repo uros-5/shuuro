@@ -826,7 +826,6 @@ impl fmt::Display for Position {
         Ok(())
     }
 }
-
 #[cfg(test)]
 pub mod tests {
     use crate::{consts::*, get_non_sliding_attacks, Move, MoveError};

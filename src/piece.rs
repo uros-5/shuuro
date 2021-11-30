@@ -96,3 +96,108 @@ impl fmt::Display for Piece {
         }
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::square::consts::*;
+
+    #[test]
+    fn from_sfen() {
+        let ok_cases = [
+            ('k', PieceType::King, Color::Blue),
+            ('r', PieceType::Rook, Color::Blue),
+            ('b', PieceType::Bishop, Color::Blue),
+            ('n', PieceType::Knight, Color::Blue),
+            ('p', PieceType::Pawn, Color::Blue),
+            ('q', PieceType::Queen, Color::Blue),
+            ('K', PieceType::King, Color::Red),
+            ('R', PieceType::Rook, Color::Red),
+            ('B', PieceType::Bishop, Color::Red),
+            ('N', PieceType::Knight, Color::Red),
+            ('P', PieceType::Pawn, Color::Red),
+            ('Q', PieceType::Queen, Color::Red),
+        ];
+        let ng_cases = ['\0', ' ', '_', 'a', 'z', '+', 'A', 'Z'];
+
+        for case in ok_cases.iter() {
+            let pc = Piece::from_sfen(case.0);
+            assert!(pc.is_some());
+            assert_eq!(case.1, pc.unwrap().piece_type);
+            assert_eq!(case.2, pc.unwrap().color);
+        }
+
+        for case in ng_cases.iter() {
+            assert!(Piece::from_sfen(*case).is_none());
+        }
+    }
+
+    #[test]
+    fn to_sfen() {
+        let ok_cases = [
+            ("k", PieceType::King),
+            ("r", PieceType::Rook),
+            ("b", PieceType::Bishop),
+            ("n", PieceType::Knight),
+            ("p", PieceType::Pawn),
+            ("q", PieceType::Queen),
+        ];
+
+        for case in ok_cases.iter() {
+            let rpc = Piece {
+                piece_type: case.1,
+                color: Color::Red,
+            };
+            let bpc = Piece {
+                piece_type: case.1,
+                color: Color::Blue,
+            };
+            assert_eq!(case.0.to_uppercase(), rpc.to_string());
+            assert_eq!(case.0, bpc.to_string());
+        }
+    }
+
+    #[test]
+    fn flip() {
+        let rpc = Piece {
+            piece_type: PieceType::Pawn,
+            color: Color::Red,
+        };
+        let bpc = Piece {
+            piece_type: PieceType::Pawn,
+            color: Color::Blue,
+        };
+
+        assert_eq!(Color::Blue, rpc.flip().color);
+        assert_eq!(Color::Red, bpc.flip().color);
+    }
+
+    /*#[test]
+    fn is_placeable_at() {
+        let cases = [
+            (A1, PieceType::Pawn, false, true),
+            (B1, PieceType::Pawn, true, true),
+            (H1, PieceType::Pawn, true, true),
+            (I1, PieceType::Pawn, true, false),
+            (A1, PieceType::Knight, false, true),
+            (B1, PieceType::Knight, false, true),
+            (C1, PieceType::Knight, true, true),
+            (G1, PieceType::Knight, true, true),
+            (H1, PieceType::Knight, true, false),
+            (I1, PieceType::Knight, true, false),
+        ];
+
+        for case in cases.iter() {
+            let sq = case.0;
+            let bpc = Piece {
+                piece_type: case.1,
+                color: Color::Blue,
+            };
+            let rpc = Piece {
+                piece_type: case.1,
+                color: Color::Red,
+            };
+            assert_eq!(case.2, bpc.is_placeable_at(sq));
+            assert_eq!(case.3, rpc.is_placeable_at(sq));
+        }
+    }*/
+}
