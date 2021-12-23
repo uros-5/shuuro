@@ -39,14 +39,14 @@ impl PieceType {
     /// ```
     /// use shuuro::PieceType;
     ///
-    /// assert_eq!(Some(PieceType::ProPawn), PieceType::Pawn.promote());
+    /// assert_eq!(Some(PieceType::Queen), PieceType::Pawn.promote());
     /// ```
     pub fn promote(self) -> Option<PieceType> {
-        use self::PieceType::Plynth;
+        use self::PieceType::*;
 
         match self {
-            Plynth => return None,
-            _ => return Some(PieceType::Queen),
+            Pawn => return Some(PieceType::Queen),
+            _ => return None,
         }
     }
 
@@ -57,15 +57,15 @@ impl PieceType {
     /// ```
     /// use shuuro::PieceType;
     ///
-    /// assert_eq!(Some(PieceType::Pawn), PieceType::ProPawn.unpromote());
+    /// assert_eq!(Some(PieceType::Pawn), PieceType::Queen.unpromote());
     /// assert_eq!(None, PieceType::Pawn.unpromote());
     /// ```
     pub fn unpromote(self) -> Option<PieceType> {
-        use self::PieceType::Plynth;
+        use self::PieceType::*;
 
         match self {
-            Plynth => return None,
-            _ => return Some(self),
+            Queen => return Some(Pawn),
+            _ => return None,
         }
     }
 
@@ -137,5 +137,74 @@ impl iter::Iterator for PieceTypeIter {
         }
 
         current
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_sfen() {
+        let ok_cases = [
+            ('k', PieceType::King),
+            ('q', PieceType::Queen),
+            ('r', PieceType::Rook),
+            ('n', PieceType::Knight),
+            ('b', PieceType::Bishop),
+            ('p', PieceType::Pawn),
+        ];
+        let ng_cases = ['\0', ' ', '_', 'a', 'z', '+'];
+        for case in ok_cases.iter() {
+            assert_eq!(Some(case.1), PieceType::from_sfen(case.0));
+            assert_eq!(
+                Some(case.1),
+                PieceType::from_sfen(case.0.to_uppercase().next().unwrap())
+            );
+        }
+
+        for case in ng_cases.iter() {
+            assert!(PieceType::from_sfen(*case).is_none());
+        }
+    }
+
+    #[test]
+    fn to_sfen() {
+        let ok_cases = [
+            ("k", PieceType::King),
+            ("r", PieceType::Rook),
+            ("b", PieceType::Bishop),
+            ("n", PieceType::Knight),
+            ("q", PieceType::Queen),
+            ("p", PieceType::Pawn),
+        ];
+
+        for case in ok_cases.iter() {
+            assert_eq!(case.0, case.1.to_string());
+        }
+    }
+
+    #[test]
+    fn promote() {
+        let iterator = PieceTypeIter::new();
+        for i in iterator {
+            match i {
+                PieceType::Pawn => assert_eq!(Some(PieceType::Queen), i.promote()),
+                _ => assert!(i.promote().is_none()),
+            }
+        }
+    }
+
+    #[test]
+    fn unpromote() {
+        let iterator = PieceTypeIter::new();
+        for i in iterator {
+            match i {
+                PieceType::Queen => assert_eq!(Some(PieceType::Pawn), i.unpromote()),
+                _ => {
+                    assert!(i.unpromote().is_none())
+                }
+            }
+        }
     }
 }
