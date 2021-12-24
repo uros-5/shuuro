@@ -24,7 +24,7 @@ impl MoveRecord {
         match *self {
             MoveRecord::Normal {
                 from, to, promoted, ..
-            } => format!("{}{}{}", from, to, if promoted { "*" } else { "" }),
+            } => format!("{}_{}{}", from, to, if promoted { "*" } else { "" }),
         }
     }
 }

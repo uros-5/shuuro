@@ -27,7 +27,7 @@ impl Piece {
     /// use shuuro::{Color, PieceType, Piece};
     ///
     /// let pc1 = Piece{piece_type: PieceType::Pawn, color: Color::Blue};
-    /// let pc2 = Piece{piece_type: PieceType::ProPawn, color: Color::Blue};
+    /// let pc2 = Piece{piece_type: PieceType::Queen, color: Color::Blue};
     ///
     /// assert_eq!(Some(pc2), pc1.promote());
     /// assert_eq!(None, pc2.promote());
@@ -47,7 +47,7 @@ impl Piece {
     /// use shuuro::{Color, PieceType, Piece};
     ///
     /// let pc1 = Piece{piece_type: PieceType::Pawn, color: Color::Blue};
-    /// let pc2 = Piece{piece_type: PieceType::ProPawn, color: Color::Blue};
+    /// let pc2 = Piece{piece_type: PieceType::Queen, color: Color::Blue};
     ///
     /// assert_eq!(Some(pc1), pc2.unpromote());
     /// assert_eq!(None, pc1.unpromote());
@@ -99,6 +99,7 @@ impl fmt::Display for Piece {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::piece_type::{self, PieceTypeIter};
     use crate::square::consts::*;
 
     #[test]
@@ -153,6 +154,88 @@ mod tests {
             };
             assert_eq!(case.0.to_uppercase(), rpc.to_string());
             assert_eq!(case.0, bpc.to_string());
+        }
+    }
+
+    #[test]
+    fn promote() {
+        let iterator = PieceTypeIter::new();
+        for i in iterator {
+            match i {
+                PieceType::Pawn => {
+                    let bpc = Piece {
+                        piece_type: i,
+                        color: Color::Blue,
+                    }
+                    .promote()
+                    .unwrap();
+                    assert_eq!(
+                        Piece {
+                            piece_type: PieceType::Queen,
+                            color: Color::Blue
+                        },
+                        bpc
+                    );
+
+                    let rpc = Piece {
+                        piece_type: i,
+                        color: Color::Red,
+                    }
+                    .promote()
+                    .unwrap();
+                    assert_eq!(
+                        Piece {
+                            piece_type: PieceType::Queen,
+                            color: Color::Red
+                        },
+                        rpc
+                    );
+                }
+                _ => {
+                    assert!(Piece {
+                        piece_type: i,
+                        color: Color::Red
+                    }
+                    .promote()
+                    .is_none());
+                    assert!(Piece {
+                        piece_type: i,
+                        color: Color::Blue
+                    }
+                    .promote()
+                    .is_none());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn unpromote() {
+        let iterator = PieceTypeIter::new();
+        for i in iterator {
+            match i {
+                PieceType::Queen => {
+                    assert_eq!(
+                        Some(Piece {
+                            piece_type: PieceType::Pawn,
+                            color: Color::Blue
+                        }),
+                        Piece {
+                            piece_type: i,
+                            color: Color::Blue
+                        }
+                        .unpromote()
+                    )
+                }
+                _ => {
+                    assert!(Piece {
+                        piece_type: i,
+                        color: Color::Blue
+                    }
+                    .unpromote()
+                    .is_none())
+                }
+            }
         }
     }
 

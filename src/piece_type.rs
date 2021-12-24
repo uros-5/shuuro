@@ -111,7 +111,7 @@ pub struct PieceTypeIter {
 }
 
 impl PieceTypeIter {
-    fn new() -> PieceTypeIter {
+    pub fn new() -> PieceTypeIter {
         PieceTypeIter {
             current: Some(PieceType::King),
         }

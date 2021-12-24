@@ -36,7 +36,7 @@ impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
             Move::Normal { from, to, promote } => {
-                write!(f, "{}{}{}", from, to, if promote { "" } else { "" })
+                write!(f, "{}_{}{}", from, to, if promote { "" } else { "" })
             }
         }
     }
@@ -86,7 +86,7 @@ mod tests {
     fn to_sfen() {
         let cases = [
             (
-                "c7e9",
+                "c7_e9",
                 Move::Normal {
                     from: C7,
                     to: E9,
@@ -94,7 +94,7 @@ mod tests {
                 },
             ),
             (
-                "f9j5",
+                "f9_j5",
                 Move::Normal {
                     from: F9,
                     to: J5,
