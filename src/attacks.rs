@@ -97,7 +97,7 @@ fn init_pawn_attacks() {
                 &attacks;
         }
     }
-    let dirs: [i32; 4] = [11, 13, -11, -13];
+    let dirs: [i32; 6] = [11, 13,12, -11, -13,-12];
     for i in 0..144 {
         for dir in dirs {
             let current_attack: BitBoard;
@@ -107,8 +107,10 @@ fn init_pawn_attacks() {
                 match dir {
                     13 => add(i, Color::Red, &current_attack & &!&RANK_BB[0]),
                     11 => add(i, Color::Red, &current_attack & &!&RANK_BB[11]),
+                    12 => add(i, Color::Red, current_attack),
                     -11 => add(i, Color::Blue, &current_attack & &!&RANK_BB[0]),
                     -13 => add(i, Color::Blue, &current_attack & &!&RANK_BB[11]),
+                    -12 => add(i, Color::Blue, current_attack),
                     _ => (),
                 }
             }
