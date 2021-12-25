@@ -100,7 +100,7 @@ impl fmt::Display for PieceType {
                 PieceType::Pawn => "p",
                 PieceType::Rook => "r",
                 PieceType::Queen => "q",
-                PieceType::Plynth => "l",
+                PieceType::Plynth => "L",
             }
         )
     }

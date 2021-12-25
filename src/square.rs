@@ -158,6 +158,27 @@ impl Square {
         }
     }
 
+    /// Tests if the square is in a promotion zone.
+    pub fn in_promotion_zone(self, c: Color) -> bool {
+        match c {
+            Color::Red => {
+                if self.rank() == 11 {
+                    true
+                } else {
+                    false
+                }
+            }
+            Color::Blue => {
+                if self.rank() == 0 {
+                    true
+                } else {
+                    false
+                }
+            }
+            Color::NoColor => false,
+        }
+    }
+
     /// Converts the instance into the unique number for array indexing purpose.
     pub fn index(self) -> usize {
         self.inner as usize

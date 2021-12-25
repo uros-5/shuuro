@@ -12,7 +12,13 @@ impl Piece {
     /// Creates a new instance of `Piece` from SFEN formatted string.
     pub fn from_sfen(c: char) -> Option<Piece> {
         let color = if c.is_uppercase() {
-            Color::Red
+            if c == 'L' {
+                Color::NoColor
+            }
+            else {
+                Color::Red
+            }
+
         } else {
             Color::Blue
         };
@@ -117,6 +123,7 @@ mod tests {
             ('N', PieceType::Knight, Color::Red),
             ('P', PieceType::Pawn, Color::Red),
             ('Q', PieceType::Queen, Color::Red),
+            ('L', PieceType::Plynth, Color::NoColor),
         ];
         let ng_cases = ['\0', ' ', '_', 'a', 'z', '+', 'A', 'Z'];
 
@@ -155,6 +162,7 @@ mod tests {
             assert_eq!(case.0.to_uppercase(), rpc.to_string());
             assert_eq!(case.0, bpc.to_string());
         }
+        assert_eq!("L", Piece { piece_type: PieceType::Plynth, color: Color::NoColor }.to_string());
     }
 
     #[test]

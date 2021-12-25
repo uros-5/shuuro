@@ -81,7 +81,7 @@ pub struct Position {
     move_history: Vec<MoveRecord>,
     sfen_history: Vec<(String, u16)>,
     occupied_bb: BitBoard,
-    color_bb: [BitBoard; 2],
+    color_bb: [BitBoard; 3],
     pub type_bb: [BitBoard; 7],
 }
 
@@ -287,6 +287,22 @@ impl Position {
                 "The piece is not for the side to move",
             ));
         }
+
+        match captured {
+            Some(i) => {
+                if i.piece_type == PieceType::Plynth {
+                    if moved.piece_type != PieceType::Knight {
+                        return Err(MoveError::Inconsistent("The piece cannot move to there"));
+                    }
+                } else {
+                    ();
+                }
+            }
+            None => {
+                ();
+            }
+        }
+
         if !self.move_candidates(from, moved).any(|sq| sq == to) {
             return Err(MoveError::Inconsistent("The piece cannot move to there"));
         }
@@ -828,9 +844,10 @@ impl fmt::Display for Position {
 }
 #[cfg(test)]
 pub mod tests {
-    use crate::{consts::*, get_non_sliding_attacks, Move, MoveError};
+    use crate::{consts::*, Move, MoveError};
     use crate::{init, Color, Piece, PieceType, Position, Square};
     pub const START_POS: &str = "KR10/12/12/12/12/12/12/12/12/12/12/kr10 b - 1";
+
     fn setup() {
         init();
     }
@@ -869,6 +886,12 @@ pub mod tests {
                 false,
                 false,
             ),
+            (
+                "RR5K4/7L4/QP10/7L4/12/12/12/nbq9/7q4/12/12/11k r - 1",
+                false,
+                false,
+            ),
+            ("KQP8/2n8/12/12/12/12/12/k11/12/12/12/12 b - 1", false, true),
         ];
 
         let mut pos = Position::new();
@@ -978,7 +1001,7 @@ pub mod tests {
             }
         }
 
-        assert_eq!(24, sum);
+        assert_eq!(27, sum);
     }
 
     #[test]
