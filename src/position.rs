@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use std::fmt;
+use std::{fmt, vec};
 
 use crate::{
     between, get_non_sliding_attacks, get_sliding_attacks, BitBoard, Color, Hand, Move, MoveError,
@@ -121,10 +121,81 @@ impl Position {
         &self.move_history
     }
 
+    /// c is color that is supposed to win
+    pub fn is_checkmate(&self, c: Color) -> bool {
+        let (my_moves, my_checks) = self.my_moves(c, vec![], vec![], false);
+        let king_moves = self.king_moves(c);
+        let pieces_failed: bool = {
+            let mut test: bool = true;
+            if my_checks.len() == 1 {
+                let (enemy_moves, _) = self.my_moves(c.flip(), vec![], vec![], true);
+                for e_m in enemy_moves.iter() {
+                    if (e_m & &my_checks[0]).is_any() {
+                        test = false;
+                        break;
+                    }
+                }
+            }
+            test
+        };
+        if pieces_failed && my_checks.len() > 0 {
+            for check in my_checks.iter() {
+                if (check & &king_moves).is_any() {
+                    for my_move in my_moves.iter() {
+                        if (my_move & &king_moves).is_any() {
+                            return true;
+                        }
+                    }
+                } else {
+                    return true;
+                }
+            }
+        } else if pieces_failed && my_checks.len() == 0 {
+            return false;
+        }
+        return false;
+    }
+
+    fn my_moves(
+        &self,
+        c: Color,
+        mut my_moves: Vec<BitBoard>,
+        mut checks: Vec<BitBoard>,
+        king_ignore: bool,
+    ) -> (Vec<BitBoard>, Vec<BitBoard>) {
+        let enemy_king = self.find_king(c.flip()).unwrap();
+        for i in 0..144 {
+            let sq = Square::from_index(i).unwrap();
+            let pc = self.board.get(sq);
+            match pc {
+                Some(i) => {
+                    if i.piece_type == PieceType::King && king_ignore == true {
+                        continue;
+                    }
+                    if i.color == c {
+                        let p_moves = self.move_candidates2(sq, *i);
+                        my_moves.push(p_moves);
+                        if (&p_moves & enemy_king).is_any() {
+                            checks.push(p_moves);
+                        }
+                    }
+                }
+                None => (),
+            }
+        }
+        (my_moves, checks)
+    }
+
+    fn king_moves(&self, c: Color) -> BitBoard {
+        let king_sq = self.find_king(c).unwrap();
+        let piece = self.board.get(king_sq).unwrap();
+        self.move_candidates(king_sq, piece)
+    }
+
     /// Checks if a player with the given color can declare winning.
     ///
     /// See the section 25 in http://www.computer-shuuro.org/wcsc26/rule.pdf for more detail.
-    pub fn try_declare_winning(&self, c: Color) -> bool {
+    pub fn try_declare_winning(&mut self, c: Color) -> bool {
         if c != self.side_to_move {
             return false;
         }
@@ -477,7 +548,7 @@ impl Position {
         Ok(())
     }
 
-    /// Returns a list of squares to where the given pieve at the given square can move.
+    /// Returns a list of squares to where the given piece at the given square can move.
     pub fn move_candidates(&self, sq: Square, p: Piece) -> BitBoard {
         let bb = match p.piece_type {
             PieceType::Rook => get_sliding_attacks(PieceType::Rook, sq, self.occupied_bb),
@@ -488,8 +559,20 @@ impl Position {
             PieceType::King => get_non_sliding_attacks(PieceType::King, sq, p.color),
             _ => EMPTY_BB,
         };
-
         &bb & &!&self.color_bb[p.color.index()]
+    }
+
+    pub fn move_candidates2(&self, sq: Square, p: Piece) -> BitBoard {
+        let bb = match p.piece_type {
+            PieceType::Rook => get_sliding_attacks(PieceType::Rook, sq, self.occupied_bb),
+            PieceType::Bishop => get_sliding_attacks(PieceType::Bishop, sq, self.occupied_bb),
+            PieceType::Queen => get_sliding_attacks(PieceType::Queen, sq, self.occupied_bb),
+            PieceType::Knight => get_non_sliding_attacks(PieceType::Knight, sq, p.color),
+            PieceType::Pawn => get_non_sliding_attacks(PieceType::Pawn, sq, p.color),
+            PieceType::King => get_non_sliding_attacks(PieceType::King, sq, p.color),
+            _ => EMPTY_BB,
+        };
+        bb
     }
 
     fn detect_repetition(&self) -> Result<(), MoveError> {
@@ -899,6 +982,34 @@ pub mod tests {
             pos.set_sfen(case.0).expect("failed to parse SFEN string");
             assert_eq!(case.1, pos.in_check(Color::Blue));
             assert_eq!(case.2, pos.in_check(Color::Red));
+        }
+    }
+
+    #[test]
+    fn is_checkmate() {
+        setup();
+        let cases = [
+            (
+                "1K8r1/9rr1/12/12/12/12/12/12/12/k11/12/12 b - 1",
+                true,
+                Color::Blue,
+            ),
+            (
+                "5RNB4/5K4r1/6B5/12/12/12/12/12/ppppp7/12/12/9k2 r - 1",
+                false,
+                Color::Red,
+            ),
+            (
+                "12/12/7k3Q/12/12/KRn9/12/12/12/12/12/12 b - 1",
+                false,
+                Color::Blue,
+            ),
+        ];
+        for case in cases.iter() {
+            let mut pos = Position::new();
+            pos.set_sfen(case.0).expect("failed to parse SFEN string");
+            println!("{}", pos);
+            assert_eq!(case.1, pos.is_checkmate(case.2));
         }
     }
 
