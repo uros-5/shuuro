@@ -1,5 +1,5 @@
 use crate::color::Color;
-use std::{fmt, iter, num::ParseIntError};
+use std::{fmt, iter};
 
 const ASCII_1: u8 = 1;
 const ASCII_12: u8 = 12;

@@ -273,8 +273,9 @@ impl Position {
         &mut self,
         from: Square,
         to: Square,
-        promoted: bool,
+        _promoted: bool,
     ) -> Result<MoveRecord, MoveError> {
+        let mut promoted = false;
         let stm = self.side_to_move();
         let opponent = stm.flip();
 
@@ -301,6 +302,14 @@ impl Position {
                 }
             }
             None => {
+                if moved.piece_type == PieceType::Pawn {
+                    let free_sq = from.index() + 12;
+                    if to.index() != free_sq {
+                        return Err(MoveError::Inconsistent("The piece cannot move to there"));
+                    } else if to.in_promotion_zone(moved.color) {
+                        promoted = true;
+                    }
+                }
                 ();
             }
         }
@@ -584,6 +593,12 @@ impl Position {
         Ok(())
     }
 
+    pub fn set_sfen_history(&mut self, history: Vec<(String, u16)>) {
+        for i in history {
+            self.sfen_history.push(i);
+        }
+    }
+
     /// Converts the current state into SFEN formatted string.
     pub fn to_sfen(&self) -> String {
         if self.sfen_history.is_empty() {
@@ -725,7 +740,6 @@ impl Position {
             } else if num_spaces == 12 {
                 s.push_str("57");
             } else {
-                println!("what: {}", num_spaces);
                 s.push_str(&num_spaces.to_string());
             }
             s
@@ -876,7 +890,7 @@ impl fmt::Display for Position {
 pub mod tests {
     use crate::{consts::*, Move, MoveError};
     use crate::{init, Color, Piece, PieceType, Position, Square};
-    pub const START_POS: &str = "KR10/12/12/12/12/12/12/12/12/12/12/kr10 b - 1";
+    pub const START_POS: &str = "KR55/57/57/57/57/57/57/57/57/57/57/kr55 b - 1";
 
     fn setup() {
         init();
@@ -902,26 +916,26 @@ pub mod tests {
 
         let test_cases = [
             (
-                "KQR9/1PPP8/12/12/12/12/12/12/12/12/1ppp8/qkb9 r - 1",
+                "KQR9/1PPP8/57/57/57/57/57/57/57/57/1ppp8/qkb9 r - 1",
                 false,
                 true,
             ),
             (
-                "5QR5/10K1/12/12/12/12/12/12/12/12/12/5k6 b - 1",
+                "5QR5/1K55/57/57/57/57/57/57/57/57/57/5k6 b - 1",
                 true,
                 false,
             ),
             (
-                "2RNBKQBNR2/12/2PPPPPPPP2/12/12/12/12/12/12/2pppppppp2/12/2rnbkqbnr2 b - 1",
+                "2RNBKQBNR2/57/2PPPPPPPP2/57/57/57/57/57/57/2pppppppp2/57/2rnbkqbnr2 b - 1",
                 false,
                 false,
             ),
             (
-                "RR5K4/7L4/QP10/7L4/12/12/12/nbq9/7q4/12/12/11k r - 1",
+                "RR5K4/7L4/QP55/7L4/57/57/57/nbq9/7q4/57/57/56k r - 1",
                 false,
                 false,
             ),
-            ("KQP8/2n8/12/12/12/12/12/k11/12/12/12/12 b - 1", false, true),
+            ("KQP8/2n8/57/57/57/57/57/k11/57/57/57/57 b - 1", false, true),
         ];
 
         let mut pos = Position::new();
@@ -937,17 +951,17 @@ pub mod tests {
         setup();
         let cases = [
             (
-                "1K8r1/9rr1/12/12/12/12/12/12/12/k11/12/12 b - 1",
+                "1K8r1/9rr1/57/57/57/57/57/57/57/k11/57/57 b - 1",
                 true,
                 Color::Blue,
             ),
             (
-                "5RNB4/5K4r1/6B5/12/12/12/12/12/ppppp7/12/12/9k2 r - 1",
+                "5RNB4/5K4r1/6B5/57/57/57/57/57/ppppp7/57/57/9k2 r - 1",
                 false,
                 Color::Red,
             ),
             (
-                "12/12/7k3Q/12/12/KRn9/12/12/12/12/12/12 b - 1",
+                "12/57/7k3Q/57/57/KRn9/57/57/57/57/57/57 b - 1",
                 false,
                 Color::Blue,
             ),
@@ -966,12 +980,12 @@ pub mod tests {
 
         let cases: &[(&str, &[Square], &[Square])] = &[
             (
-                "BBQ9/12/12/4R7/12/12/12/5ppp4/nnq/12/12/12 b - 1",
+                "BBQ9/57/57/4R7/57/57/57/5ppp4/nnq/57/57/57 b - 1",
                 &[A9, B9, C9, F8, G8, H8],
                 &[A1, B1, C1, E4],
             ),
             (
-                "12/12/6PPPP2/3Q6N1/12/12/12/5ppp4/7qk3/12/12/12 b P 1",
+                "12/57/6PPPP2/3Q6N1/57/57/57/5ppp4/7qk3/57/57/57 b P 1",
                 &[H9, I9, F8, G8, H8],
                 &[G3, H3, I3, J3, D4, K4],
             ),
@@ -1001,17 +1015,17 @@ pub mod tests {
 
         let cases: &[(&str, &[Square], &[Square])] = &[
             (
-                "5NNQK3/8B3/12/12/12/8r3/12/12/pp10/1k10/12/12 r - 1",
+                "5NNQK3/8B3/57/57/57/8r3/57/57/pp55/1k55/57/57 r - 1",
                 &[],
                 &[I2],
             ),
             (
-                "5NNQK3/8B3/8R3/12/12/8r3/12/12/pp10/1k10/12/12 r - 1",
+                "5NNQK3/8B3/8R3/57/57/8r3/57/57/pp55/1k55/57/57 r - 1",
                 &[],
                 &[],
             ),
             (
-                "12/12/2K9/PPPPPP/12/12/2R2B6/12/2rn8/2k3q2R2/12/12 b - 1",
+                "12/57/2K9/PPPPPP/57/57/2R2B6/57/2rn8/2k3q2R2/57/57 b - 1",
                 &[C9, D9, G10],
                 &[],
             ),
@@ -1040,7 +1054,7 @@ pub mod tests {
         setup();
 
         let mut pos = Position::new();
-        pos.set_sfen("R3N7/4K7/12/12/12/12/12/bppp8/4k7/12/12/12 b - 1")
+        pos.set_sfen("R3N7/4K7/57/57/57/57/57/bppp8/4k7/57/57/57 b - 1")
             .expect("failed to parse SFEN string");
 
         let mut sum = 0;
@@ -1066,29 +1080,30 @@ pub mod tests {
     fn make_normal_move() {
         setup();
 
-        let base_sfen = "12/3KRRB5/5PP5/12/12/12/12/qbbn8/12/6k5/12/12 r 1K2R1B2P 1";
+        let base_sfen = "12/3KRRB5/5PP5/57/57/57/57/qbbn8/57/6k5/57/57 r 1K2R1B2P 1";
         let test_cases = [
             (D2, E1, false, true),
             (E2, E7, false, true),
             (G2, I4, false, true),
             (F2, F1, false, true),
-            (G3, H4, false, true),
+            (G3, H4, false, false),
         ];
 
         for case in test_cases.iter() {
             let mut pos = Position::new();
             pos.set_sfen(base_sfen)
                 .expect("failed to parse SFEN string");
+            println!("{}", pos);
             assert_eq!(case.3, pos.make_normal_move(case.0, case.1, case.2).is_ok());
         }
 
         let mut pos = Position::new();
         // Leaving the checked king is illegal.
-        pos.set_sfen("12/1K8RR/12/12/12/r9k1/12/12/12/12/12/12 b kr 1")
+        pos.set_sfen("12/1K8RR/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
             .expect("failed to parse SFEN string");
         assert!(pos.make_normal_move(A6, A1, false).is_err());
 
-        pos.set_sfen("12/10RR/12/12/12/r9k1/12/12/12/12/12/12 b kr 1")
+        pos.set_sfen("12/1RR9/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
             .expect("failed to parse SFEN string");
         assert!(pos.make_normal_move(K6, K5, false).is_ok());
     }
@@ -1098,7 +1113,7 @@ pub mod tests {
         setup();
 
         let mut pos = Position::new();
-        pos.set_sfen("12/12/PPPQP4K2/7RR3/12/12/12/4pp6/2kr8/12/12/12 b 1r2R 1")
+        pos.set_sfen("12/57/PPPQP4K2/7RR3/57/57/57/4pp6/2kr8/57/57/57 b 1r2R 1")
             .expect("failed to parse SFEN string");
         for _ in 0..2 {
             assert!(pos.make_normal_move(D9, I9, false).is_ok());
@@ -1122,7 +1137,7 @@ pub mod tests {
         setup();
 
         let mut pos = Position::new();
-        let base_sfen = "RRQNN3K3/PP1P4PP2/2P9/12/12/B11/1n3q4PP/4qq6/rq3r5r/12/4k7/12 b 3q3r 1";
+        let base_sfen = "RRQNN3K3/PP1P4PP2/2P9/57/57/B56/1n3q4PP/4qq6/rq3r5r/57/4k7/57 b 3q3r 1";
         pos.set_sfen(base_sfen)
             .expect("failed to parse SFEN string");
         let base_state = format!("{}", pos);
@@ -1188,7 +1203,7 @@ pub mod tests {
 
         let mut pos = Position::new();
 
-        pos.set_sfen("2RNBKQBNR2/12/2PPPPPPPP2/12/12/12/12/12/12/2pppppppp2/12/2rnbkqbnr2 b - 1")
+        pos.set_sfen("2RNBKQBNR2/57/2PPPPPPPP2/57/57/57/57/57/57/2pppppppp2/57/2rnbkqbnr2 b - 1")
             .expect("failed to parse SFEN string");
         let filled_squares = [
             (0, 2, PieceType::Rook, Color::Red),
