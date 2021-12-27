@@ -1,4 +1,4 @@
-//! A library for implementing Rust application.
+//! A library for implementing Shuuro application.
 //!
 //! `shuuro` provides various types and implementations for representing concepts and rules in Shuuro.
 #![recursion_limit = "144"]
