@@ -1,9 +1,11 @@
 [package]
 name = "shuuro"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["uros-5"]
 edition = "2021"
 description = "Bitboard based Shuuro library."
+categories = ["games", "parser-implementations"]
+keywords = ["chess"]
 license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
