@@ -262,33 +262,4 @@ mod tests {
         assert_eq!(Color::Red, bpc.flip().color);
     }
 
-    /*#[test]
-    fn is_placeable_at() {
-        let cases = [
-            (A1, PieceType::Pawn, false, true),
-            (B1, PieceType::Pawn, true, true),
-            (H1, PieceType::Pawn, true, true),
-            (I1, PieceType::Pawn, true, false),
-            (A1, PieceType::Knight, false, true),
-            (B1, PieceType::Knight, false, true),
-            (C1, PieceType::Knight, true, true),
-            (G1, PieceType::Knight, true, true),
-            (H1, PieceType::Knight, true, false),
-            (I1, PieceType::Knight, true, false),
-        ];
-
-        for case in cases.iter() {
-            let sq = case.0;
-            let bpc = Piece {
-                piece_type: case.1,
-                color: Color::Blue,
-            };
-            let rpc = Piece {
-                piece_type: case.1,
-                color: Color::Red,
-            };
-            assert_eq!(case.2, bpc.is_placeable_at(sq));
-            assert_eq!(case.3, rpc.is_placeable_at(sq));
-        }
-    }*/
 }
