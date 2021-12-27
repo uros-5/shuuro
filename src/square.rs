@@ -138,18 +138,6 @@ impl Square {
     }
 
     /// Returns a relative rank as if the specified color is Blue.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use shuuro::Color;
-    /// use shuuro::square::consts::*;
-    ///
-    /// let sq = G1;
-    ///
-    /// assert_eq!(6, sq.relative_file(Color::Blue));
-    /// assert_eq!(2, sq.relative_file(Color::Red));
-    /// ```
     pub fn relative_file(self, c: Color) -> u8 {
         if c == Color::Blue {
             self.file()

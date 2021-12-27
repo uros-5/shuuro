@@ -11,6 +11,7 @@ use std::iter;
 /// match c {
 ///    Color::Blue => assert!(true),
 ///    Color::Red => unreachable!(),
+///    Color::NoColor => unreachable!()
 /// }
 /// ```
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]

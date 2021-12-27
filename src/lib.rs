@@ -1,3 +1,6 @@
+//! A library for implementing Rust application.
+//!
+//! `shuuro` provides various types and implementations for representing concepts and rules in Shuuro.
 #![recursion_limit = "144"]
 pub mod attacks;
 pub mod bitboard;

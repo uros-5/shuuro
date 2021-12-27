@@ -1,6 +1,6 @@
 [package]
 name = "shuuro"
-version = "0.1.0"
+version = "0.5.0"
 authors = ["uros-5"]
 edition = "2021"
 
@@ -18,5 +18,11 @@ lto = false
 debug-assertions = true
 codegen-units = 1
 
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3
+
 [lib]
-doctest = false
+doctest = true
