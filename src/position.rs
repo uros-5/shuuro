@@ -717,6 +717,19 @@ impl Position {
     }
 
     fn generate_sfen(&self) -> String {
+        fn add_num_space(num_spaces: i32, mut s: String) -> String {
+            if num_spaces == 10 {
+                s.push_str("55");
+            } else if num_spaces == 11 {
+                s.push_str("56");
+            } else if num_spaces == 12 {
+                s.push_str("57");
+            } else {
+                println!("what: {}", num_spaces);
+                s.push_str(&num_spaces.to_string());
+            }
+            s
+        }
         let board = (0..12)
             .map(|row| {
                 let mut s = String::new();
@@ -725,7 +738,8 @@ impl Position {
                     match *self.piece_at(Square::new(file, row).unwrap()) {
                         Some(pc) => {
                             if num_spaces > 0 {
-                                s.push_str(&num_spaces.to_string());
+                                let mut _s = add_num_space(num_spaces, s);
+                                s = _s;
                                 num_spaces = 0;
                             }
 
@@ -736,7 +750,9 @@ impl Position {
                 }
 
                 if num_spaces > 0 {
-                    s.push_str(&num_spaces.to_string());
+                    let _s = add_num_space(num_spaces, s);
+                    s = _s;
+                    num_spaces = 0;
                 }
 
                 s
