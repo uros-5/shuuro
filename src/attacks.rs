@@ -97,7 +97,7 @@ fn init_pawn_attacks() {
                 &attacks;
         }
     }
-    let dirs: [i32; 6] = [11, 13,12, -11, -13,-12];
+    let dirs: [i32; 6] = [11, 13, 12, -11, -13, -12];
     for i in 0..144 {
         for dir in dirs {
             let current_attack: BitBoard;

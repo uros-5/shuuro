@@ -14,11 +14,9 @@ impl Piece {
         let color = if c.is_uppercase() {
             if c == 'L' {
                 Color::NoColor
-            }
-            else {
+            } else {
                 Color::Red
             }
-
         } else {
             Color::Blue
         };
@@ -162,7 +160,14 @@ mod tests {
             assert_eq!(case.0.to_uppercase(), rpc.to_string());
             assert_eq!(case.0, bpc.to_string());
         }
-        assert_eq!("L", Piece { piece_type: PieceType::Plynth, color: Color::NoColor }.to_string());
+        assert_eq!(
+            "L",
+            Piece {
+                piece_type: PieceType::Plynth,
+                color: Color::NoColor
+            }
+            .to_string()
+        );
     }
 
     #[test]
@@ -261,5 +266,4 @@ mod tests {
         assert_eq!(Color::Blue, rpc.flip().color);
         assert_eq!(Color::Red, bpc.flip().color);
     }
-
 }

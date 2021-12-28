@@ -20,7 +20,7 @@ pub enum SfenError {
 
     #[error("an illegal board state notation is found")]
     IllegalBoardState,
-    
+
     #[error("plynths can contain only knights")]
     IllegalPieceTypeOnPlynth,
 }
