@@ -294,11 +294,7 @@ impl Position {
         match captured {
             Some(_i) => {}
             None => {
-                if (&self.color_bb[2] & to).is_any() {
-                    if moved.piece_type != PieceType::Knight {
-                        return Err(MoveError::Inconsistent("The piece cannot move to there"));
-                    }
-                } else if moved.piece_type == PieceType::Pawn {
+                if moved.piece_type == PieceType::Pawn {
                     let free_sq = from.index() + 12;
                     if to.index() != free_sq {
                         return Err(MoveError::Inconsistent("The piece cannot move to there"));
@@ -496,7 +492,11 @@ impl Position {
             PieceType::King => get_non_sliding_attacks(PieceType::King, sq, p.color),
             _ => EMPTY_BB,
         };
-        &bb & &!&self.color_bb[p.color.index()]
+        if p.piece_type != PieceType::Knight {
+            &(&bb & &!&self.color_bb[p.color.index()]) & &!&self.color_bb[2]
+        } else {
+            &bb & &!&self.color_bb[p.color.index()]
+        }
     }
 
     pub fn move_candidates2(&self, sq: Square, p: Piece) -> BitBoard {
@@ -643,7 +643,7 @@ impl Position {
                     '0' => {
                         let sq = Square::new(j, i as u8).unwrap();
                         self.set_piece(sq, None);
-                        j += 1;
+                        j += 2;
                     }
                     n if n.is_digit(11) => {
                         if let Some(n) = n.to_digit(11) {
@@ -1102,6 +1102,29 @@ pub mod tests {
         }
 
         assert_eq!(27, sum);
+    }
+
+    #[test]
+    fn move_candidates_plynth() {
+        setup();
+        let cases = [
+            ("f2", PieceType::Rook, Color::Red, 13),
+            ("e7", PieceType::Knight, Color::Blue, 7),
+        ];
+        let mut pos = Position::new();
+        pos.set_sfen("57/5R5K/57/57/3b1L04k1/55b1/4n7/57/55R1/57/57/57 r - 1")
+            .expect("failed to parse SFEN string");
+        //println!("{}", pos);
+        for case in cases {
+            let bb = pos.move_candidates(
+                Square::from_sfen(case.0).unwrap(),
+                Piece {
+                    piece_type: case.1,
+                    color: case.2,
+                },
+            );
+            assert_eq!(case.3, bb.count());
+        }
     }
 
     #[test]
