@@ -292,17 +292,14 @@ impl Position {
         }
 
         match captured {
-            Some(i) => {
-                if i.piece_type == PieceType::Plynth {
+            Some(_i) => {
+            }
+            None => {
+                if (&self.color_bb[2] & to).is_any() {
                     if moved.piece_type != PieceType::Knight {
                         return Err(MoveError::Inconsistent("The piece cannot move to there"));
                     }
-                } else {
-                    ();
-                }
-            }
-            None => {
-                if moved.piece_type == PieceType::Pawn {
+                } else if moved.piece_type == PieceType::Pawn {
                     let free_sq = from.index() + 12;
                     if to.index() != free_sq {
                         return Err(MoveError::Inconsistent("The piece cannot move to there"));
@@ -490,10 +487,11 @@ impl Position {
 
     /// Returns a list of squares to where the given piece at the given square can move.
     pub fn move_candidates(&self, sq: Square, p: Piece) -> BitBoard {
+        let blockers = &self.occupied_bb | &self.color_bb[2];
         let bb = match p.piece_type {
-            PieceType::Rook => get_sliding_attacks(PieceType::Rook, sq, self.occupied_bb),
-            PieceType::Bishop => get_sliding_attacks(PieceType::Bishop, sq, self.occupied_bb),
-            PieceType::Queen => get_sliding_attacks(PieceType::Queen, sq, self.occupied_bb),
+            PieceType::Rook => get_sliding_attacks(PieceType::Rook, sq, blockers),
+            PieceType::Bishop => get_sliding_attacks(PieceType::Bishop, sq, blockers),
+            PieceType::Queen => get_sliding_attacks(PieceType::Queen, sq, blockers),
             PieceType::Knight => get_non_sliding_attacks(PieceType::Knight, sq, p.color),
             PieceType::Pawn => get_non_sliding_attacks(PieceType::Pawn, sq, p.color),
             PieceType::King => get_non_sliding_attacks(PieceType::King, sq, p.color),
@@ -503,10 +501,11 @@ impl Position {
     }
 
     pub fn move_candidates2(&self, sq: Square, p: Piece) -> BitBoard {
+        let blockers = &self.occupied_bb | &self.color_bb[2];
         let bb = match p.piece_type {
-            PieceType::Rook => get_sliding_attacks(PieceType::Rook, sq, self.occupied_bb),
-            PieceType::Bishop => get_sliding_attacks(PieceType::Bishop, sq, self.occupied_bb),
-            PieceType::Queen => get_sliding_attacks(PieceType::Queen, sq, self.occupied_bb),
+            PieceType::Rook => get_sliding_attacks(PieceType::Rook, sq, blockers),
+            PieceType::Bishop => get_sliding_attacks(PieceType::Bishop, sq, blockers),
+            PieceType::Queen => get_sliding_attacks(PieceType::Queen, sq, blockers),
             PieceType::Knight => get_non_sliding_attacks(PieceType::Knight, sq, p.color),
             PieceType::Pawn => get_non_sliding_attacks(PieceType::Pawn, sq, p.color),
             PieceType::King => get_non_sliding_attacks(PieceType::King, sq, p.color),
@@ -642,6 +641,11 @@ impl Position {
                     '+' => {
                         is_promoted = true;
                     }
+                    '0' => {
+                        let sq = Square::new(j, i as u8).unwrap();
+                        self.set_piece(sq, None);
+                        j += 1;
+                    }
                     n if n.is_digit(11) => {
                         if let Some(n) = n.to_digit(11) {
                             for _ in 0..n {
@@ -672,6 +676,11 @@ impl Position {
                             }
 
                             let sq = Square::new(j, i as u8).unwrap();
+                            if piece.piece_type == PieceType::Plynth {
+                                j -= 1;
+                                self.color_bb[piece.color.index()] |= sq;
+                                continue;
+                            }
                             self.set_piece(sq, Some(piece));
                             self.occupied_bb |= sq;
                             self.color_bb[piece.color.index()] |= sq;
@@ -841,7 +850,11 @@ impl fmt::Display for Position {
                 if let Some(ref piece) = *self.piece_at(Square::new(row, file).unwrap()) {
                     write!(f, "{:>3}|", piece.to_string())?;
                 } else {
-                    write!(f, "   |")?;
+                    if (&self.color_bb[2] & Square::new(row, file).unwrap()).is_any() {
+                        write!(f, "{:>3}|", "L")?;
+                    } else {
+                        write!(f, "   |")?;
+                    }
                 }
             }
 
@@ -931,7 +944,7 @@ pub mod tests {
                 false,
             ),
             (
-                "RR5K4/7L4/QP55/7L4/57/57/57/nbq9/7q4/57/57/56k r - 1",
+                "RR5K4/7L04/QP55/7L04/57/57/57/nbq9/7q4/57/57/56k r - 1",
                 false,
                 false,
             ),
