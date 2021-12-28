@@ -292,8 +292,7 @@ impl Position {
         }
 
         match captured {
-            Some(_i) => {
-            }
+            Some(_i) => {}
             None => {
                 if (&self.color_bb[2] & to).is_any() {
                     if moved.piece_type != PieceType::Knight {
@@ -758,7 +757,8 @@ impl Position {
                 let mut s = String::new();
                 let mut num_spaces = 0;
                 for file in 0..12 {
-                    match *self.piece_at(Square::new(file, row).unwrap()) {
+                    let sq = Square::new(file, row).unwrap();
+                    match *self.piece_at(sq) {
                         Some(pc) => {
                             if num_spaces > 0 {
                                 let mut _s = add_num_space(num_spaces, s);
@@ -766,9 +766,24 @@ impl Position {
                                 num_spaces = 0;
                             }
 
+                            if (&self.color_bb[2] & sq).is_any() {
+                                if pc.piece_type == PieceType::Knight {
+                                    s.push_str("L");
+                                } else {
+                                    ()
+                                    //return Err(SfenError::IllegalPieceTypeOnPlynth);
+                                }
+                            }
+
                             s.push_str(&pc.to_string());
                         }
-                        None => num_spaces += 1,
+                        None => {
+                            if (&self.color_bb[2] & sq).is_any() {
+                                s.push_str("L0");
+                            } else {
+                                num_spaces += 1;
+                            }
+                        }
                     }
                 }
 
