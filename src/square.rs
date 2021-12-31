@@ -26,7 +26,7 @@ const ASCII_LOWER_L: u8 = b'l';
 /// assert_eq!(4, sq.file());
 /// assert_eq!(4, sq.rank());
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, Eq, Clone, Copy, Hash)]
 pub struct Square {
     inner: u8,
 }
@@ -170,6 +170,12 @@ impl Square {
     /// Converts the instance into the unique number for array indexing purpose.
     pub fn index(self) -> usize {
         self.inner as usize
+    }
+}
+
+impl PartialEq for Square {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
     }
 }
 
