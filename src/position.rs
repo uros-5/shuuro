@@ -6,6 +6,19 @@ use crate::{
     MoveError, Piece, PieceType, SfenError, Square, EMPTY_BB,
 };
 
+/// Outcome stores information about outcome after move.
+#[derive(Debug)]
+pub enum Outcome {
+    Check { color: Color },
+    Checkmate { color: Color },
+    Draw,
+    Nothing,
+    DrawByRepetition,
+    DrawByMaterial,
+    MoveNotOk,
+    MoveOk,
+}
+
 /// MoveRecord stores information necessary to undo the move.
 #[derive(Debug)]
 pub enum MoveRecord {
@@ -81,9 +94,9 @@ impl MoveType {
             }
             MoveType::NoKing { king } => {
                 if p.piece_type != PieceType::Knight {
-                    &(&(primary_bb) & &!&position.color_bb[2]) | &square_bb(king.to_owned())
+                    &(&(bb) & &!&position.color_bb[2]) | &(&bb & &square_bb(king.to_owned()))
                 } else {
-                    &primary_bb | &square_bb(king.to_owned())
+                    &bb | &(&bb & &square_bb(king.to_owned()))
                 }
             }
         }
@@ -154,6 +167,7 @@ pub struct Position {
     sfen_history: Vec<(String, u16)>,
     occupied_bb: BitBoard,
     color_bb: [BitBoard; 3],
+    game_status: Outcome,
     pub type_bb: [BitBoard; 7],
 }
 
@@ -193,55 +207,13 @@ impl Position {
         &self.move_history
     }
 
-    /// Returns true if color(c) is supposed to win
-    pub fn is_checkmate(&self, c: Color) -> bool {
-        let (my_moves, my_checks) = self.my_moves(c, vec![], vec![], false);
-        let king_moves = self.king_moves(c);
-        let pieces_failed: bool = {
-            let mut test: bool = true;
-            if my_checks.len() == 1 {
-                let (enemy_moves, _) = self.my_moves(c.flip(), vec![], vec![], true);
-                for e_m in enemy_moves.iter() {
-                    if (e_m & &my_checks[0]).is_any() {
-                        test = false;
-                        break;
-                    }
-                }
-            }
-            test
-        };
-        if pieces_failed && my_checks.len() > 0 {
-            for check in my_checks.iter() {
-                if (check & &king_moves).is_any() {
-                    for my_move in my_moves.iter() {
-                        if (my_move & &king_moves).is_any() {
-                            return true;
-                        }
-                    }
-                } else {
-                    return true;
-                }
-            }
-        } else if pieces_failed && my_checks.len() == 0 {
-            return false;
-        }
-        return false;
-    }
-
-    fn non_legal_moves(&self, square: &Square) -> BitBoard {
-        let piece = self.board.get(*square);
-        match piece {
-            Some(i) => self.move_candidates(*square, *i, MoveType::Plynth),
-            None => EMPTY_BB,
-        }
-    }
-
+    /// Returns all legal moves wher piece can be moved.
     pub fn legal_moves(&self, square: &Square) -> BitBoard {
         let my_moves = self.non_legal_moves(&square);
         let pinned_moves = self.pinned_moves(&square);
         let check_moves = self.check_moves(&square);
         if check_moves.len() > 0 {
-            let piece = self.board.get(*square).unwrap();
+            let piece = self.piece_at(*square).unwrap();
             let king = self.find_king(piece.color).unwrap();
             if king == *square {
                 let enemy_moves = self.enemy_moves(&square);
@@ -253,27 +225,18 @@ impl Position {
         return self.fix_pin(&pinned_moves, check_moves, my_moves);
     }
 
-    fn fix_pin(&self, fixer: &Fixer, checks: Vec<BitBoard>, my_moves: BitBoard) -> BitBoard {
-        match fixer.square {
-            Some(_square) => {
-                if checks.len() == 1 {
-                    let checks = checks.get(0).unwrap();
-                    return checks & &fixer.fix;
-                }
-                return EMPTY_BB;
-            }
-            None => {
-                let mut my_moves = my_moves;
-                for bb in checks.iter() {
-                    my_moves &= bb;
-                }
-                return my_moves;
-            }
+    /// Returns all non-legal moves.
+    fn non_legal_moves(&self, square: &Square) -> BitBoard {
+        let piece = self.piece_at(*square);
+        match piece {
+            Some(i) => self.move_candidates(*square, *i, MoveType::Plynth),
+            None => EMPTY_BB,
         }
     }
 
+    /// Returns Fixer struct, who has fix for pin(if it exist).
     fn pinned_moves(&self, square: &Square) -> Fixer {
-        let piece = self.board.get(*square);
+        let piece = self.piece_at(*square);
         match piece {
             Some(i) => {
                 let ksq = self.find_king(i.color);
@@ -304,15 +267,20 @@ impl Position {
                         & &s.1;
                     for psq in bb {
                         // this piece is pinned
-                        let pinned = &between(ksq, psq) & &self.occupied_bb;
+                        let mut pinned = &between(ksq, psq) & &self.occupied_bb;
                         // this is fix for pin
                         //let fixed = &(&between(psq, ksq) & &!&pinned) | &bb;
                         if pinned.count() == 1
                             && (&pinned & &self.color_bb[i.color.index()]).is_any()
                         {
-                            pin.square = Some(psq);
                             pin.fix = &(&between(psq, ksq) & &!&pinned) | &bb;
-                            return pin;
+                            pin.square = pinned.pop_reverse();
+                            if &pin.square.unwrap() == square {
+                                return pin;
+                            } else {
+                                pin.fix = EMPTY_BB;
+                                pin.square = None;
+                            }
                         }
                     }
                 }
@@ -323,33 +291,76 @@ impl Position {
         }
     }
 
+    /// Returns a BitBoard of all squares at which a piece of the given color is pinned.
+    pub fn pinned_bb(&self, c: Color) -> BitBoard {
+        let mut bb = EMPTY_BB;
+        for sq in self.color_bb[c.index()] {
+            let pinned = self.pinned_moves(&sq);
+            match pinned.square {
+                Some(p) => {
+                    bb |= p;
+                }
+                None => (),
+            }
+        }
+        bb
+    }
+
+    /// Returns Vector of all checks.
     fn check_moves(&self, square: &Square) -> Vec<BitBoard> {
-        let piece = self.board.get(*square);
+        let piece = self.piece_at(*square);
         match piece {
             Some(i) => {
                 let ksq = self.find_king(i.color);
                 if ksq.is_none() {
                     return vec![];
-                    //return BitBoard::empty();
                 }
                 let ksq = ksq.unwrap();
                 let mut all: Vec<BitBoard> = vec![];
                 for s in [
                     (
                         PieceType::Queen,
-                        get_sliding_attacks(PieceType::Queen, ksq, EMPTY_BB),
+                        self.move_candidates(
+                            ksq,
+                            Piece {
+                                piece_type: PieceType::Queen,
+                                color: i.color,
+                            },
+                            MoveType::Plynth,
+                        ),
                     ),
                     (
                         PieceType::Rook,
-                        get_sliding_attacks(PieceType::Rook, ksq, EMPTY_BB),
+                        self.move_candidates(
+                            ksq,
+                            Piece {
+                                piece_type: PieceType::Rook,
+                                color: i.color,
+                            },
+                            MoveType::Plynth,
+                        ),
                     ),
                     (
                         PieceType::Bishop,
-                        get_sliding_attacks(PieceType::Bishop, ksq, EMPTY_BB),
+                        self.move_candidates(
+                            ksq,
+                            Piece {
+                                piece_type: PieceType::Bishop,
+                                color: i.color,
+                            },
+                            MoveType::Plynth,
+                        ),
                     ),
                     (
                         PieceType::Knight,
-                        get_non_sliding_attacks(PieceType::Knight, ksq, i.color),
+                        self.move_candidates(
+                            ksq,
+                            Piece {
+                                piece_type: PieceType::Knight,
+                                color: i.color,
+                            },
+                            MoveType::Plynth,
+                        ),
                     ),
                 ]
                 .iter()
@@ -358,7 +369,7 @@ impl Position {
                     let bb = &(&self.type_bb[s.0.index()] & &self.color_bb[i.color.flip().index()])
                         & &s.1;
                     for psq in bb {
-                        // this is fix for pin
+                        // this is fix for check
                         let fix = &between(ksq, psq);
                         if fix.is_any() {
                             all.push(fix | &bb);
@@ -372,10 +383,65 @@ impl Position {
         }
     }
 
+    /// Checks if the king with the given color is in check.
+    pub fn in_check(&self, c: Color) -> bool {
+        let check_moves = self.check_moves(&self.find_king(c).unwrap());
+        if check_moves.len() > 0 {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Checks if given color is in checkmate.
+    pub fn is_checkmate(&self, color: &Color) -> bool {
+        let king = self.find_king(*color);
+        match king {
+            Some(k) => {
+                let king_moves = self.legal_moves(&k);
+                if !king_moves.is_any() {
+                    let mut final_moves = EMPTY_BB;
+                    for sq in self.color_bb[color.index()] {
+                        final_moves |= &self.legal_moves(&sq);
+                    }
+                    if final_moves.is_any() {
+                        return false;
+                    }
+                    return true;
+                }
+                return false;
+            }
+            None => {
+                return false;
+            }
+        }
+    }
+
+    /// Returns BitBoard of all moves after fixing pin.
+    fn fix_pin(&self, fixer: &Fixer, checks: Vec<BitBoard>, my_moves: BitBoard) -> BitBoard {
+        match fixer.square {
+            Some(_square) => {
+                if checks.len() == 1 {
+                    let checks = checks.get(0).unwrap();
+                    return checks & &fixer.fix;
+                }
+                return EMPTY_BB;
+            }
+            None => {
+                let mut my_moves = my_moves;
+                for bb in checks.iter() {
+                    my_moves &= bb;
+                }
+                return my_moves;
+            }
+        }
+    }
+
+    /// Returns BitBoard of all moves by color.
     fn color_moves(&self, c: &Color) -> BitBoard {
         let mut all = EMPTY_BB;
         for sq in self.color_bb[c.index()] {
-            let piece = self.board.get(sq);
+            let piece = self.piece_at(sq);
             let moves = self.move_candidates(
                 sq,
                 piece.unwrap(),
@@ -388,81 +454,18 @@ impl Position {
         all
     }
 
+    /// Returns BitBoard of all moves by opponent.
     fn enemy_moves(&self, square: &Square) -> BitBoard {
-        let piece = self.board.get(*square);
+        let piece = self.piece_at(*square);
         match piece {
             Some(i) => self.color_moves(&i.color.flip()),
             None => EMPTY_BB,
         }
     }
 
-    fn my_moves(
-        &self,
-        c: Color,
-        mut my_moves: Vec<BitBoard>,
-        mut checks: Vec<BitBoard>,
-        king_ignore: bool,
-    ) -> (Vec<BitBoard>, Vec<BitBoard>) {
-        let enemy_king = self.find_king(c.flip()).unwrap();
-        for i in 0..144 {
-            let sq = Square::from_index(i).unwrap();
-            let pc = self.board.get(sq);
-            match pc {
-                Some(i) => {
-                    if i.piece_type == PieceType::King && king_ignore == true {
-                        continue;
-                    }
-                    if i.color == c {
-                        let p_moves = self.move_candidates(sq, *i, MoveType::Empty);
-                        my_moves.push(p_moves);
-                        if (&p_moves & enemy_king).is_any() {
-                            checks.push(p_moves);
-                        }
-                    }
-                }
-                None => (),
-            }
-        }
-        (my_moves, checks)
-    }
-
-    fn king_moves(&self, c: Color) -> BitBoard {
-        let king_sq = self.find_king(c).unwrap();
-        let piece = self.board.get(king_sq).unwrap();
-        self.move_candidates(king_sq, piece, MoveType::Plynth)
-    }
-
-    /// Checks if the king with the given color is in check.
-    pub fn in_check(&self, c: Color) -> bool {
-        if let Some(king_sq) = self.find_king(c) {
-            self.is_attacked_by(king_sq, c.flip())
-        } else {
-            false
-        }
-    }
-
     /// Sets a piece at the given square.
     fn set_piece(&mut self, sq: Square, p: Option<Piece>) {
         self.board.set(sq, p);
-    }
-
-    fn is_attacked_by(&self, sq: Square, c: Color) -> bool {
-        PieceType::iter().any(|pt| self.get_attackers_of_type(pt, sq, c).is_any())
-    }
-
-    fn get_attackers_of_type(&self, pt: PieceType, sq: Square, c: Color) -> BitBoard {
-        let bb = &self.type_bb[pt.index()] & &self.color_bb[c.index()];
-
-        if bb.is_empty() {
-            return bb;
-        }
-
-        let attack_pc = Piece {
-            piece_type: pt,
-            color: c,
-        };
-
-        &bb & &self.move_candidates(sq, attack_pc.flip(), MoveType::Plynth)
     }
 
     fn find_king(&self, c: Color) -> Option<Square> {
@@ -474,6 +477,7 @@ impl Position {
         }
     }
 
+    /// Saves position in sfen_history
     fn log_position(&mut self) {
         // TODO: SFEN string is used to represent a state of position, but any transformation which uniquely distinguish positions can be used here.
         // Consider light-weight option if generating SFEN string for each move is time-consuming.
@@ -499,29 +503,15 @@ impl Position {
     /////////////////////////////////////////////////////////////////////////
 
     /// Makes the given move. Returns `Err` if the move is invalid or any special condition is met.
-    pub fn make_move(&mut self, m: Move) -> Result<(), MoveError> {
-        let res = match m {
-            Move::Normal { from, to, promote } => self.make_normal_move(from, to, promote)?,
-        };
 
-        self.move_history.push(res);
-        Ok(())
-    }
-
-    fn make_normal_move(
-        &mut self,
-        from: Square,
-        to: Square,
-        _promoted: bool,
-    ) -> Result<MoveRecord, MoveError> {
+    pub fn make_move(&mut self, m: Move) -> Result<Outcome, MoveError> {
         let mut promoted = false;
         let stm = self.side_to_move();
         let opponent = stm.flip();
-
+        let (from, to) = m.info();
         let moved = self
             .piece_at(from)
             .ok_or(MoveError::Inconsistent("No piece found"))?;
-
         let captured = *self.piece_at(to);
 
         if moved.color != stm {
@@ -545,10 +535,7 @@ impl Position {
             }
         }
 
-        if !self
-            .move_candidates(from, moved, MoveType::Plynth)
-            .any(|sq| sq == to)
-        {
+        if !(&self.legal_moves(&from) & to).is_any() {
             return Err(MoveError::Inconsistent("The piece cannot move to there"));
         }
 
@@ -586,78 +573,31 @@ impl Position {
             self.hand.increment(pc);
         }
 
-        if self.in_check(stm) {
-            // Undo-ing the move.
-            self.set_piece(from, Some(moved));
-            self.set_piece(to, captured);
-            self.occupied_bb ^= from;
-            self.occupied_bb ^= to;
-            self.type_bb[moved.piece_type.index()] ^= from;
-            self.type_bb[placed.piece_type.index()] ^= to;
-            self.color_bb[moved.color.index()] ^= from;
-            self.color_bb[placed.color.index()] ^= to;
-
-            if let Some(ref cap) = captured {
-                self.occupied_bb ^= to;
-                self.type_bb[cap.piece_type.index()] ^= to;
-                self.color_bb[cap.color.index()] ^= to;
-                let pc = cap.flip();
-                let pc = match pc.unpromote() {
-                    Some(unpromoted) => unpromoted,
-                    None => pc,
-                };
-                self.hand.decrement(pc);
-            }
-
-            return Err(MoveError::InCheck);
-        }
-
         self.side_to_move = opponent;
         self.ply += 1;
 
         self.log_position();
         self.detect_repetition()?;
 
-        Ok(MoveRecord::Normal {
+        let move_record = MoveRecord::Normal {
             from,
             to,
             placed,
             captured,
             promoted,
-        })
-    }
+        };
 
-    /// Returns a list of squares at which a piece of the given color is pinned.
-    pub fn pinned_bb(&self, c: Color) -> BitBoard {
-        let ksq = self.find_king(c);
-        if ksq.is_none() {
-            return BitBoard::empty();
+        self.move_history.push(move_record);
+        if self.is_checkmate(&self.side_to_move) {
+            return Ok(Outcome::Checkmate {
+                color: self.side_to_move.flip(),
+            });
+        } else if self.in_check(self.side_to_move) {
+            return Ok(Outcome::Check {
+                color: self.side_to_move,
+            });
         }
-        let ksq = ksq.unwrap();
-
-        [
-            (
-                PieceType::Rook,
-                get_sliding_attacks(PieceType::Rook, ksq, EMPTY_BB),
-            ),
-            (
-                PieceType::Bishop,
-                get_sliding_attacks(PieceType::Bishop, ksq, EMPTY_BB),
-            ),
-        ]
-        .iter()
-        .fold(BitBoard::empty(), |mut accum, &(pt, ref mask)| {
-            let bb = &(&self.type_bb[pt.index()] & &self.color_bb[c.flip().index()]) & mask;
-
-            for psq in bb {
-                let between = &between(ksq, psq) & &self.occupied_bb;
-                if between.count() == 1 && (&between & &self.color_bb[c.index()]).is_any() {
-                    accum |= &between;
-                }
-            }
-
-            accum
-        })
+        Ok(Outcome::MoveOk)
     }
 
     /// Undoes the last move.
@@ -737,7 +677,14 @@ impl Position {
         move_list.moves(&self, bb, p)
     }
 
-    pub fn play(&self) {}
+    pub fn play(&mut self, from: &str, to: &str) {
+        let m = Move::Normal {
+            from: Square::from_sfen(from).expect("This square does not exist."),
+            to: Square::from_sfen(to).expect("This square does not exist."),
+            promote: false,
+        };
+        let outcome = self.make_move(m);
+    }
 
     fn detect_repetition(&self) -> Result<(), MoveError> {
         if self.sfen_history.len() < 9 {
@@ -840,7 +787,6 @@ impl Position {
         for m in self.move_history.iter() {
             sfen.push_str(&format!(" {}", &m.to_sfen()));
         }
-
         sfen
     }
 
@@ -1014,7 +960,7 @@ impl Position {
                 if num_spaces > 0 {
                     let _s = add_num_space(num_spaces, s);
                     s = _s;
-                    num_spaces = 0;
+                    //num_spaces = 0;
                 }
 
                 s
@@ -1024,7 +970,7 @@ impl Position {
         let color = if self.side_to_move == Color::Blue {
             "b"
         } else {
-            "w"
+            "r"
         };
 
         let mut hand = [Color::Blue, Color::Red]
@@ -1075,6 +1021,7 @@ impl Default for Position {
             occupied_bb: Default::default(),
             color_bb: Default::default(),
             type_bb: Default::default(),
+            game_status: Outcome::MoveOk,
         }
     }
 }
@@ -1149,6 +1096,27 @@ pub mod tests {
     }
 
     #[test]
+    fn test3() {
+        setup();
+        let mut pos = Position::new();
+        pos.set_sfen("6K5/57/57/6k5/57/57/57/57/57/57/57/57 r - 1")
+            .expect("err");
+        let m = Move::Normal {
+            from: G1,
+            to: G2,
+            promote: false,
+        };
+        let m2 = Move::Normal {
+            from: G4,
+            to: G5,
+            promote: false,
+        };
+        pos.make_move(m);
+        pos.make_move(m2);
+        assert!(true);
+    }
+
+    #[test]
     fn piece_exist() {
         setup();
         let mut pos = Position::new();
@@ -1166,16 +1134,18 @@ pub mod tests {
     fn player_bb() {
         setup();
 
-        let cases: &[(&str, &[Square], &[Square])] = &[
+        let cases: &[(&str, &[Square], &[Square], &[Square])] = &[
             (
-                "BBQ9/57/57/4R7/57/57/57/5ppp4/nnq/57/57/57 b - 1",
-                &[A9, B9, C9, F8, G8, H8],
-                &[A1, B1, C1, E4],
+                "BBQ8K/57/2L03L05/4R7/3L08/57/57/5ppp4/nnq/57/57/1L05k4 b - 1",
+                &[A9, B9, C9, F8, G8, H8, H12],
+                &[A1, B1, C1, L1, E4],
+                &[G3, B12, C3, D5],
             ),
             (
-                "12/57/6PPPP2/3Q6N1/57/57/57/5ppp4/7qk3/57/57/57 b P 1",
+                "9K2/57/6PPPP2/3Q6N1/57/57/57/5ppp4/7qk3/57/57/57 b P 1",
                 &[H9, I9, F8, G8, H8],
-                &[G3, H3, I3, J3, D4, K4],
+                &[G3, H3, I3, J3, D4, K4, J1],
+                &[],
             ),
         ];
 
@@ -1193,6 +1163,10 @@ pub mod tests {
             assert_eq!(case.2.len(), red.count() as usize);
             for sq in case.2 {
                 assert!((red & *sq).is_any());
+            }
+
+            for sq in case.3 {
+                assert!((&pos.color_bb[2] & *sq).is_any())
             }
         }
     }
@@ -1315,7 +1289,11 @@ pub mod tests {
                 false,
                 false,
             ),
-            ("KQP8/2n8/57/57/57/57/57/k11/57/57/57/57 b - 1", false, true),
+            (
+                "KQP8/2n8/57/57/57/57/57/k11/57/57/57/57 b - 1",
+                false,
+                false,
+            ),
         ];
 
         let mut pos = Position::new();
@@ -1333,23 +1311,23 @@ pub mod tests {
             (
                 "1K8r1/9rr1/57/57/57/57/57/57/57/k11/57/57 b - 1",
                 true,
-                Color::Blue,
+                Color::Red,
             ),
             (
                 "5RNB4/5K4r1/6B5/57/57/57/57/57/ppppp7/57/57/9k2 r - 1",
                 false,
-                Color::Red,
+                Color::Blue,
             ),
             (
                 "12/57/7k3Q/57/57/KRn9/57/57/57/57/57/57 b - 1",
                 false,
-                Color::Blue,
+                Color::Red,
             ),
         ];
         for case in cases.iter() {
             let mut pos = Position::new();
             pos.set_sfen(case.0).expect("failed to parse SFEN string");
-            assert_eq!(case.1, pos.is_checkmate(case.2));
+            assert_eq!(case.1, pos.is_checkmate(&case.2));
         }
     }
 
@@ -1361,51 +1339,91 @@ pub mod tests {
         pos.set_sfen("12/57/PPPQP4K2/7RR3/57/57/57/4pp6/2kr8/57/57/57 b 1r2R 1")
             .expect("failed to parse SFEN string");
         for _ in 0..2 {
-            assert!(pos.make_normal_move(D9, I9, false).is_ok());
-            assert!(pos.make_normal_move(H4, A4, false).is_ok());
-            assert!(pos.make_normal_move(I9, D9, false).is_ok());
-            assert!(pos.make_normal_move(A4, H4, false).is_ok());
+            assert!(pos.make_move(Move::new(D9, I9, false)).is_ok());
+            assert!(pos.make_move(Move::new(H4, A4, false)).is_ok());
+            assert!(pos.make_move(Move::new(I9, D9, false)).is_ok());
+            assert!(pos.make_move(Move::new(A4, H4, false)).is_ok());
         }
 
-        assert!(pos.make_normal_move(D9, I9, false).is_ok());
-        assert!(pos.make_normal_move(H4, A4, false).is_ok());
-        assert!(pos.make_normal_move(I9, D9, false).is_ok());
+        assert!(pos.make_move(Move::new(D9, I9, false)).is_ok());
+        assert!(pos.make_move(Move::new(H4, A4, false)).is_ok());
+        assert!(pos.make_move(Move::new(I9, D9, false)).is_ok());
 
         assert_eq!(
             Some(MoveError::RepetitionDraw),
-            pos.make_normal_move(A4, H4, false).err()
+            pos.make_move(Move::new(A4, H4, false)).err()
         );
     }
 
     #[test]
-    fn make_normal_move() {
+    fn make_move() {
         setup();
 
-        let base_sfen = "12/3KRRB5/5PP5/57/57/57/57/qbbn8/57/6k5/57/57 r 1K2R1B2P 1";
+        let base_sfen = "57/3KRRB5/5PP5/57/57/57/57/qbbn8/57/6k5/57/57 r K2RB2P 1";
         let test_cases = [
-            (D2, E1, false, true),
-            (E2, E7, false, true),
-            (G2, I4, false, true),
-            (F2, F1, false, true),
-            (G3, H4, false, false),
+            (
+                D2,
+                E1,
+                false,
+                true,
+                "4K7/4RRB5/5PP5/57/57/57/57/qbbn8/57/6k5/57/57 b K2RB2P 2",
+            ),
+            (
+                E2,
+                E7,
+                false,
+                true,
+                "57/3K1RB5/5PP5/57/57/57/4R7/qbbn8/57/6k5/57/57 b K2RB2P 2",
+            ),
+            (
+                G2,
+                I4,
+                false,
+                true,
+                "57/3KRR6/5PP5/8B3/57/57/57/qbbn8/57/6k5/57/57 b K2RB2P 2",
+            ),
+            (
+                F2,
+                F1,
+                false,
+                true,
+                "5R6/3KR1B5/5PP5/57/57/57/57/qbbn8/57/6k5/57/57 b K2RB2P 2",
+            ),
+            (G3, H3, false, false, base_sfen),
         ];
 
         for case in test_cases.iter() {
             let mut pos = Position::new();
             pos.set_sfen(base_sfen)
                 .expect("failed to parse SFEN string");
-            assert_eq!(case.3, pos.make_normal_move(case.0, case.1, case.2).is_ok());
+            let move_ = Move::Normal {
+                from: case.0,
+                to: case.1,
+                promote: case.2,
+            };
+            assert_eq!(case.3, pos.make_move(move_).is_ok());
+            assert_eq!(case.4, pos.generate_sfen());
         }
 
         let mut pos = Position::new();
         // Leaving the checked king is illegal.
-        pos.set_sfen("12/1K8RR/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
+        pos.set_sfen("57/1K8RR/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
             .expect("failed to parse SFEN string");
-        assert!(pos.make_normal_move(A6, A1, false).is_err());
+        let move_ = Move::Normal {
+            from: A6,
+            to: A1,
+            promote: false,
+        };
+        assert!(pos.make_move(move_).is_err());
 
-        pos.set_sfen("12/1RR9/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
+        pos.set_sfen("7K4/1RR9/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
             .expect("failed to parse SFEN string");
-        assert!(pos.make_normal_move(K6, K5, false).is_ok());
+        let move_ = Move::Normal {
+            from: K6,
+            to: K5,
+            promote: false,
+        };
+        assert!(pos.make_move(move_).is_ok());
     }
 
     #[test]

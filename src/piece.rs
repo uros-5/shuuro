@@ -103,8 +103,7 @@ impl fmt::Display for Piece {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::piece_type::{self, PieceTypeIter};
-    use crate::square::consts::*;
+    use crate::piece_type::{PieceTypeIter};
 
     #[test]
     fn from_sfen() {

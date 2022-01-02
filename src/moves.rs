@@ -30,6 +30,20 @@ impl Move {
         }
         None
     }
+
+    pub fn info(&self) -> (Square, Square) {
+        match self {
+            Move::Normal {
+                from,
+                to,
+                promote: _,
+            } => (*from, *to),
+        }
+    }
+
+    pub fn new(from: Square, to: Square, promote: bool) -> Move {
+        Move::Normal { from, to, promote }
+    }
 }
 
 impl fmt::Display for Move {
