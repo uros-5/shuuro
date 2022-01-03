@@ -37,10 +37,13 @@ pub enum MoveError {
     #[error("perpetual check detected")]
     Draw,
 
+    #[error("Insufficient material detected")]
+    DrawByInsufficientMaterial,
+
     #[error("not your turn")]
     EnemysTurn,
 
-    #[error("the piece can not move anymor")]
+    #[error("the piece can not move anymore")]
     NonMovablePiece,
 
     #[error("the move is inconsistent with the current position: {0}")]

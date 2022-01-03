@@ -22,6 +22,11 @@ pub enum Color {
 }
 
 impl Color {
+    pub fn iter() -> ColorIter {
+        ColorIter {
+            current: Some(Color::Red),
+        }
+    }
     /// Returns an iterator of all variants.
     pub fn from_char(ch: char) -> Option<Color> {
         match ch {

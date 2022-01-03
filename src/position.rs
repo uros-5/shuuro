@@ -1,13 +1,13 @@
 use itertools::Itertools;
-use std::{fmt, vec};
+use std::{fmt, ops::Index, vec};
 
 use crate::{
-    between, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard, Color, Hand, Move,
-    MoveError, Piece, PieceType, SfenError, Square, EMPTY_BB,
+    between, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard, Color, ColorIter,
+    Hand, Move, MoveError, Piece, PieceType, SfenError, Square, EMPTY_BB,
 };
 
 /// Outcome stores information about outcome after move.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Outcome {
     Check { color: Color },
     Checkmate { color: Color },
@@ -207,7 +207,7 @@ impl Position {
         &self.move_history
     }
 
-    /// Returns all legal moves wher piece can be moved.
+    /// Returns all legal moves where piece can be moved.
     pub fn legal_moves(&self, square: &Square) -> BitBoard {
         let my_moves = self.non_legal_moves(&square);
         let pinned_moves = self.pinned_moves(&square);
@@ -222,6 +222,7 @@ impl Position {
                 return self.fix_pin(&pinned_moves, check_moves, my_moves);
             }
         }
+
         return self.fix_pin(&pinned_moves, check_moves, my_moves);
     }
 
@@ -259,6 +260,10 @@ impl Position {
                         PieceType::Bishop,
                         get_sliding_attacks(PieceType::Bishop, ksq, EMPTY_BB),
                     ),
+                    /*(
+                        PieceType::Pawn,
+                        get_non_sliding_attacks(PieceType::Pawn, ksq, i.color.flip()),
+                    )*/
                 ]
                 .iter()
                 {
@@ -371,9 +376,7 @@ impl Position {
                     for psq in bb {
                         // this is fix for check
                         let fix = &between(ksq, psq);
-                        if fix.is_any() {
-                            all.push(fix | &bb);
-                        };
+                        all.push(fix | &bb);
                     }
                 }
                 all
@@ -424,8 +427,10 @@ impl Position {
                 if checks.len() == 1 {
                     let checks = checks.get(0).unwrap();
                     return checks & &fixer.fix;
+                } else if checks.len() > 1 {
+                    return EMPTY_BB;
                 }
-                return EMPTY_BB;
+                return &fixer.fix & &my_moves;
             }
             None => {
                 let mut my_moves = my_moves;
@@ -513,11 +518,14 @@ impl Position {
             .piece_at(from)
             .ok_or(MoveError::Inconsistent("No piece found"))?;
         let captured = *self.piece_at(to);
+        let outcome = Outcome::Checkmate { color: opponent };
 
         if moved.color != stm {
             return Err(MoveError::Inconsistent(
                 "The piece is not for the side to move",
             ));
+        } else if self.game_status == outcome {
+            return Err(MoveError::Inconsistent("Match is over."));
         }
 
         match captured {
@@ -578,6 +586,7 @@ impl Position {
 
         self.log_position();
         self.detect_repetition()?;
+        self.detect_insufficient_material()?;
 
         let move_record = MoveRecord::Normal {
             from,
@@ -598,6 +607,33 @@ impl Position {
             });
         }
         Ok(Outcome::MoveOk)
+    }
+
+    /// Detecting insufficient material.
+    pub fn detect_insufficient_material(&self) -> Result<(), MoveError> {
+        let major = [PieceType::Rook, PieceType::Queen];
+        let minor = [PieceType::Knight, PieceType::Bishop];
+        if self.occupied_bb.count() == 2 {
+            return Err(MoveError::DrawByInsufficientMaterial);
+        }
+        for c in Color::iter() {
+            let mut bb = EMPTY_BB;
+            for i in major {
+                bb |= &(&self.color_bb[c.index()] & &self.type_bb[i.index()])
+            }
+            if bb.is_any() {
+                return Ok(());
+            }
+            for i in minor {
+                bb |= &(&self.color_bb[c.index()] & &self.type_bb[i.index()])
+            }
+            if bb.count() == 1 {
+                return Err(MoveError::DrawByInsufficientMaterial);
+            }
+            return Ok(());
+        }
+
+        Ok(())
     }
 
     /// Undoes the last move.
@@ -684,6 +720,17 @@ impl Position {
             promote: false,
         };
         let outcome = self.make_move(m);
+        match outcome {
+            Ok(i) => {
+                self.game_status = i;
+            }
+            Err(error) => match error {
+                MoveError::RepetitionDraw => self.game_status = Outcome::DrawByRepetition,
+                MoveError::Draw => self.game_status = Outcome::Draw,
+                MoveError::DrawByInsufficientMaterial => self.game_status = Outcome::DrawByMaterial,
+                _ => (),
+            },
+        }
     }
 
     fn detect_repetition(&self) -> Result<(), MoveError> {
@@ -742,6 +789,11 @@ impl Position {
             .and_then(|s| self.parse_sfen_ply(s))?;
         self.sfen_history.clear();
         self.log_position();
+        /*
+        if self.in_check(self.side_to_move.flip()) && self.sfen_history.len() < 2 {
+            return Err(SfenError::IllegalBoardState);
+        }
+        */
         // Make moves following the initial position, optional.
         if let Some("moves") = parts.next() {
             for m in parts {
@@ -1096,27 +1148,6 @@ pub mod tests {
     }
 
     #[test]
-    fn test3() {
-        setup();
-        let mut pos = Position::new();
-        pos.set_sfen("6K5/57/57/6k5/57/57/57/57/57/57/57/57 r - 1")
-            .expect("err");
-        let m = Move::Normal {
-            from: G1,
-            to: G2,
-            promote: false,
-        };
-        let m2 = Move::Normal {
-            from: G4,
-            to: G5,
-            promote: false,
-        };
-        pos.make_move(m);
-        pos.make_move(m2);
-        assert!(true);
-    }
-
-    #[test]
     fn piece_exist() {
         setup();
         let mut pos = Position::new();
@@ -1289,11 +1320,7 @@ pub mod tests {
                 false,
                 false,
             ),
-            (
-                "KQP8/2n8/57/57/57/57/57/k11/57/57/57/57 b - 1",
-                false,
-                false,
-            ),
+            ("KQP8/2n8/57/57/57/57/57/k11/57/57/57/57 b - 1", false, true),
         ];
 
         let mut pos = Position::new();
@@ -1424,6 +1451,32 @@ pub mod tests {
             promote: false,
         };
         assert!(pos.make_move(move_).is_ok());
+    }
+
+    #[test]
+    fn make_moves() {
+        setup();
+        let mut pos = Position::new();
+        pos.set_sfen("6K5/57/57/6k5/57/PL055/57/p56/57/57/57/57 r - 1")
+            .expect("err");
+        let m = Move::Normal {
+            from: G1,
+            to: G2,
+            promote: false,
+        };
+        let m2 = Move::Normal {
+            from: G4,
+            to: G5,
+            promote: false,
+        };
+        let m3 = Move::Normal {
+            from: G5,
+            to: G4,
+            promote: false,
+        };
+        assert_eq!(true, pos.make_move(m).is_ok());
+        assert_eq!(true, pos.make_move(m2).is_ok());
+        assert_eq!(false, pos.make_move(m3).is_ok());
     }
 
     #[test]
@@ -1581,5 +1634,32 @@ pub mod tests {
 
         assert_eq!(Color::Blue, pos.side_to_move());
         assert_eq!(1, pos.ply());
+    }
+
+    #[test]
+    fn all_legal_moves() {
+        setup();
+        let cases = [
+            ("57/7k4/57/5n6/57/57/57/1Q55/57/K56/57/57 b - 1", "f4", 0),
+            ("57/7k4/57/5n6/57/57/57/2Q9/57/K56/57/57 b - 1", "f4", 8),
+            (
+                "8K3/3PPPPP4/6p5/8R3/6pp4/57/57/57/8r3/57/8k3/57 r - 1",
+                "i4",
+                7,
+            ),
+            (
+                "8K3/3PPPPP4/6p5/55R1/6pp4/57/57/57/8r3/57/8k3/57 r - 1",
+                "k4",
+                1,
+            ),
+            ("1K55/1qq9/57/57/57/57/57/1R55/57/2k9/57/57 r - 1", "b8", 1),
+            ("1K55/q1q9/57/57/57/57/57/1R55/57/2k9/57/57 r - 1", "b8", 0),
+        ];
+        for case in cases {
+            let mut pos = Position::new();
+            pos.set_sfen(case.0).expect("error while parsing sfen");
+            let moves_count = pos.legal_moves(&Square::from_sfen(case.1).unwrap()).count();
+            assert_eq!(case.2, moves_count);
+        }
     }
 }
