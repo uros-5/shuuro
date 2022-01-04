@@ -12,6 +12,7 @@ pub mod moves;
 pub mod piece;
 pub mod piece_type;
 pub mod position;
+pub mod shop;
 pub mod square;
 
 pub use self::bitboard::{square_bb, BitBoard, SQUARE_BB};

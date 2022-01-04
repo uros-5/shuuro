@@ -627,13 +627,13 @@ impl Position {
             for i in minor {
                 bb |= &(&self.color_bb[c.index()] & &self.type_bb[i.index()])
             }
-            if bb.count() == 1 {
-                return Err(MoveError::DrawByInsufficientMaterial);
+            if bb.count() == 1 && bb.count() == 0 {
+                continue;
             }
+
             return Ok(());
         }
-
-        Ok(())
+        Err(MoveError::DrawByInsufficientMaterial)
     }
 
     /// Undoes the last move.

@@ -56,6 +56,24 @@ impl Hand {
         }
     }
 
+    /// Converts hand to sfen.
+    pub fn to_sfen(&self, c: Color) -> String {
+        let mut sum = String::from("");
+        for pt in PieceType::iter() {
+            if !pt.eq(&PieceType::Plynth) { // || !pt.eq(&PieceType::King) {
+                let piece = Piece {
+                    piece_type: pt,
+                    color: c,
+                };
+                let counter = self.get(piece);
+                for _i in 0..counter {
+                    sum.push_str(&format!("{}", piece.to_string()));
+                }
+            }
+        }
+        sum
+    }
+
     fn index(p: Piece) -> Option<usize> {
         let base = match p.piece_type {
             PieceType::King => 0,

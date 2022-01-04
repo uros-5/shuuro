@@ -24,7 +24,7 @@ pub enum Color {
 impl Color {
     pub fn iter() -> ColorIter {
         ColorIter {
-            current: Some(Color::Red),
+            current: Some(Color::Blue),
         }
     }
     /// Returns an iterator of all variants.
