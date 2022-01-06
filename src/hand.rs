@@ -60,7 +60,8 @@ impl Hand {
     pub fn to_sfen(&self, c: Color) -> String {
         let mut sum = String::from("");
         for pt in PieceType::iter() {
-            if !pt.eq(&PieceType::Plynth) { // || !pt.eq(&PieceType::King) {
+            if !pt.eq(&PieceType::Plynth) {
+                // || !pt.eq(&PieceType::King) {
                 let piece = Piece {
                     piece_type: pt,
                     color: c,
@@ -72,6 +73,12 @@ impl Hand {
             }
         }
         sum
+    }
+
+    pub fn set_hand(&mut self, s: &str) {
+        for i in s.chars() {
+            self.increment(Piece::from_sfen(i).unwrap());
+        }
     }
 
     fn index(p: Piece) -> Option<usize> {
