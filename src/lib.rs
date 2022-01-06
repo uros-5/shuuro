@@ -5,13 +5,16 @@
 pub mod attacks;
 pub mod bitboard;
 pub mod board_defs;
+pub mod board_set;
 pub mod color;
 pub mod error;
 pub mod hand;
 pub mod moves;
 pub mod piece;
 pub mod piece_type;
+pub mod plynths_set;
 pub mod position;
+pub mod sfen_str;
 pub mod shop;
 pub mod square;
 
@@ -22,7 +25,10 @@ pub use self::piece_type::PieceType;
 pub use self::square::{consts, Square};
 pub use attacks::{between, get_non_sliding_attacks, get_sliding_attacks, init};
 pub use board_defs::{EMPTY_BB, FILE_BB, RANK_BB};
+pub use board_set::PositionSet;
 pub use error::*;
 pub use hand::Hand;
 pub use moves::Move;
-pub use position::{MoveRecord, Position};
+pub use plynths_set::generate_plynths;
+pub use position::{MoveRecord, PieceGrid, Position};
+pub use sfen_str::SfenStr;
