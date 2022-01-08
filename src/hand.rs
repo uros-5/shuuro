@@ -75,9 +75,13 @@ impl Hand {
         sum
     }
 
+    /// Set hand with all pieces from str.
     pub fn set_hand(&mut self, s: &str) {
         for i in s.chars() {
-            self.increment(Piece::from_sfen(i).unwrap());
+            match Piece::from_sfen(i) {
+                Some(i) => self.increment(i),
+                None => (),
+            }
         }
     }
 

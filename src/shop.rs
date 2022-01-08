@@ -12,7 +12,7 @@ fn get_pricing() -> [(i32, u8); 7] {
 }
 
 /// Used for buying pieces.
-struct Shop {
+pub struct Shop {
     credit: [i32; 2],
     hand: Hand,
     confirmed: [bool; 2],
@@ -21,11 +21,11 @@ struct Shop {
 
 impl Shop {
     /// Buying piece with specific color.
-    fn buy(&mut self, p: Piece) {
+    pub fn buy(&mut self, p: Piece) {
         if !self.is_confirmed(p.color) {
             let (piece_price, piece_count) = self.pricing[p.piece_type.index()];
             if self.credit[p.color.index()] >= piece_price as i32 {
-                if self.hand.get(p) <= piece_count {
+                if self.hand.get(p) < piece_count {
                     self.hand.increment(p);
                     self.credit[p.color.index()] = self.credit(p.color) - piece_price;
                 }
@@ -54,10 +54,12 @@ impl Shop {
         self.hand.to_sfen(c)
     }
 
+    /// Get how much pieces are left in hand.
     pub fn get(&self, p: Piece) -> u8 {
         self.hand.get(p)
     }
 
+    /// Get how much credit one hand has.
     pub fn credit(&self, c: Color) -> i32 {
         self.credit[c.index()]
     }
@@ -67,6 +69,7 @@ impl Shop {
         self.confirmed[c.index()]
     }
 
+    /// Set kings.
     fn set_kings(&mut self) {
         for c in Color::iter() {
             if c != Color::NoColor {
@@ -92,10 +95,8 @@ impl Default for Shop {
     }
 }
 
+#[cfg(test)]
 mod tests {
-    use std::slice::SliceIndex;
-
-    use itertools::Itertools;
 
     use crate::{Color, Piece, PieceType};
 
@@ -108,7 +109,7 @@ mod tests {
             (PieceType::Queen, Color::Red, 2),
             (PieceType::Bishop, Color::Blue, 3),
             (PieceType::Rook, Color::Blue, 3),
-            (PieceType::Queen, Color::Blue, 4),
+            (PieceType::Queen, Color::Blue, 3),
             (PieceType::Pawn, Color::Blue, 3),
         ];
         let mut shop = Shop::default();
@@ -124,8 +125,8 @@ mod tests {
         }
         shop.confirm(Color::Red);
         assert_eq!(shop.credit(Color::Red), 800 - 260);
-        assert_eq!(shop.credit(Color::Blue), 0);
-        assert_eq!(shop.is_confirmed(Color::Blue), true);
+        assert_eq!(shop.credit(Color::Blue), 800 - 690);
+        assert_ne!(shop.is_confirmed(Color::Blue), true);
         assert_eq!(shop.is_confirmed(Color::Red), true);
     }
 
@@ -133,7 +134,7 @@ mod tests {
     fn set_hand() {
         let cases = [
             ("RRPPnnnQQ", Color::Red, 380, "KQQRRPP"),
-            ("nQrrPnNQqqqqqbbr", Color::Blue, 740, "kqqqqrrbbnn"),
+            ("nQrrPnNQqqqqqbbr", Color::Blue, 700, "kqqqrrrbbnn"),
         ];
         for case in cases {
             let mut shop = Shop::default();

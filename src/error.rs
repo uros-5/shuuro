@@ -31,11 +31,11 @@ pub enum MoveError {
     #[error("the king is in check")]
     InCheck,
 
-    #[error("nifu detected")]
-    Nifu,
-
     #[error("perpetual check detected")]
     Draw,
+
+    #[error("stalemate detected")]
+    DrawByStalemate,
 
     #[error("Insufficient material detected")]
     DrawByInsufficientMaterial,

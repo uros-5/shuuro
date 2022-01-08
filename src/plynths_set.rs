@@ -38,6 +38,7 @@ pub fn generate_plynths() -> BitBoard {
     bb
 }
 
+#[cfg(test)]
 mod tests {
     use crate::init;
     use crate::plynths_set::generate_plynths;

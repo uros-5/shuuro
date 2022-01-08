@@ -110,8 +110,6 @@ pub trait SfenStr {
 
     fn parse_sfen_board(&mut self, s: &str) -> Result<(), SfenError> {
         let rows = s.split('/');
-        let mut plynth = true;
-
         self.empty_bb();
 
         for (i, row) in rows.enumerate() {

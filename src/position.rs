@@ -3,8 +3,8 @@ use itertools::Itertools;
 use std::{fmt, vec};
 
 use crate::{
-    between, generate_plynths, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard,
-    Color, ColorIter, Hand, Move, MoveError, Piece, PieceType, SfenError, Square, EMPTY_BB,
+    between, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard, Color, Hand, Move,
+    MoveError, Piece, PieceType, SfenError, Square, EMPTY_BB,
 };
 
 /// Outcome stores information about outcome after move.
@@ -16,6 +16,7 @@ pub enum Outcome {
     Nothing,
     DrawByRepetition,
     DrawByMaterial,
+    Stalemate,
     MoveNotOk,
     MoveOk,
 }
@@ -82,13 +83,29 @@ impl MoveType {
         }
     }
 
-    pub fn moves(&self, position: &Position, bb: BitBoard, p: Piece) -> BitBoard {
+    pub fn moves(&self, position: &Position, bb: BitBoard, p: Piece, sq: Square) -> BitBoard {
         let primary_bb = &bb & &!&position.color_bb[p.color.index()];
         match self {
             MoveType::Empty => bb,
             MoveType::Plynth => {
                 if p.piece_type != PieceType::Knight {
-                    &(primary_bb) & &!&position.color_bb[2]
+                    let bb = &(primary_bb) & &!&position.color_bb[2];
+                    if p.piece_type == PieceType::Pawn {
+                        let sq = {
+                            match p.color {
+                                Color::Red => {
+                                    Square::from_index(sq.index() as u8 + 12 as u8).unwrap()
+                                }
+                                Color::Blue => {
+                                    Square::from_index(sq.index() as u8 - 12 as u8).unwrap()
+                                }
+                                Color::NoColor => sq,
+                            }
+                        };
+                        &(&bb & &position.color_bb[p.color.flip().index()]) | &square_bb(sq)
+                    } else {
+                        bb
+                    }
                 } else {
                     primary_bb
                 }
@@ -441,6 +458,9 @@ impl Position {
             }
             None => {
                 let mut my_moves = my_moves;
+                if checks.len() > 1 {
+                    return EMPTY_BB;
+                }
                 for bb in checks.iter() {
                     my_moves &= bb;
                 }
@@ -613,7 +633,21 @@ impl Position {
                 color: self.side_to_move,
             });
         }
+        self.is_stalemate(&self.side_to_move)?;
         Ok(Outcome::MoveOk)
+    }
+
+    pub fn is_stalemate(&self, color: &Color) -> Result<(), MoveError> {
+        for pt in PieceType::iter() {
+            let pieces = &self.color_bb[color.index()] & &self.type_bb[pt.index()];
+            for p in pieces {
+                let moves = self.legal_moves(&p);
+                if moves.count() > 0 {
+                    return Ok(());
+                }
+            }
+        }
+        Err(MoveError::DrawByStalemate)
     }
 
     /// Detecting insufficient material.
@@ -717,7 +751,7 @@ impl Position {
             PieceType::King => get_non_sliding_attacks(PieceType::King, sq, p.color),
             _ => EMPTY_BB,
         };
-        move_list.moves(&self, bb, p)
+        move_list.moves(&self, bb, p, sq)
     }
 
     pub fn play(&mut self, from: &str, to: &str) {
@@ -735,6 +769,7 @@ impl Position {
                 MoveError::RepetitionDraw => self.game_status = Outcome::DrawByRepetition,
                 MoveError::Draw => self.game_status = Outcome::Draw,
                 MoveError::DrawByInsufficientMaterial => self.game_status = Outcome::DrawByMaterial,
+                MoveError::DrawByStalemate => self.game_status = Outcome::Stalemate,
                 _ => (),
             },
         }
@@ -1149,7 +1184,7 @@ pub mod tests {
             }
         }
 
-        assert_eq!(27, sum);
+        assert_eq!(21, sum);
     }
 
     #[test]
@@ -1532,7 +1567,7 @@ pub mod tests {
                 "k4",
                 1,
             ),
-            ("1K55/1qq9/57/57/57/57/57/1R55/57/2k9/57/57 r - 1", "b8", 1),
+            ("1K55/1qq9/57/57/57/57/57/1R55/57/2k9/57/57 r - 1", "b8", 0),
             ("1K55/q1q9/57/57/57/57/57/1R55/57/2k9/57/57 r - 1", "b8", 0),
         ];
         for case in cases {

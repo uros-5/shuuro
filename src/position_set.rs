@@ -1,10 +1,11 @@
 use std::fmt::{Display, Formatter, Result};
 
 use crate::{
-    get_sliding_attacks, BitBoard, Color, Hand, Piece, PieceGrid, PieceType, SfenStr, Square,
-    EMPTY_BB, FILE_BB,
+    generate_plynths, get_sliding_attacks, BitBoard, Color, Hand, Piece, PieceGrid, PieceType,
+    SfenStr, Square, EMPTY_BB, FILE_BB,
 };
 
+/// Second phase of shuuro is done in this struct.
 pub struct PositionSet {
     occupied_bb: BitBoard,
     color_bb: [BitBoard; 3],
@@ -16,14 +17,17 @@ pub struct PositionSet {
 }
 
 impl PositionSet {
+    /// Hand from shop is recommended to call this function.
     pub fn set_hand(&mut self, s: &str) {
         self.hand.set_hand(&s);
     }
 
+    /// Get hand for specific color (in order K..P).
     pub fn get_hand(&mut self, c: Color) -> String {
         return self.hand.to_sfen(c);
     }
 
+    /// Squares for king to be placed.
     fn king_squares(&self, c: &Color) -> BitBoard {
         let files = ['d', 'e', 'f', 'g', 'h', 'i'];
         let mut bb = EMPTY_BB;
@@ -40,7 +44,8 @@ impl PositionSet {
         }
     }
 
-    pub fn empty_file(&self, p: Piece) -> BitBoard {
+    /// Available squares for selected piece.
+    pub fn empty_squares(&self, p: Piece) -> BitBoard {
         let test = |p: Piece, list: [usize; 3]| -> BitBoard {
             for file in list {
                 let mut bb = FILE_BB[file];
@@ -55,6 +60,16 @@ impl PositionSet {
                     }
                     PieceType::King => {
                         self.king_squares(&p.color);
+                    }
+                    PieceType::Pawn => {
+                        bb &= &!&plynths;
+                        if bb.is_empty() {
+                            continue;
+                        } else if self.can_pawn_move(p) {
+                            return bb;
+                        } else {
+                            return EMPTY_BB;
+                        }
                     }
                     _ => {
                         bb &= &!&plynths;
@@ -77,7 +92,7 @@ impl PositionSet {
             Color::NoColor => EMPTY_BB,
         }
     }
-
+    /// Returns BitBoard for all safe squares for selected side.
     fn checks(&self, attacked_color: &Color) -> BitBoard {
         let king = &self.type_bb[PieceType::King.index()] & &self.color_bb[attacked_color.index()];
         let mut all;
@@ -105,13 +120,47 @@ impl PositionSet {
         EMPTY_BB
     }
 
-    pub fn place(&mut self, p: Piece, sq: Square) {
-        if self.hand.get(p) > 0 {
-            if (&self.empty_file(p) & sq).is_any() {
-                self.update_bb(p, sq);
-                self.hand.decrement(p);
+    /// Returns true if pawns can be placed on board.
+    fn can_pawn_move(&self, p: Piece) -> bool {
+        if self.is_hand_empty(&p.color, PieceType::Pawn) {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Returns true if hand with excluded piece is empty.
+    pub fn is_hand_empty(&self, c: &Color, excluded: PieceType) -> bool {
+        for pt in PieceType::iter() {
+            if pt != excluded {
+                let counter = self.hand.get(Piece {
+                    piece_type: pt,
+                    color: *c,
+                });
+                if counter != 0 {
+                    return false;
+                }
             }
         }
+        true
+    }
+
+    /// Placing piece on square.
+    pub fn place(&mut self, p: Piece, sq: Square) {
+        if self.hand.get(p) > 0 {
+            if (&self.empty_squares(p) & sq).is_any() {
+                self.update_bb(p, sq);
+                self.hand.decrement(p);
+                if !self.is_hand_empty(&p.color.flip(), PieceType::Plynth) {
+                    self.side_to_move = p.color.flip();
+                }
+            }
+        }
+    }
+
+    /// Generating random plynths.
+    pub fn generate_plynths(&mut self) {
+        self.color_bb[Color::NoColor.index()] = generate_plynths();
     }
 }
 
@@ -174,13 +223,14 @@ impl Default for PositionSet {
 
 impl Display for PositionSet {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "{}", self.occupied_bb);
+        write!(f, "{}", self.occupied_bb)?;
         Ok(())
     }
 }
 
+#[cfg(test)]
 mod tests {
-    use crate::square::consts::*;
+    use crate::consts::*;
     use crate::{init, Color, Piece, PieceType, PositionSet, SfenStr};
 
     fn setup() {
@@ -198,14 +248,52 @@ mod tests {
             let bb = position_set.king_squares(&case.0);
             assert_eq!(bb.count(), case.1);
             for sq in case.2 {
-                println!("{}", &bb);
                 assert!((&bb & sq).is_any());
             }
         }
     }
 
     #[test]
-    fn empty_file() {
+    fn is_hand_empty() {
+        setup();
+        let mut position_set = PositionSet::default();
+        position_set
+            .parse_sfen_board("6K5/57/57/57/57/57/57/57/57/57/57/7k4")
+            .expect("error while parsing sfen");
+        position_set.set_hand("rrRqNNqq");
+        let cases = [
+            (PieceType::Knight, Color::Red, A1),
+            (PieceType::Queen, Color::Blue, D12),
+            (PieceType::Rook, Color::Red, C1),
+            (PieceType::Queen, Color::Blue, I12),
+            (PieceType::Knight, Color::Red, H1),
+            (PieceType::Rook, Color::Blue, B12),
+            (PieceType::Rook, Color::Blue, G12),
+            (PieceType::Queen, Color::Blue, F12),
+        ];
+        for case in cases {
+            position_set.place(
+                Piece {
+                    piece_type: case.0,
+                    color: case.1,
+                },
+                case.2,
+            );
+        }
+        assert!(position_set.is_hand_empty(&Color::Blue, PieceType::Plynth));
+        assert!(position_set.is_hand_empty(&Color::Red, PieceType::Plynth));
+    }
+
+    #[test]
+    fn generate_plynths() {
+        setup();
+        let mut position_set = PositionSet::default();
+        position_set.generate_plynths();
+        assert_eq!(position_set.color_bb[Color::NoColor.index()].count(), 8);
+    }
+
+    #[test]
+    fn empty_squares() {
         setup();
         let mut position_set = PositionSet::default();
         position_set
@@ -217,7 +305,7 @@ mod tests {
             (PieceType::Bishop, Color::Blue, 7),
         ];
         for case in cases {
-            let file = position_set.empty_file(Piece {
+            let file = position_set.empty_squares(Piece {
                 piece_type: case.0,
                 color: case.1,
             });
@@ -225,11 +313,5 @@ mod tests {
             assert_eq!(file.count(), case.2);
         }
         assert_eq!(position_set.get_hand(Color::Blue), "rrbn");
-    }
-
-    #[test]
-    fn all_squares() {
-        let mut position_set = PositionSet::default();
-        position_set.set_hand("RRRKkrrr");
     }
 }
