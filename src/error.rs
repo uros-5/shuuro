@@ -12,6 +12,9 @@ pub enum SfenError {
     #[error("the side to move needs to be blue or red")]
     IllegalSideToMove,
 
+    #[error("this square does not exist")]
+    IllegalPieceFound,
+
     #[error("an illegal move count notation is found")]
     IllegalMoveCount(#[from] std::num::ParseIntError),
 

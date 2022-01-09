@@ -763,10 +763,24 @@ impl Position {
         move_list.moves(&self, bb, p, sq)
     }
 
-    pub fn play(&mut self, from: &str, to: &str) {
+    pub fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError> {
+        let from_: Square;
+        let to_: Square;
+        match Square::from_sfen(from) {
+            Some(i) => from_ = i,
+            None => {
+                return Err(SfenError::IllegalPieceFound);
+            }
+        };
+        match Square::from_sfen(to) {
+            Some(i) => to_ = i,
+            None => {
+                return Err(SfenError::IllegalPieceFound);
+            }
+        };
         let m = Move::Normal {
-            from: Square::from_sfen(from).expect("This square does not exist."),
-            to: Square::from_sfen(to).expect("This square does not exist."),
+            from: from_,
+            to: to_,
             promote: false,
         };
         let outcome = self.make_move(m);
@@ -779,9 +793,10 @@ impl Position {
                 MoveError::Draw => self.game_status = Outcome::Draw,
                 MoveError::DrawByInsufficientMaterial => self.game_status = Outcome::DrawByMaterial,
                 MoveError::DrawByStalemate => self.game_status = Outcome::Stalemate,
-                _ => (),
+                _ => return Err(SfenError::IllegalMove),
             },
         }
+        return Ok(self.outcome());
     }
 
     fn detect_repetition(&self) -> Result<(), MoveError> {

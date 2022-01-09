@@ -4,7 +4,7 @@
 //!
 //! # Examples
 //!
-//! Shuuro shop - buying pieces.
+//! Shuuro shop - buying pieces:
 //! ```
 //! use shuuro::{Shop, PieceType, Piece, Color};
 //!
@@ -16,7 +16,7 @@
 //! assert_eq!(shop.credit(Color::Blue), 800 - 110 * 3);
 //! ```
 //!
-//! Shuuro deploy - placing pieces on board.
+//! Shuuro deploy - placing pieces on board:
 //!
 //! ```
 //! use shuuro::{Position, PieceType, Color, consts::{D1, F12}, Piece, init};
@@ -28,13 +28,16 @@
 //! assert_eq!(pos.generate_sfen(), "3K8/57/57/57/57/57/57/57/57/57/57/5k6 r q3r2n2QB2N3P 1");
 //! ```
 //!
-//! Shuuro fight - play like normal chess.
+//! Shuuro fight - play like normal chess:
 //! ```
-//! use shuuro::{Position, init};
+//! use shuuro::*;
+//! use shuuro::consts::*;
 //! init();
 //! let mut pos = Position::default();
 //! pos.set_sfen("1K2RR6/PPP9/57/57/57/57/57/57/L05L05/pppppp6/1k64/57 r - 1");
-//! pos.play("b1", "a1");
+//! let move_ = Move::Normal {from: B1, to: A1, promote: false};
+//! pos.make_move(move_);
+//! // Move can be made also with: pos.play("b1", "a1");
 //! assert_eq!(pos.generate_sfen(), "K3RR6/PPP9/57/57/57/57/57/57/L05L05/pppppp6/1k55/57 b - 2");
 //!
 //! ```
