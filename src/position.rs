@@ -230,6 +230,10 @@ impl Position {
         &self.move_history
     }
 
+    pub fn outcome(&self) -> &Outcome {
+        return &self.game_status;
+    }
+
     /// Returns all legal moves where piece can be moved.
     pub fn legal_moves(&self, square: &Square) -> BitBoard {
         let my_moves = self.non_legal_moves(&square);
@@ -757,7 +761,7 @@ impl Position {
             PieceType::Pawn => get_non_sliding_attacks(PieceType::Pawn, sq, p.color),
             PieceType::King => get_non_sliding_attacks(PieceType::King, sq, p.color),
             _ => EMPTY_BB,
-        }; 
+        };
         move_list.moves(&self, bb, p, sq)
     }
 
@@ -767,7 +771,7 @@ impl Position {
             to: Square::from_sfen(to).expect("This square does not exist."),
             promote: false,
         };
-        let outcome = self.make_move(m); 
+        let outcome = self.make_move(m);
         match outcome {
             Ok(i) => {
                 self.game_status = i;
@@ -1048,7 +1052,7 @@ impl Position {
                         }
                         None => {
                             if (&self.color_bb[2] & sq).is_any() {
-                                let mut _s = add_num_space(num_spaces,s);
+                                let mut _s = add_num_space(num_spaces, s);
                                 s = _s;
                                 num_spaces = 0;
                                 s.push_str("L0");
@@ -1115,7 +1119,6 @@ impl Position {
     pub fn get_hand(&mut self, c: Color) -> String {
         return self.hand.to_sfen(c);
     }
-
 
     /////////////////////////////////////////////////////////////////////////////
     // Deploy part in Shuuro.
