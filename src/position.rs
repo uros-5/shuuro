@@ -514,8 +514,6 @@ impl Position {
 
     /// Saves position in sfen_history
     fn log_position(&mut self) {
-        // TODO: SFEN string is used to represent a state of position, but any transformation which uniquely distinguish positions can be used here.
-        // Consider light-weight option if generating SFEN string for each move is time-consuming.
         let sfen = self.generate_sfen().split(' ').take(3).join(" ");
         let in_check = self.in_check(self.side_to_move());
         let continuous_check = if in_check {
@@ -1182,6 +1180,8 @@ impl Position {
         let checks = self.checks(&p.color);
         if checks.is_any() {
             return checks;
+        } else if !self.is_king_placed(p.color) && p.piece_type != PieceType::King {
+            return EMPTY_BB;
         }
         match p.color {
             Color::Red => test(p, [0, 1, 2]),
@@ -1189,6 +1189,15 @@ impl Position {
             Color::NoColor => EMPTY_BB,
         }
     }
+
+    fn is_king_placed(&self, c: Color) -> bool {
+        let king = &self.color_bb[c.index()] & &self.type_bb[PieceType::King.index()];
+        if king.count() == 1 {
+            return true;
+        }
+        false
+    }
+
     /// Returns BitBoard for all safe squares for selected side.
     fn checks(&self, attacked_color: &Color) -> BitBoard {
         let king = &self.type_bb[PieceType::King.index()] & &self.color_bb[attacked_color.index()];
