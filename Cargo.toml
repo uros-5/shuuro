@@ -1,6 +1,6 @@
 [package]
 name = "shuuro"
-version = "0.5.3"
+version = "0.5.4"
 authors = ["uros-5"]
 edition = "2021"
 description = "Bitboard based Shuuro library."

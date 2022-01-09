@@ -60,7 +60,7 @@ impl Hand {
     pub fn to_sfen(&self, c: Color) -> String {
         let mut sum = String::from("");
         for pt in PieceType::iter() {
-            if !pt.eq(&PieceType::Plynth) {
+            if !pt.eq(&PieceType::Plinth) {
                 // || !pt.eq(&PieceType::King) {
                 let piece = Piece {
                     piece_type: pt,

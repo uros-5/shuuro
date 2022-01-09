@@ -153,7 +153,7 @@ fn init_king_attacks() {
         for dir in dirs {
             let mut current_attack: BitBoard;
             let new_index = i + dir;
-            if new_index > 0 && new_index < 144 {
+            if new_index >= 0 && new_index < 144 {
                 current_attack = SQUARE_BB[new_index as usize];
                 match dir {
                     11 | -13 | -1 => current_attack &= &!&RANK_BB[11],

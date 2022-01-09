@@ -59,7 +59,7 @@ impl Square {
         {
             return None;
         }
-        println!("{} , {}", bytes[0], ASCII_LOWER_A);
+        //println!("{} , {}", bytes[0], ASCII_LOWER_A);
         let file = bytes[0] - ASCII_LOWER_A;
         let _first = chars.nth(0).unwrap();
         let rank: String = chars.take(2).collect();
@@ -290,7 +290,6 @@ mod tests {
                 "{} should cause an error",
                 case
             );
-            println!("okkk");
         }
     }
 
@@ -316,7 +315,6 @@ mod tests {
         for case in cases.iter() {
             let sq = Square::new(case.1, case.2).unwrap();
             assert_eq!(case.0, sq.to_string());
-            println!("okkk");
         }
     }
 }

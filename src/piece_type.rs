@@ -9,7 +9,7 @@ pub enum PieceType {
     Bishop = 3,
     Knight = 4,
     Pawn = 5,
-    Plynth = 6,
+    Plinth = 6,
 }
 
 impl PieceType {
@@ -27,7 +27,7 @@ impl PieceType {
             'b' | 'B' => PieceType::Bishop,
             'n' | 'N' => PieceType::Knight,
             'p' | 'P' => PieceType::Pawn,
-            'L' => PieceType::Plynth,
+            'L' => PieceType::Plinth,
             _ => return None,
         })
     }
@@ -100,7 +100,7 @@ impl fmt::Display for PieceType {
                 PieceType::Pawn => "p",
                 PieceType::Rook => "r",
                 PieceType::Queen => "q",
-                PieceType::Plynth => "L",
+                PieceType::Plinth => "L",
             }
         )
     }
@@ -131,8 +131,8 @@ impl iter::Iterator for PieceTypeIter {
                 PieceType::Rook => Some(PieceType::Bishop),
                 PieceType::Bishop => Some(PieceType::Knight),
                 PieceType::Knight => Some(PieceType::Pawn),
-                PieceType::Pawn => Some(PieceType::Plynth),
-                PieceType::Plynth => None,
+                PieceType::Pawn => Some(PieceType::Plinth),
+                PieceType::Plinth => None,
             };
         }
 

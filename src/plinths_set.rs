@@ -20,7 +20,7 @@ fn two_plynths(ranks: &[char; 6], files: &[u8; 6]) -> BitBoard {
     }
 }
 
-pub fn generate_plynths() -> BitBoard {
+pub fn generate_plinths() -> BitBoard {
     let left = ['a', 'b', 'c', 'd', 'e', 'f'];
     let right = ['g', 'h', 'i', 'j', 'k', 'l'];
     let mut bb = EMPTY_BB;
@@ -41,11 +41,11 @@ pub fn generate_plynths() -> BitBoard {
 #[cfg(test)]
 mod tests {
     use crate::init;
-    use crate::plynths_set::generate_plynths;
+    use crate::plinths_set::generate_plinths;
     #[test]
-    fn generate_all_plynths() {
+    fn generate_all_plinths() {
         init();
-        let bb = generate_plynths();
+        let bb = generate_plinths();
         assert_eq!(bb.count(), 8);
     }
 }

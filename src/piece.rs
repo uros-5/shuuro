@@ -120,7 +120,7 @@ mod tests {
             ('N', PieceType::Knight, Color::Red),
             ('P', PieceType::Pawn, Color::Red),
             ('Q', PieceType::Queen, Color::Red),
-            ('L', PieceType::Plynth, Color::NoColor),
+            ('L', PieceType::Plinth, Color::NoColor),
         ];
         let ng_cases = ['\0', ' ', '_', 'a', 'z', '+', 'A', 'Z'];
 
@@ -162,7 +162,7 @@ mod tests {
         assert_eq!(
             "L",
             Piece {
-                piece_type: PieceType::Plynth,
+                piece_type: PieceType::Plinth,
                 color: Color::NoColor
             }
             .to_string()

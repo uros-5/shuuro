@@ -1,10 +1,9 @@
-use crate::sfen_str::SfenStr;
 use itertools::Itertools;
 use std::{fmt, vec};
 
 use crate::{
-    between, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard, Color, Hand, Move,
-    MoveError, Piece, PieceType, SfenError, Square, EMPTY_BB,
+    between, generate_plinths, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard,
+    Color, Hand, Move, MoveError, Piece, PieceType, SfenError, Square, EMPTY_BB, FILE_BB,
 };
 
 /// Outcome stores information about outcome after move.
@@ -67,7 +66,7 @@ impl PartialEq<Move> for MoveRecord {
 #[derive(Debug)]
 pub enum MoveType {
     Empty,
-    Plynth,
+    Plinth,
     NoKing { king: Square },
 }
 
@@ -75,7 +74,7 @@ impl MoveType {
     pub fn blockers(&self, position: &Position, c: &Color) -> BitBoard {
         match self {
             MoveType::Empty => EMPTY_BB,
-            MoveType::Plynth => &position.occupied_bb | &position.color_bb[2],
+            MoveType::Plinth => &position.occupied_bb | &position.color_bb[2],
             MoveType::NoKing { king } => {
                 &(&(&position.occupied_bb | &position.color_bb[2]) & &!&square_bb(king.to_owned()))
                     | &position.color_bb[c.index()]
@@ -87,7 +86,7 @@ impl MoveType {
         let primary_bb = &bb & &!&position.color_bb[p.color.index()];
         match self {
             MoveType::Empty => bb,
-            MoveType::Plynth => {
+            MoveType::Plinth => {
                 if p.piece_type != PieceType::Knight {
                     let bb = &(primary_bb) & &!&position.color_bb[2];
                     if p.piece_type == PieceType::Pawn {
@@ -254,7 +253,7 @@ impl Position {
     fn non_legal_moves(&self, square: &Square) -> BitBoard {
         let piece = self.piece_at(*square);
         match piece {
-            Some(i) => self.move_candidates(*square, *i, MoveType::Plynth),
+            Some(i) => self.move_candidates(*square, *i, MoveType::Plinth),
             None => EMPTY_BB,
         }
     }
@@ -355,7 +354,7 @@ impl Position {
                                 piece_type: PieceType::Queen,
                                 color: i.color,
                             },
-                            MoveType::Plynth,
+                            MoveType::Plinth,
                         ),
                     ),
                     (
@@ -366,7 +365,7 @@ impl Position {
                                 piece_type: PieceType::Rook,
                                 color: i.color,
                             },
-                            MoveType::Plynth,
+                            MoveType::Plinth,
                         ),
                     ),
                     (
@@ -377,7 +376,7 @@ impl Position {
                                 piece_type: PieceType::Bishop,
                                 color: i.color,
                             },
-                            MoveType::Plynth,
+                            MoveType::Plinth,
                         ),
                     ),
                     (
@@ -388,7 +387,7 @@ impl Position {
                                 piece_type: PieceType::Knight,
                                 color: i.color,
                             },
-                            MoveType::Plynth,
+                            MoveType::Plinth,
                         ),
                     ),
                 ]
@@ -632,6 +631,14 @@ impl Position {
             return Ok(Outcome::Check {
                 color: self.side_to_move,
             });
+        } else if (&self.color_bb[self.side_to_move.flip().index()]
+            & &self.type_bb[PieceType::King.index()])
+            .count()
+            == 0
+        {
+            return Ok(Outcome::Checkmate {
+                color: self.side_to_move.flip(),
+            });
         }
         self.is_stalemate(&self.side_to_move)?;
         Ok(Outcome::MoveOk)
@@ -750,7 +757,7 @@ impl Position {
             PieceType::Pawn => get_non_sliding_attacks(PieceType::Pawn, sq, p.color),
             PieceType::King => get_non_sliding_attacks(PieceType::King, sq, p.color),
             _ => EMPTY_BB,
-        };
+        }; 
         move_list.moves(&self, bb, p, sq)
     }
 
@@ -760,7 +767,7 @@ impl Position {
             to: Square::from_sfen(to).expect("This square does not exist."),
             promote: false,
         };
-        let outcome = self.make_move(m);
+        let outcome = self.make_move(m); 
         match outcome {
             Ok(i) => {
                 self.game_status = i;
@@ -926,45 +933,331 @@ impl Position {
         self.ply = s.parse()?;
         Ok(())
     }
-}
+    fn parse_sfen_board(&mut self, s: &str) -> Result<(), SfenError> {
+        let rows = s.split('/');
 
-/////////////////////////////////////////////////////////////////////////////
-// Trait implementations
-/////////////////////////////////////////////////////////////////////////////
-
-impl SfenStr for Position {
-    fn piece_at(&self, sq: Square) -> &Option<Piece> {
-        self.piece_at(sq)
-    }
-
-    fn player_bb(&self, c: Color) -> BitBoard {
-        self.color_bb[c.index()]
-    }
-
-    fn stm(&self) -> Color {
-        self.side_to_move
-    }
-
-    fn hand_get(&self, p: Piece) -> u8 {
-        self.hand(p)
-    }
-
-    fn ply(&self) -> u16 {
-        self.ply
-    }
-
-    fn set_piece(&mut self, sq: Square, p: Option<Piece>) {
-        self.set_piece(sq, p);
-    }
-
-    fn empty_bb(&mut self) {
         self.occupied_bb = BitBoard::empty();
         self.color_bb = Default::default();
         self.type_bb = Default::default();
+
+        for (i, row) in rows.enumerate() {
+            if i >= 12 {
+                return Err(SfenError::IllegalBoardState);
+            }
+
+            let mut j = 0;
+
+            let mut is_promoted = false;
+            for c in row.chars() {
+                match c {
+                    '+' => {
+                        is_promoted = true;
+                    }
+                    '0' => {
+                        let sq = Square::new(j, i as u8).unwrap();
+                        self.set_piece(sq, None);
+                        j += 1;
+                    }
+                    n if n.is_digit(11) => {
+                        if let Some(n) = n.to_digit(11) {
+                            for _ in 0..n {
+                                if j >= 12 {
+                                    return Err(SfenError::IllegalBoardState);
+                                }
+
+                                let sq = Square::new(j, i as u8).unwrap();
+
+                                self.set_piece(sq, None);
+
+                                j += 1;
+                            }
+                        }
+                    }
+                    s => match Piece::from_sfen(s) {
+                        Some(mut piece) => {
+                            if j >= 12 {
+                                return Err(SfenError::IllegalBoardState);
+                            }
+
+                            if is_promoted {
+                                if let Some(promoted) = piece.piece_type.promote() {
+                                    piece.piece_type = promoted;
+                                } else {
+                                    return Err(SfenError::IllegalPieceType);
+                                }
+                            }
+
+                            let sq = Square::new(j, i as u8).unwrap();
+                            if piece.piece_type == PieceType::Plinth {
+                                self.color_bb[piece.color.index()] |= sq;
+                                continue;
+                            }
+                            self.set_piece(sq, Some(piece));
+                            self.occupied_bb |= sq;
+                            self.color_bb[piece.color.index()] |= sq;
+                            self.type_bb[piece.piece_type.index()] |= sq;
+                            j += 1;
+                            is_promoted = false;
+                        }
+                        None => return Err(SfenError::IllegalPieceType),
+                    },
+                }
+            }
+        }
+
+        Ok(())
     }
 
-    fn update_color_bb(&mut self, c: Color, sq: Square) {
-        self.color_bb[c.index()] |= sq;
+    pub fn generate_sfen(&self) -> String {
+        fn add_num_space(num_spaces: i32, mut s: String) -> String {
+            if num_spaces == 10 {
+                s.push_str("55");
+            } else if num_spaces == 11 {
+                s.push_str("56");
+            } else if num_spaces == 12 {
+                s.push_str("57");
+            } else if num_spaces > 0 {
+                s.push_str(&num_spaces.to_string());
+            }
+            s
+        }
+        let board = (0..12)
+            .map(|row| {
+                let mut s = String::new();
+                let mut num_spaces = 0;
+                for file in 0..12 {
+                    let sq = Square::new(file, row).unwrap();
+                    match *self.piece_at(sq) {
+                        Some(pc) => {
+                            if num_spaces > 0 {
+                                let mut _s = add_num_space(num_spaces, s);
+                                s = _s;
+                                num_spaces = 0;
+                            }
+
+                            if (&self.color_bb[2] & sq).is_any() {
+                                if pc.piece_type == PieceType::Knight {
+                                    s.push_str("L");
+                                } else {
+                                    ()
+                                    //return Err(SfenError::IllegalPieceTypeOnPlinth);
+                                }
+                            }
+
+                            s.push_str(&pc.to_string());
+                        }
+                        None => {
+                            if (&self.color_bb[2] & sq).is_any() {
+                                let mut _s = add_num_space(num_spaces,s);
+                                s = _s;
+                                num_spaces = 0;
+                                s.push_str("L0");
+                            } else {
+                                num_spaces += 1;
+                            }
+                        }
+                    }
+                }
+
+                if num_spaces > 0 {
+                    let _s = add_num_space(num_spaces, s);
+                    s = _s;
+                    //num_spaces = 0;
+                }
+
+                s
+            })
+            .join("/");
+
+        let color = if self.side_to_move == Color::Blue {
+            "b"
+        } else {
+            "r"
+        };
+
+        let mut hand = [Color::Blue, Color::Red]
+            .iter()
+            .map(|c| {
+                PieceType::iter()
+                    .filter(|pt| pt.is_hand_piece())
+                    .map(|pt| {
+                        let pc = Piece {
+                            piece_type: pt,
+                            color: *c,
+                        };
+                        let n = self.hand.get(pc);
+
+                        if n == 0 {
+                            "".to_string()
+                        } else if n == 1 {
+                            format!("{}", pc)
+                        } else {
+                            format!("{}{}", n, pc)
+                        }
+                    })
+                    .join("")
+            })
+            .join("");
+
+        if hand.is_empty() {
+            hand = "-".to_string();
+        }
+
+        format!("{} {} {} {}", board, color, hand, self.ply)
+    }
+    //////////////////////////////////////////////
+    /// Hand from shop is recommended to call this function.
+    pub fn set_hand(&mut self, s: &str) {
+        self.hand.set_hand(&s);
+    }
+
+    /// Get hand for specific color (in order K..P).
+    pub fn get_hand(&mut self, c: Color) -> String {
+        return self.hand.to_sfen(c);
+    }
+
+
+    /////////////////////////////////////////////////////////////////////////////
+    // Deploy part in Shuuro.
+    /////////////////////////////////////////////////////////////////////////////
+
+    /// Squares for king to be placed.
+    fn king_squares(&self, c: &Color) -> BitBoard {
+        let files = ['d', 'e', 'f', 'g', 'h', 'i'];
+        let mut bb = EMPTY_BB;
+        let mut all = |num: usize| -> BitBoard {
+            for file in files {
+                bb |= Square::from_sfen(&format!("{}{}", file, num)[..]).unwrap();
+            }
+            bb
+        };
+        match *c {
+            Color::Blue => all(12),
+            Color::Red => all(1),
+            Color::NoColor => EMPTY_BB,
+        }
+    }
+
+    /// Available squares for selected piece.
+    pub fn empty_squares(&self, p: Piece) -> BitBoard {
+        let test = |p: Piece, list: [usize; 3]| -> BitBoard {
+            for file in list {
+                let mut bb = FILE_BB[file];
+                bb &= &!&self.color_bb[p.color.index()];
+                let plinths = self.color_bb[Color::NoColor.index()];
+                if bb.is_empty() {
+                    continue;
+                }
+                match p.piece_type {
+                    PieceType::Knight => {
+                        return bb;
+                    }
+                    PieceType::King => {
+                        return self.king_squares(&p.color);
+                    }
+                    PieceType::Pawn => {
+                        bb &= &!&plinths;
+                        if bb.is_empty() {
+                            continue;
+                        } else if self.can_pawn_move(p) {
+                            return bb;
+                        } else {
+                            return EMPTY_BB;
+                        }
+                    }
+                    _ => {
+                        bb &= &!&plinths;
+                        if bb.is_empty() {
+                            continue;
+                        }
+                        return bb;
+                    }
+                }
+            }
+            EMPTY_BB
+        };
+        let checks = self.checks(&p.color);
+        if checks.is_any() {
+            return checks;
+        }
+        match p.color {
+            Color::Red => test(p, [0, 1, 2]),
+            Color::Blue => test(p, [11, 10, 9]),
+            Color::NoColor => EMPTY_BB,
+        }
+    }
+    /// Returns BitBoard for all safe squares for selected side.
+    fn checks(&self, attacked_color: &Color) -> BitBoard {
+        let king = &self.type_bb[PieceType::King.index()] & &self.color_bb[attacked_color.index()];
+        if king.is_empty() {
+            return EMPTY_BB;
+        }
+        let mut all;
+        for p in [PieceType::Queen, PieceType::Rook, PieceType::Bishop] {
+            let bb = &self.type_bb[p.index()] & &self.color_bb[attacked_color.flip().index()];
+            for i in bb {
+                all = get_sliding_attacks(p, i, self.occupied_bb);
+                if (&all & &king).is_any() {
+                    match *attacked_color {
+                        Color::Red => {
+                            let files = &FILE_BB[1] | &FILE_BB[2];
+                            return &(&files & &all) & &!&king;
+                        }
+                        Color::Blue => {
+                            let files = &FILE_BB[9] | &FILE_BB[10];
+                            return &(&files & &all) & &!&king;
+                        }
+                        Color::NoColor => {
+                            return EMPTY_BB;
+                        }
+                    }
+                }
+            }
+        }
+        EMPTY_BB
+    }
+
+    /// Returns true if pawns can be placed on board.
+    fn can_pawn_move(&self, p: Piece) -> bool {
+        if self.is_hand_empty(&p.color, PieceType::Pawn) {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Returns true if hand with excluded piece is empty.
+    pub fn is_hand_empty(&self, c: &Color, excluded: PieceType) -> bool {
+        for pt in PieceType::iter() {
+            if pt != excluded {
+                let counter = self.hand.get(Piece {
+                    piece_type: pt,
+                    color: *c,
+                });
+                if counter != 0 {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    /// Placing piece on square.
+    pub fn place(&mut self, p: Piece, sq: Square) {
+        if self.hand.get(p) > 0 {
+            if (&self.empty_squares(p) & sq).is_any() {
+                self.update_bb(p, sq);
+                self.hand.decrement(p);
+                if !self.is_hand_empty(&p.color.flip(), PieceType::Plinth) {
+                    self.side_to_move = p.color.flip();
+                }
+            }
+        }
+    }
+
+    /// Generating random plinths.
+    pub fn generate_plinths(&mut self) {
+        self.color_bb[Color::NoColor.index()] = generate_plinths();
     }
 
     fn update_bb(&mut self, p: Piece, sq: Square) {
@@ -974,6 +1267,10 @@ impl SfenStr for Position {
         self.type_bb[p.piece_type.index()] |= sq;
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////
+// Trait implementations
+/////////////////////////////////////////////////////////////////////////////
 
 impl Default for Position {
     fn default() -> Position {
@@ -1053,7 +1350,6 @@ impl fmt::Display for Position {
 }
 #[cfg(test)]
 pub mod tests {
-    use crate::sfen_str::SfenStr;
     use crate::{consts::*, Move, MoveError};
     use crate::{init, Color, Piece, PieceType, Position, Square};
     pub const START_POS: &str = "KR55/57/57/57/57/57/57/57/57/57/57/kr55 b - 1";
@@ -1174,11 +1470,11 @@ pub mod tests {
                     println!(
                         "piece: {}, count: {}",
                         pc,
-                        pos.move_candidates(sq, pc, crate::position::MoveType::Plynth)
+                        pos.move_candidates(sq, pc, crate::position::MoveType::Plinth)
                             .count(),
                     );
                     sum += pos
-                        .move_candidates(sq, pc, crate::position::MoveType::Plynth)
+                        .move_candidates(sq, pc, crate::position::MoveType::Plinth)
                         .count();
                 }
             }
@@ -1188,7 +1484,7 @@ pub mod tests {
     }
 
     #[test]
-    fn move_candidates_plynth() {
+    fn move_candidates_plinth() {
         setup();
         let cases = [
             ("f2", PieceType::Rook, Color::Red, 13),
@@ -1204,7 +1500,7 @@ pub mod tests {
                     piece_type: case.1,
                     color: case.2,
                 },
-                crate::position::MoveType::Plynth,
+                crate::position::MoveType::Plinth,
             );
             assert_eq!(case.3, bb.count());
         }
@@ -1576,5 +1872,82 @@ pub mod tests {
             let moves_count = pos.legal_moves(&Square::from_sfen(case.1).unwrap()).count();
             assert_eq!(case.2, moves_count);
         }
+    }
+
+    #[test]
+    fn king_squares() {
+        let position_set = Position::default();
+        let cases = [
+            (Color::Blue, 6, [D12, E12, F12, G12, H12, I12]),
+            (Color::Red, 6, [D1, E1, F1, G1, H1, I1]),
+        ];
+        for case in cases {
+            let bb = position_set.king_squares(&case.0);
+            assert_eq!(bb.count(), case.1);
+            for sq in case.2 {
+                assert!((&bb & sq).is_any());
+            }
+        }
+    }
+
+    #[test]
+    fn is_hand_empty() {
+        setup();
+        let mut position_set = Position::default();
+        position_set
+            .parse_sfen_board("6K5/57/57/57/57/57/57/57/57/57/57/7k4")
+            .expect("error while parsing sfen");
+        position_set.set_hand("rrRqNNqq");
+        let cases = [
+            (PieceType::Knight, Color::Red, A1),
+            (PieceType::Queen, Color::Blue, D12),
+            (PieceType::Rook, Color::Red, C1),
+            (PieceType::Queen, Color::Blue, I12),
+            (PieceType::Knight, Color::Red, H1),
+            (PieceType::Rook, Color::Blue, B12),
+            (PieceType::Rook, Color::Blue, G12),
+            (PieceType::Queen, Color::Blue, F12),
+        ];
+        for case in cases {
+            position_set.place(
+                Piece {
+                    piece_type: case.0,
+                    color: case.1,
+                },
+                case.2,
+            );
+        }
+        assert!(position_set.is_hand_empty(&Color::Blue, PieceType::Plinth));
+        assert!(position_set.is_hand_empty(&Color::Red, PieceType::Plinth));
+    }
+
+    #[test]
+    fn generate_plinths() {
+        setup();
+        let mut position_set = Position::default();
+        position_set.generate_plinths();
+        assert_eq!(position_set.color_bb[Color::NoColor.index()].count(), 8);
+    }
+
+    #[test]
+    fn empty_squares() {
+        setup();
+        let mut position_set = Position::default();
+        position_set
+            .parse_sfen_board("5KRRR3/4PPPP4/57/5L06/57/57/57/57/57/57/57/L04kqqLn3")
+            .expect("error while parsing sfen");
+        position_set.set_hand("NrNNbrn");
+        let cases = [
+            (PieceType::Knight, Color::Blue, 8),
+            (PieceType::Bishop, Color::Blue, 7),
+        ];
+        for case in cases {
+            let file = position_set.empty_squares(Piece {
+                piece_type: case.0,
+                color: case.1,
+            });
+            assert_eq!(file.count(), case.2);
+        }
+        assert_eq!(position_set.get_hand(Color::Blue), "rrbn");
     }
 }
