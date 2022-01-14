@@ -8,8 +8,8 @@ use crate::{Color, Piece, PieceType};
 /// use shuuro::{Color, Hand, Piece, PieceType};
 ///
 /// let mut hand: Hand = Default::default();
-/// let blue_pawn = Piece{piece_type: PieceType::Pawn, color: Color::Blue};
-/// let red_pawn = Piece{piece_type: PieceType::Pawn, color: Color::Red};
+/// let blue_pawn = Piece{piece_type: PieceType::Pawn, color: Color::Black};
+/// let red_pawn = Piece{piece_type: PieceType::Pawn, color: Color::White};
 ///
 /// hand.set(blue_pawn, 2);
 /// hand.increment(blue_pawn);
@@ -95,7 +95,7 @@ impl Hand {
             PieceType::Pawn => 5,
             _ => return None,
         };
-        let offset = if p.color == Color::Blue { 0 } else { 6 };
+        let offset = if p.color == Color::Black { 0 } else { 6 };
 
         Some(base + offset)
     }

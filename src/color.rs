@@ -1,37 +1,37 @@
 use std::iter;
 
-///  Represents each side of player. Blue player moves first.
+///  Represents each side of player. Black player moves first.
 ///
 /// # Examples
 ///
 /// ```
 /// use shuuro::Color;
 ///
-/// let c = Color::Blue;
+/// let c = Color::Black;
 /// match c {
-///    Color::Blue => assert!(true),
-///    Color::Red => unreachable!(),
+///    Color::Black => assert!(true),
+///    Color::White => unreachable!(),
 ///    Color::NoColor => unreachable!()
 /// }
 /// ```
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Color {
-    Blue = 0,
-    Red = 1,
+    Black = 0,
+    White = 1,
     NoColor = 2,
 }
 
 impl Color {
     pub fn iter() -> ColorIter {
         ColorIter {
-            current: Some(Color::Blue),
+            current: Some(Color::Black),
         }
     }
     /// Returns an iterator of all variants.
     pub fn from_char(ch: char) -> Option<Color> {
         match ch {
-            'b' => Some(Color::Blue),
-            'r' => Some(Color::Red),
+            'b' => Some(Color::Black),
+            'r' => Some(Color::White),
             _ => Some(Color::NoColor),
         }
     }
@@ -42,12 +42,12 @@ impl Color {
     /// ```
     /// use shuuro::Color;
     ///
-    /// assert_eq!(Color::Red, Color::Blue.flip());
-    /// assert_eq!(Color::Blue, Color::Red.flip());
+    /// assert_eq!(Color::White, Color::Black.flip());
+    /// assert_eq!(Color::Black, Color::White.flip());
     pub fn flip(&self) -> Color {
         match self {
-            Color::Red => Color::Blue,
-            Color::Blue => Color::Red,
+            Color::White => Color::Black,
+            Color::Black => Color::White,
             _ => Color::NoColor,
         }
     }
@@ -69,8 +69,8 @@ impl iter::Iterator for ColorIter {
 
         if let Some(current) = self.current {
             self.current = match current {
-                Color::Blue => Some(Color::Red),
-                Color::Red => Some(Color::NoColor),
+                Color::Black => Some(Color::White),
+                Color::White => Some(Color::NoColor),
                 Color::NoColor => None,
             }
         }
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn flip() {
-        assert_eq!(Color::Red, Color::Blue.flip());
-        assert_eq!(Color::Blue, Color::Red.flip());
+        assert_eq!(Color::White, Color::Black.flip());
+        assert_eq!(Color::Black, Color::White.flip());
     }
 }

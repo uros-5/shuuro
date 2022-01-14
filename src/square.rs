@@ -137,9 +137,9 @@ impl Square {
         })
     }
 
-    /// Returns a relative rank as if the specified color is Blue.
+    /// Returns a relative rank as if the specified color is Black.
     pub fn relative_file(self, c: Color) -> u8 {
-        if c == Color::Blue {
+        if c == Color::Black {
             self.file()
         } else {
             11 - self.file()
@@ -149,14 +149,14 @@ impl Square {
     /// Tests if the square is in a promotion zone.
     pub fn in_promotion_zone(self, c: Color) -> bool {
         match c {
-            Color::Red => {
+            Color::White => {
                 if self.rank() == 11 {
                     true
                 } else {
                     false
                 }
             }
-            Color::Blue => {
+            Color::Black => {
                 if self.rank() == 0 {
                     true
                 } else {

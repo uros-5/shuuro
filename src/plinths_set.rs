@@ -11,7 +11,7 @@ fn two_plynths(ranks: &[char; 6], files: &[u8; 6]) -> BitBoard {
     };
     let sq_1 = gen_square();
     bb = &EMPTY_BB | sq_1;
-    let outside = get_non_sliding_attacks(PieceType::King, sq_1, Color::Red);
+    let outside = get_non_sliding_attacks(PieceType::King, sq_1, Color::White);
     loop {
         let sq_2 = gen_square();
         if (&outside & sq_2).is_empty() {

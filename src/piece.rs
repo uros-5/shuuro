@@ -15,10 +15,10 @@ impl Piece {
             if c == 'L' {
                 Color::NoColor
             } else {
-                Color::Red
+                Color::White
             }
         } else {
-            Color::Blue
+            Color::Black
         };
 
         PieceType::from_sfen(c).map(|piece_type| Piece { piece_type, color })
@@ -30,8 +30,8 @@ impl Piece {
     /// ```
     /// use shuuro::{Color, PieceType, Piece};
     ///
-    /// let pc1 = Piece{piece_type: PieceType::Pawn, color: Color::Blue};
-    /// let pc2 = Piece{piece_type: PieceType::Queen, color: Color::Blue};
+    /// let pc1 = Piece{piece_type: PieceType::Pawn, color: Color::Black};
+    /// let pc2 = Piece{piece_type: PieceType::Queen, color: Color::Black};
     ///
     /// assert_eq!(Some(pc2), pc1.promote());
     /// assert_eq!(None, pc2.promote());
@@ -50,8 +50,8 @@ impl Piece {
     /// ```
     /// use shuuro::{Color, PieceType, Piece};
     ///
-    /// let pc1 = Piece{piece_type: PieceType::Pawn, color: Color::Blue};
-    /// let pc2 = Piece{piece_type: PieceType::Queen, color: Color::Blue};
+    /// let pc1 = Piece{piece_type: PieceType::Pawn, color: Color::Black};
+    /// let pc2 = Piece{piece_type: PieceType::Queen, color: Color::Black};
     ///
     /// assert_eq!(Some(pc1), pc2.unpromote());
     /// assert_eq!(None, pc1.unpromote());
@@ -69,8 +69,8 @@ impl Piece {
     /// ```
     /// use shuuro::{Color, PieceType, Piece};
     ///
-    /// let pc1 = Piece{piece_type: PieceType::Pawn, color: Color::Blue};
-    /// let pc2 = Piece{piece_type: PieceType::Pawn, color: Color::Red};
+    /// let pc1 = Piece{piece_type: PieceType::Pawn, color: Color::Black};
+    /// let pc2 = Piece{piece_type: PieceType::Pawn, color: Color::White};
     ///
     /// assert_eq!(pc2, pc1.flip());
     /// assert_eq!(pc1, pc2.flip());
@@ -93,7 +93,7 @@ impl Piece {
 
 impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        if self.color == Color::Red {
+        if self.color == Color::White {
             write!(f, "{}", self.piece_type.to_string().to_uppercase())
         } else {
             write!(f, "{}", self.piece_type)
@@ -108,18 +108,18 @@ mod tests {
     #[test]
     fn from_sfen() {
         let ok_cases = [
-            ('k', PieceType::King, Color::Blue),
-            ('r', PieceType::Rook, Color::Blue),
-            ('b', PieceType::Bishop, Color::Blue),
-            ('n', PieceType::Knight, Color::Blue),
-            ('p', PieceType::Pawn, Color::Blue),
-            ('q', PieceType::Queen, Color::Blue),
-            ('K', PieceType::King, Color::Red),
-            ('R', PieceType::Rook, Color::Red),
-            ('B', PieceType::Bishop, Color::Red),
-            ('N', PieceType::Knight, Color::Red),
-            ('P', PieceType::Pawn, Color::Red),
-            ('Q', PieceType::Queen, Color::Red),
+            ('k', PieceType::King, Color::Black),
+            ('r', PieceType::Rook, Color::Black),
+            ('b', PieceType::Bishop, Color::Black),
+            ('n', PieceType::Knight, Color::Black),
+            ('p', PieceType::Pawn, Color::Black),
+            ('q', PieceType::Queen, Color::Black),
+            ('K', PieceType::King, Color::White),
+            ('R', PieceType::Rook, Color::White),
+            ('B', PieceType::Bishop, Color::White),
+            ('N', PieceType::Knight, Color::White),
+            ('P', PieceType::Pawn, Color::White),
+            ('Q', PieceType::Queen, Color::White),
             ('L', PieceType::Plinth, Color::NoColor),
         ];
         let ng_cases = ['\0', ' ', '_', 'a', 'z', '+', 'A', 'Z'];
@@ -150,11 +150,11 @@ mod tests {
         for case in ok_cases.iter() {
             let rpc = Piece {
                 piece_type: case.1,
-                color: Color::Red,
+                color: Color::White,
             };
             let bpc = Piece {
                 piece_type: case.1,
-                color: Color::Blue,
+                color: Color::Black,
             };
             assert_eq!(case.0.to_uppercase(), rpc.to_string());
             assert_eq!(case.0, bpc.to_string());
@@ -177,28 +177,28 @@ mod tests {
                 PieceType::Pawn => {
                     let bpc = Piece {
                         piece_type: i,
-                        color: Color::Blue,
+                        color: Color::Black,
                     }
                     .promote()
                     .unwrap();
                     assert_eq!(
                         Piece {
                             piece_type: PieceType::Queen,
-                            color: Color::Blue
+                            color: Color::Black
                         },
                         bpc
                     );
 
                     let rpc = Piece {
                         piece_type: i,
-                        color: Color::Red,
+                        color: Color::White,
                     }
                     .promote()
                     .unwrap();
                     assert_eq!(
                         Piece {
                             piece_type: PieceType::Queen,
-                            color: Color::Red
+                            color: Color::White
                         },
                         rpc
                     );
@@ -206,13 +206,13 @@ mod tests {
                 _ => {
                     assert!(Piece {
                         piece_type: i,
-                        color: Color::Red
+                        color: Color::White
                     }
                     .promote()
                     .is_none());
                     assert!(Piece {
                         piece_type: i,
-                        color: Color::Blue
+                        color: Color::Black
                     }
                     .promote()
                     .is_none());
@@ -230,11 +230,11 @@ mod tests {
                     assert_eq!(
                         Some(Piece {
                             piece_type: PieceType::Pawn,
-                            color: Color::Blue
+                            color: Color::Black
                         }),
                         Piece {
                             piece_type: i,
-                            color: Color::Blue
+                            color: Color::Black
                         }
                         .unpromote()
                     )
@@ -242,7 +242,7 @@ mod tests {
                 _ => {
                     assert!(Piece {
                         piece_type: i,
-                        color: Color::Blue
+                        color: Color::Black
                     }
                     .unpromote()
                     .is_none())
@@ -255,14 +255,14 @@ mod tests {
     fn flip() {
         let rpc = Piece {
             piece_type: PieceType::Pawn,
-            color: Color::Red,
+            color: Color::White,
         };
         let bpc = Piece {
             piece_type: PieceType::Pawn,
-            color: Color::Blue,
+            color: Color::Black,
         };
 
-        assert_eq!(Color::Blue, rpc.flip().color);
-        assert_eq!(Color::Red, bpc.flip().color);
+        assert_eq!(Color::Black, rpc.flip().color);
+        assert_eq!(Color::White, bpc.flip().color);
     }
 }

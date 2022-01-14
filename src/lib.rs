@@ -10,10 +10,10 @@
 //!
 //! let mut shop = Shop::default();
 //! for i in 0..5 {
-//!     shop.buy(Piece{piece_type: PieceType::Queen, color: Color::Blue});
+//!     shop.buy(Piece{piece_type: PieceType::Queen, color: Color::Black});
 //! }
-//! assert_ne!(shop.to_sfen(Color::Blue), "kqqqq");
-//! assert_eq!(shop.credit(Color::Blue), 800 - 110 * 3);
+//! assert_ne!(shop.to_sfen(Color::Black), "kqqqq");
+//! assert_eq!(shop.credit(Color::Black), 800 - 110 * 3);
 //! ```
 //!
 //! Shuuro deploy - placing pieces on board:
@@ -23,8 +23,8 @@
 //! init();
 //! let mut pos = Position::default();
 //! pos.set_hand("KQQNNBkrrrqnnPPP");
-//! pos.place(Piece{ piece_type: PieceType::King, color: Color::Red }, D1);
-//! pos.place(Piece{ piece_type: PieceType::King, color: Color::Blue }, F12);
+//! pos.place(Piece{ piece_type: PieceType::King, color: Color::White }, D1);
+//! pos.place(Piece{ piece_type: PieceType::King, color: Color::Black }, F12);
 //! assert_eq!(pos.generate_sfen(), "3K8/57/57/57/57/57/57/57/57/57/57/5k6 r q3r2n2QB2N3P 1");
 //! ```
 //!

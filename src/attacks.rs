@@ -105,12 +105,12 @@ fn init_pawn_attacks() {
             if new_index > 0 && new_index < 144 {
                 current_attack = SQUARE_BB[new_index as usize];
                 match dir {
-                    13 => add(i, Color::Red, &current_attack & &!&RANK_BB[0]),
-                    11 => add(i, Color::Red, &current_attack & &!&RANK_BB[11]),
-                    12 => add(i, Color::Red, current_attack),
-                    -11 => add(i, Color::Blue, &current_attack & &!&RANK_BB[0]),
-                    -13 => add(i, Color::Blue, &current_attack & &!&RANK_BB[11]),
-                    -12 => add(i, Color::Blue, current_attack),
+                    13 => add(i, Color::White, &current_attack & &!&RANK_BB[0]),
+                    11 => add(i, Color::White, &current_attack & &!&RANK_BB[11]),
+                    12 => add(i, Color::White, current_attack),
+                    -11 => add(i, Color::Black, &current_attack & &!&RANK_BB[0]),
+                    -13 => add(i, Color::Black, &current_attack & &!&RANK_BB[11]),
+                    -12 => add(i, Color::Black, current_attack),
                     _ => (),
                 }
             }
@@ -138,9 +138,9 @@ fn init_knight_attacks() {
             }
         }
         unsafe {
-            NON_SLIDING_ATTACKS[Color::Red as usize][PieceType::Knight as usize][i as usize] =
+            NON_SLIDING_ATTACKS[Color::White as usize][PieceType::Knight as usize][i as usize] =
                 attacks;
-            NON_SLIDING_ATTACKS[Color::Blue as usize][PieceType::Knight as usize][i as usize] =
+            NON_SLIDING_ATTACKS[Color::Black as usize][PieceType::Knight as usize][i as usize] =
                 attacks;
         }
     }
@@ -164,9 +164,9 @@ fn init_king_attacks() {
             }
         }
         unsafe {
-            NON_SLIDING_ATTACKS[Color::Red as usize][PieceType::King as usize][i as usize] =
+            NON_SLIDING_ATTACKS[Color::White as usize][PieceType::King as usize][i as usize] =
                 attacks;
-            NON_SLIDING_ATTACKS[Color::Blue as usize][PieceType::King as usize][i as usize] =
+            NON_SLIDING_ATTACKS[Color::Black as usize][PieceType::King as usize][i as usize] =
                 attacks;
         }
     }

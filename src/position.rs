@@ -92,10 +92,10 @@ impl MoveType {
                     if p.piece_type == PieceType::Pawn {
                         let sq = {
                             match p.color {
-                                Color::Red => {
+                                Color::White => {
                                     Square::from_index(sq.index() as u8 + 12 as u8).unwrap()
                                 }
-                                Color::Blue => {
+                                Color::Black => {
                                     Square::from_index(sq.index() as u8 - 12 as u8).unwrap()
                                 }
                                 Color::NoColor => sq,
@@ -910,8 +910,8 @@ impl Position {
 
     fn parse_sfen_stm(&mut self, s: &str) -> Result<(), SfenError> {
         self.side_to_move = match s {
-            "b" => Color::Blue,
-            "r" => Color::Red,
+            "b" => Color::Black,
+            "r" => Color::White,
             _ => return Err(SfenError::IllegalSideToMove),
         };
         Ok(())
@@ -1086,13 +1086,13 @@ impl Position {
             })
             .join("/");
 
-        let color = if self.side_to_move == Color::Blue {
+        let color = if self.side_to_move == Color::Black {
             "b"
         } else {
             "r"
         };
 
-        let mut hand = [Color::Blue, Color::Red]
+        let mut hand = [Color::Black, Color::White]
             .iter()
             .map(|c| {
                 PieceType::iter()
@@ -1148,8 +1148,8 @@ impl Position {
             bb
         };
         match *c {
-            Color::Blue => all(12),
-            Color::Red => all(1),
+            Color::Black => all(12),
+            Color::White => all(1),
             Color::NoColor => EMPTY_BB,
         }
     }
@@ -1199,8 +1199,8 @@ impl Position {
             return EMPTY_BB;
         }
         match p.color {
-            Color::Red => test(p, [0, 1, 2]),
-            Color::Blue => test(p, [11, 10, 9]),
+            Color::White => test(p, [0, 1, 2]),
+            Color::Black => test(p, [11, 10, 9]),
             Color::NoColor => EMPTY_BB,
         }
     }
@@ -1226,11 +1226,11 @@ impl Position {
                 all = get_sliding_attacks(p, i, self.occupied_bb);
                 if (&all & &king).is_any() {
                     match *attacked_color {
-                        Color::Red => {
+                        Color::White => {
                             let files = &FILE_BB[1] | &FILE_BB[2];
                             return &(&files & &all) & &!&king;
                         }
-                        Color::Blue => {
+                        Color::Black => {
                             let files = &FILE_BB[9] | &FILE_BB[10];
                             return &(&files & &all) & &!&king;
                         }
@@ -1302,7 +1302,7 @@ impl Position {
 impl Default for Position {
     fn default() -> Position {
         Position {
-            side_to_move: Color::Blue,
+            side_to_move: Color::Black,
             board: PieceGrid([None; 144]),
             hand: Default::default(),
             ply: 1,
@@ -1341,10 +1341,10 @@ impl fmt::Display for Position {
         writeln!(
             f,
             "Side to move: {}",
-            if self.side_to_move == Color::Blue {
-                "Blue"
+            if self.side_to_move == Color::Black {
+                "Black"
             } else {
-                "Red"
+                "White"
             }
         )?;
 
@@ -1362,12 +1362,12 @@ impl fmt::Display for Position {
             }
             Ok(())
         };
-        write!(f, "Hand (Blue): ")?;
-        fmt_hand(Color::Blue, f)?;
+        write!(f, "Hand (Black): ")?;
+        fmt_hand(Color::Black, f)?;
         writeln!(f)?;
 
-        write!(f, "Hand (Red): ")?;
-        fmt_hand(Color::Red, f)?;
+        write!(f, "Hand (White): ")?;
+        fmt_hand(Color::White, f)?;
         writeln!(f)?;
 
         write!(f, "Ply: {}", self.ply)?;
@@ -1393,7 +1393,7 @@ pub mod tests {
         let sq = Square::from_index(132).unwrap();
         let piece = Piece {
             piece_type: PieceType::King,
-            color: Color::Blue,
+            color: Color::Black,
         };
 
         assert_eq!(Some(piece), *pos.piece_at(sq));
@@ -1421,8 +1421,8 @@ pub mod tests {
         let mut pos = Position::new();
         for case in cases {
             pos.set_sfen(case.0).expect("faled to parse SFEN string");
-            let blue = pos.player_bb(Color::Blue);
-            let red = pos.player_bb(Color::Red);
+            let blue = pos.player_bb(Color::Black);
+            let red = pos.player_bb(Color::White);
 
             assert_eq!(case.1.len(), blue.count() as usize);
             for sq in case.1 {
@@ -1465,8 +1465,8 @@ pub mod tests {
         let mut pos = Position::new();
         for case in cases {
             pos.set_sfen(case.0).expect("faled to parse SFEN string");
-            let blue = pos.pinned_bb(Color::Blue);
-            let red = pos.pinned_bb(Color::Red);
+            let blue = pos.pinned_bb(Color::Black);
+            let red = pos.pinned_bb(Color::White);
 
             assert_eq!(case.1.len(), blue.count());
             for sq in case.1 {
@@ -1514,8 +1514,8 @@ pub mod tests {
     fn move_candidates_plinth() {
         setup();
         let cases = [
-            ("f2", PieceType::Rook, Color::Red, 13),
-            ("e7", PieceType::Knight, Color::Blue, 7),
+            ("f2", PieceType::Rook, Color::White, 13),
+            ("e7", PieceType::Knight, Color::Black, 7),
         ];
         let mut pos = Position::new();
         pos.set_sfen("57/5R5K/57/57/3b1L04k1/55b1/4n7/57/55R1/57/57/57 r - 1")
@@ -1564,8 +1564,8 @@ pub mod tests {
         let mut pos = Position::new();
         for case in test_cases.iter() {
             pos.set_sfen(case.0).expect("failed to parse SFEN string");
-            assert_eq!(case.1, pos.in_check(Color::Blue));
-            assert_eq!(case.2, pos.in_check(Color::Red));
+            assert_eq!(case.1, pos.in_check(Color::Black));
+            assert_eq!(case.2, pos.in_check(Color::White));
         }
     }
 
@@ -1576,17 +1576,17 @@ pub mod tests {
             (
                 "1K8r1/9rr1/57/57/57/57/57/57/57/k11/57/57 b - 1",
                 true,
-                Color::Red,
+                Color::White,
             ),
             (
                 "5RNB4/5K4r1/6B5/57/57/57/57/57/ppppp7/57/57/9k2 r - 1",
                 false,
-                Color::Blue,
+                Color::Black,
             ),
             (
                 "12/57/7k3Q/57/57/KRn9/57/57/57/57/57/57 b - 1",
                 false,
-                Color::Red,
+                Color::White,
             ),
         ];
         for case in cases.iter() {
@@ -1790,38 +1790,38 @@ pub mod tests {
         pos.set_sfen("2RNBKQBNR2/57/2PPPPPPPP2/57/57/57/57/57/57/2pppppppp2/57/2rnbkqbnr2 b - 1")
             .expect("failed to parse SFEN string");
         let filled_squares = [
-            (0, 2, PieceType::Rook, Color::Red),
-            (0, 3, PieceType::Knight, Color::Red),
-            (0, 4, PieceType::Bishop, Color::Red),
-            (0, 5, PieceType::King, Color::Red),
-            (0, 6, PieceType::Queen, Color::Red),
-            (0, 7, PieceType::Bishop, Color::Red),
-            (0, 8, PieceType::Knight, Color::Red),
-            (0, 9, PieceType::Rook, Color::Red),
-            (2, 2, PieceType::Pawn, Color::Red),
-            (2, 3, PieceType::Pawn, Color::Red),
-            (2, 4, PieceType::Pawn, Color::Red),
-            (2, 5, PieceType::Pawn, Color::Red),
-            (2, 6, PieceType::Pawn, Color::Red),
-            (2, 7, PieceType::Pawn, Color::Red),
-            (2, 8, PieceType::Pawn, Color::Red),
-            (2, 9, PieceType::Pawn, Color::Red),
-            (9, 2, PieceType::Pawn, Color::Blue),
-            (9, 3, PieceType::Pawn, Color::Blue),
-            (9, 4, PieceType::Pawn, Color::Blue),
-            (9, 5, PieceType::Pawn, Color::Blue),
-            (9, 6, PieceType::Pawn, Color::Blue),
-            (9, 7, PieceType::Pawn, Color::Blue),
-            (9, 8, PieceType::Pawn, Color::Blue),
-            (9, 9, PieceType::Pawn, Color::Blue),
-            (11, 2, PieceType::Rook, Color::Blue),
-            (11, 3, PieceType::Knight, Color::Blue),
-            (11, 4, PieceType::Bishop, Color::Blue),
-            (11, 5, PieceType::King, Color::Blue),
-            (11, 6, PieceType::Queen, Color::Blue),
-            (11, 7, PieceType::Bishop, Color::Blue),
-            (11, 8, PieceType::Knight, Color::Blue),
-            (11, 9, PieceType::Rook, Color::Blue),
+            (0, 2, PieceType::Rook, Color::White),
+            (0, 3, PieceType::Knight, Color::White),
+            (0, 4, PieceType::Bishop, Color::White),
+            (0, 5, PieceType::King, Color::White),
+            (0, 6, PieceType::Queen, Color::White),
+            (0, 7, PieceType::Bishop, Color::White),
+            (0, 8, PieceType::Knight, Color::White),
+            (0, 9, PieceType::Rook, Color::White),
+            (2, 2, PieceType::Pawn, Color::White),
+            (2, 3, PieceType::Pawn, Color::White),
+            (2, 4, PieceType::Pawn, Color::White),
+            (2, 5, PieceType::Pawn, Color::White),
+            (2, 6, PieceType::Pawn, Color::White),
+            (2, 7, PieceType::Pawn, Color::White),
+            (2, 8, PieceType::Pawn, Color::White),
+            (2, 9, PieceType::Pawn, Color::White),
+            (9, 2, PieceType::Pawn, Color::Black),
+            (9, 3, PieceType::Pawn, Color::Black),
+            (9, 4, PieceType::Pawn, Color::Black),
+            (9, 5, PieceType::Pawn, Color::Black),
+            (9, 6, PieceType::Pawn, Color::Black),
+            (9, 7, PieceType::Pawn, Color::Black),
+            (9, 8, PieceType::Pawn, Color::Black),
+            (9, 9, PieceType::Pawn, Color::Black),
+            (11, 2, PieceType::Rook, Color::Black),
+            (11, 3, PieceType::Knight, Color::Black),
+            (11, 4, PieceType::Bishop, Color::Black),
+            (11, 5, PieceType::King, Color::Black),
+            (11, 6, PieceType::Queen, Color::Black),
+            (11, 7, PieceType::Bishop, Color::Black),
+            (11, 8, PieceType::Knight, Color::Black),
+            (11, 9, PieceType::Rook, Color::Black),
         ];
 
         let empty_squares = [(0, 0, 12), (0, 11, 12), (5, 5, 4)];
@@ -1858,19 +1858,19 @@ pub mod tests {
                 n,
                 pos.hand(Piece {
                     piece_type: pt,
-                    color: Color::Blue,
+                    color: Color::Black,
                 })
             );
             assert_eq!(
                 n,
                 pos.hand(Piece {
                     piece_type: pt,
-                    color: Color::Red,
+                    color: Color::White,
                 })
             );
         }
 
-        assert_eq!(Color::Blue, pos.side_to_move());
+        assert_eq!(Color::Black, pos.side_to_move());
         assert_eq!(1, pos.ply());
     }
 
@@ -1905,8 +1905,8 @@ pub mod tests {
     fn king_squares() {
         let position_set = Position::default();
         let cases = [
-            (Color::Blue, 6, [D12, E12, F12, G12, H12, I12]),
-            (Color::Red, 6, [D1, E1, F1, G1, H1, I1]),
+            (Color::Black, 6, [D12, E12, F12, G12, H12, I12]),
+            (Color::White, 6, [D1, E1, F1, G1, H1, I1]),
         ];
         for case in cases {
             let bb = position_set.king_squares(&case.0);
@@ -1926,14 +1926,14 @@ pub mod tests {
             .expect("error while parsing sfen");
         position_set.set_hand("rrRqNNqq");
         let cases = [
-            (PieceType::Knight, Color::Red, A1),
-            (PieceType::Queen, Color::Blue, D12),
-            (PieceType::Rook, Color::Red, C1),
-            (PieceType::Queen, Color::Blue, I12),
-            (PieceType::Knight, Color::Red, H1),
-            (PieceType::Rook, Color::Blue, B12),
-            (PieceType::Rook, Color::Blue, G12),
-            (PieceType::Queen, Color::Blue, F12),
+            (PieceType::Knight, Color::White, A1),
+            (PieceType::Queen, Color::Black, D12),
+            (PieceType::Rook, Color::White, C1),
+            (PieceType::Queen, Color::Black, I12),
+            (PieceType::Knight, Color::White, H1),
+            (PieceType::Rook, Color::Black, B12),
+            (PieceType::Rook, Color::Black, G12),
+            (PieceType::Queen, Color::Black, F12),
         ];
         for case in cases {
             position_set.place(
@@ -1944,8 +1944,8 @@ pub mod tests {
                 case.2,
             );
         }
-        assert!(position_set.is_hand_empty(&Color::Blue, PieceType::Plinth));
-        assert!(position_set.is_hand_empty(&Color::Red, PieceType::Plinth));
+        assert!(position_set.is_hand_empty(&Color::Black, PieceType::Plinth));
+        assert!(position_set.is_hand_empty(&Color::White, PieceType::Plinth));
     }
 
     #[test]
@@ -1965,8 +1965,8 @@ pub mod tests {
             .expect("error while parsing sfen");
         position_set.set_hand("NrNNbrn");
         let cases = [
-            (PieceType::Knight, Color::Blue, 8),
-            (PieceType::Bishop, Color::Blue, 7),
+            (PieceType::Knight, Color::Black, 8),
+            (PieceType::Bishop, Color::Black, 7),
         ];
         for case in cases {
             let file = position_set.empty_squares(Piece {
@@ -1975,6 +1975,6 @@ pub mod tests {
             });
             assert_eq!(file.count(), case.2);
         }
-        assert_eq!(position_set.get_hand(Color::Blue), "rrbn");
+        assert_eq!(position_set.get_hand(Color::Black), "rrbn");
     }
 }

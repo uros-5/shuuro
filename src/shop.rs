@@ -105,12 +105,12 @@ mod tests {
     #[test]
     fn buy() {
         let cases = [
-            (PieceType::Pawn, Color::Red, 4),
-            (PieceType::Queen, Color::Red, 2),
-            (PieceType::Bishop, Color::Blue, 3),
-            (PieceType::Rook, Color::Blue, 3),
-            (PieceType::Queen, Color::Blue, 3),
-            (PieceType::Pawn, Color::Blue, 3),
+            (PieceType::Pawn, Color::White, 4),
+            (PieceType::Queen, Color::White, 2),
+            (PieceType::Bishop, Color::Black, 3),
+            (PieceType::Rook, Color::Black, 3),
+            (PieceType::Queen, Color::Black, 3),
+            (PieceType::Pawn, Color::Black, 3),
         ];
         let mut shop = Shop::default();
         for case in cases.iter() {
@@ -123,18 +123,18 @@ mod tests {
             }
             assert_eq!(shop.get(p), case.2);
         }
-        shop.confirm(Color::Red);
-        assert_eq!(shop.credit(Color::Red), 800 - 260);
-        assert_eq!(shop.credit(Color::Blue), 800 - 690);
-        assert_ne!(shop.is_confirmed(Color::Blue), true);
-        assert_eq!(shop.is_confirmed(Color::Red), true);
+        shop.confirm(Color::White);
+        assert_eq!(shop.credit(Color::White), 800 - 260);
+        assert_eq!(shop.credit(Color::Black), 800 - 690);
+        assert_ne!(shop.is_confirmed(Color::Black), true);
+        assert_eq!(shop.is_confirmed(Color::White), true);
     }
 
     #[test]
     fn set_hand() {
         let cases = [
-            ("RRPPnnnQQ", Color::Red, 380, "KQQRRPP"),
-            ("nQrrPnNQqqqqqbbr", Color::Blue, 700, "kqqqrrrbbnn"),
+            ("RRPPnnnQQ", Color::White, 380, "KQQRRPP"),
+            ("nQrrPnNQqqqqqbbr", Color::Black, 700, "kqqqrrrbbnn"),
         ];
         for case in cases {
             let mut shop = Shop::default();
