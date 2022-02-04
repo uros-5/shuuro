@@ -6,6 +6,15 @@ const ASCII_12: u8 = 12;
 const ASCII_LOWER_A: u8 = b'a';
 const ASCII_LOWER_L: u8 = b'l';
 
+/*
+
+const ASCII_8: u8 = 8;
+const ASCII_LOWER_H: u8 = b'h';
+
+const ASCII_6: u8 = 6;
+const ASCII_LOWER_F: u8 = b'f';
+*/
+
 /// Represents a position of each cell in the game board.
 ///
 /// # Examples
