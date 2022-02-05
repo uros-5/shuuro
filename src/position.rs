@@ -3,7 +3,8 @@ use std::{fmt, vec};
 
 use crate::{
     between, generate_plinths, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard,
-    Color, Hand, Move, MoveError, MoveRecord, Piece, PieceType, SfenError, Square, EMPTY_BB, FILE_BB,
+    Color, Hand, Move, MoveError, MoveRecord, Piece, PieceType, SfenError, Square, EMPTY_BB,
+    FILE_BB,
 };
 
 /// Outcome stores information about outcome after move.
@@ -1235,6 +1236,14 @@ impl Position {
             if (&self.empty_squares(p) & sq).is_any() {
                 self.update_bb(p, sq);
                 self.hand.decrement(p);
+                let move_record = MoveRecord::Put { to: sq, piece: p };
+                let sfen = self.generate_sfen().split(" ").next().unwrap().to_string();
+                let hand = self.get_hand(Color::White) + &self.get_hand(Color::Black)[..];
+                self.sfen_history.push((
+                    format!("{}_{}_{}", &move_record.to_sfen(), &sfen.clone(), hand),
+                    1,
+                ));
+                self.move_history.push(move_record);
                 if !self.is_hand_empty(&p.color.flip(), PieceType::Plinth) {
                     self.side_to_move = p.color.flip();
                 }

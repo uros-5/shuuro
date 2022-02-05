@@ -107,7 +107,6 @@ impl fmt::Display for Move {
     }
 }
 
-
 /// MoveRecord stores information necessary to undo the move.
 #[derive(Debug)]
 pub enum MoveRecord {
@@ -124,7 +123,7 @@ pub enum MoveRecord {
         placed: Piece,
         captured: Option<Piece>,
         promoted: bool,
-    }
+    },
 }
 
 impl MoveRecord {
@@ -136,7 +135,6 @@ impl MoveRecord {
             MoveRecord::Normal {
                 from, to, promoted, ..
             } => format!("{}_{}{}", from, to, if promoted { "*" } else { "" }),
-            
         }
     }
 }
@@ -172,7 +170,6 @@ impl PartialEq<Move> for MoveRecord {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

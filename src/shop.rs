@@ -1,4 +1,4 @@
-use crate::{Color, Hand, Piece, PieceType, MoveRecord, Move};
+use crate::{Color, Hand, Move, MoveRecord, Piece, PieceType};
 
 fn get_pricing() -> [(i32, u8); 7] {
     let prices = [0, 110, 70, 40, 40, 10, 0];
@@ -19,7 +19,7 @@ pub struct Shop {
     pricing: [(i32, u8); 7],
     move_history: Vec<MoveRecord>,
     sfen_history: Vec<(String, u8)>,
-    side_to_move: Color
+    side_to_move: Color,
 }
 
 impl Shop {
@@ -32,21 +32,21 @@ impl Shop {
                     if self.credit[piece.color.index()] >= piece_price as i32 {
                         if self.hand.get(piece) < piece_count {
                             self.hand.increment(piece);
-                            self.credit[piece.color.index()] = self.credit(piece.color) - piece_price;
+                            self.credit[piece.color.index()] =
+                                self.credit(piece.color) - piece_price;
                             let move_record = MoveRecord::Buy { piece };
-                            self.sfen_history.push( (move_record.to_sfen().clone(), self.hand.get(piece)));
+                            self.sfen_history
+                                .push((move_record.to_sfen().clone(), self.hand.get(piece)));
                             self.move_history.push(move_record);
-                            
                         }
                         if self.credit[piece.color.index()] == 0 {
                             self.confirm(piece.color);
                         }
                     }
                 }
-            },
-            _ => ()
+            }
+            _ => (),
         }
-
     }
 
     /// Confirm your choice of pieces.
@@ -59,7 +59,9 @@ impl Shop {
     /// Set hand from string. Panics if wrong piece is found.
     pub fn set_hand(&mut self, s: &str) {
         for i in s.chars() {
-            self.play(Move::Buy{ piece: Piece::from_sfen(i).unwrap()});
+            self.play(Move::Buy {
+                piece: Piece::from_sfen(i).unwrap(),
+            });
         }
     }
     /// Converts entire hand by color to string.
@@ -86,10 +88,12 @@ impl Shop {
     fn set_kings(&mut self) {
         for c in Color::iter() {
             if c != Color::NoColor {
-                self.play(Move::Buy { piece: Piece {
-                    piece_type: PieceType::King,
-                    color: c,
-                }});
+                self.play(Move::Buy {
+                    piece: Piece {
+                        piece_type: PieceType::King,
+                        color: c,
+                    },
+                });
             }
         }
     }
@@ -111,7 +115,6 @@ impl Default for Shop {
             move_history: Default::default(),
             sfen_history: Default::default(),
             side_to_move: Color::White,
-            
         };
         shop.set_kings();
         shop
@@ -121,7 +124,7 @@ impl Default for Shop {
 #[cfg(test)]
 mod tests {
 
-    use crate::{Color, Piece, PieceType, Move};
+    use crate::{Color, Move, Piece, PieceType};
 
     use super::Shop;
 
@@ -142,7 +145,7 @@ mod tests {
                 color: case.1,
             };
             for _i in 0..case.2 {
-                shop.play(Move::Buy{ piece });
+                shop.play(Move::Buy { piece });
             }
             assert_eq!(shop.get(piece), case.2);
         }

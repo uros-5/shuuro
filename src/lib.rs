@@ -24,7 +24,7 @@
 //! init();
 //! let mut pos = Position::default();
 //! pos.set_hand("KQQNNBkrrrqnnPPP");
-//! 
+//!
 //! let white_king = (Piece{ piece_type: PieceType::King, color: Color::White }, D1);
 //! let black_king = (Piece{ piece_type: PieceType::King, color: Color::Black }, F12);
 //! pos.place(white_king.0, white_king.1 );
