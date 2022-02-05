@@ -107,6 +107,73 @@ impl fmt::Display for Move {
     }
 }
 
+
+/// MoveRecord stores information necessary to undo the move.
+#[derive(Debug)]
+pub enum MoveRecord {
+    Buy {
+        piece: Piece,
+    },
+    Put {
+        to: Square,
+        piece: Piece,
+    },
+    Normal {
+        from: Square,
+        to: Square,
+        placed: Piece,
+        captured: Option<Piece>,
+        promoted: bool,
+    }
+}
+
+impl MoveRecord {
+    /// Converts the move into SFEN formatted string.
+    pub fn to_sfen(&self) -> String {
+        match *self {
+            MoveRecord::Buy { piece } => format!("+{}", piece),
+            MoveRecord::Put { to, piece } => format!("{}@{}", piece, to),
+            MoveRecord::Normal {
+                from, to, promoted, ..
+            } => format!("{}_{}{}", from, to, if promoted { "*" } else { "" }),
+            
+        }
+    }
+}
+
+impl PartialEq<Move> for MoveRecord {
+    fn eq(&self, other: &Move) -> bool {
+        match (self, other) {
+            (
+                &MoveRecord::Normal {
+                    from: f1,
+                    to: t1,
+                    promoted,
+                    ..
+                },
+                &Move::Normal {
+                    from: f2,
+                    to: t2,
+                    promote,
+                },
+            ) => f1 == f2 && t1 == t2 && promote == promoted,
+            (&MoveRecord::Buy { piece: piece1 }, &Move::Buy { piece: piece2 }) => piece1 == piece2,
+            (
+                &MoveRecord::Put {
+                    to: to1,
+                    piece: piece1,
+                },
+                &Move::Put {
+                    to: to2,
+                    piece: piece2,
+                },
+            ) => to1 == to2 && piece1 == piece2,
+            _ => false,
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

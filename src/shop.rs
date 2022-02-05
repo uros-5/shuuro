@@ -1,4 +1,4 @@
-use crate::{Color, Hand, Piece, PieceType};
+use crate::{Color, Hand, Piece, PieceType, MoveRecord, Move};
 
 fn get_pricing() -> [(i32, u8); 7] {
     let prices = [0, 110, 70, 40, 40, 10, 0];
@@ -17,23 +17,36 @@ pub struct Shop {
     hand: Hand,
     confirmed: [bool; 2],
     pricing: [(i32, u8); 7],
+    move_history: Vec<MoveRecord>,
+    sfen_history: Vec<(String, u8)>,
+    side_to_move: Color
 }
 
 impl Shop {
     /// Buying piece with specific color.
-    pub fn buy(&mut self, p: Piece) {
-        if !self.is_confirmed(p.color) {
-            let (piece_price, piece_count) = self.pricing[p.piece_type.index()];
-            if self.credit[p.color.index()] >= piece_price as i32 {
-                if self.hand.get(p) < piece_count {
-                    self.hand.increment(p);
-                    self.credit[p.color.index()] = self.credit(p.color) - piece_price;
+    pub fn play(&mut self, mv: Move) {
+        match mv {
+            Move::Buy { piece } => {
+                if !self.is_confirmed(piece.color) {
+                    let (piece_price, piece_count) = self.pricing[piece.piece_type.index()];
+                    if self.credit[piece.color.index()] >= piece_price as i32 {
+                        if self.hand.get(piece) < piece_count {
+                            self.hand.increment(piece);
+                            self.credit[piece.color.index()] = self.credit(piece.color) - piece_price;
+                            let move_record = MoveRecord::Buy { piece };
+                            self.sfen_history.push( (move_record.to_sfen().clone(), self.hand.get(piece)));
+                            self.move_history.push(move_record);
+                            
+                        }
+                        if self.credit[piece.color.index()] == 0 {
+                            self.confirm(piece.color);
+                        }
+                    }
                 }
-                if self.credit[p.color.index()] == 0 {
-                    self.confirm(p.color);
-                }
-            }
+            },
+            _ => ()
         }
+
     }
 
     /// Confirm your choice of pieces.
@@ -46,7 +59,7 @@ impl Shop {
     /// Set hand from string. Panics if wrong piece is found.
     pub fn set_hand(&mut self, s: &str) {
         for i in s.chars() {
-            self.buy(Piece::from_sfen(i).unwrap());
+            self.play(Move::Buy{ piece: Piece::from_sfen(i).unwrap()});
         }
     }
     /// Converts entire hand by color to string.
@@ -73,11 +86,17 @@ impl Shop {
     fn set_kings(&mut self) {
         for c in Color::iter() {
             if c != Color::NoColor {
-                self.buy(Piece {
+                self.play(Move::Buy { piece: Piece {
                     piece_type: PieceType::King,
                     color: c,
-                });
+                }});
             }
+        }
+    }
+
+    pub fn set_sfen_history(&mut self, history: Vec<(String, u8)>) {
+        for i in history {
+            self.sfen_history.push(i);
         }
     }
 }
@@ -89,6 +108,10 @@ impl Default for Shop {
             hand: Hand::default(),
             confirmed: [false, false],
             pricing: get_pricing(),
+            move_history: Default::default(),
+            sfen_history: Default::default(),
+            side_to_move: Color::White,
+            
         };
         shop.set_kings();
         shop
@@ -98,12 +121,12 @@ impl Default for Shop {
 #[cfg(test)]
 mod tests {
 
-    use crate::{Color, Piece, PieceType};
+    use crate::{Color, Piece, PieceType, Move};
 
     use super::Shop;
 
     #[test]
-    fn buy() {
+    fn play() {
         let cases = [
             (PieceType::Pawn, Color::White, 4),
             (PieceType::Queen, Color::White, 2),
@@ -114,14 +137,14 @@ mod tests {
         ];
         let mut shop = Shop::default();
         for case in cases.iter() {
-            let p: Piece = Piece {
+            let piece: Piece = Piece {
                 piece_type: case.0,
                 color: case.1,
             };
             for _i in 0..case.2 {
-                shop.buy(p);
+                shop.play(Move::Buy{ piece });
             }
-            assert_eq!(shop.get(p), case.2);
+            assert_eq!(shop.get(piece), case.2);
         }
         shop.confirm(Color::White);
         assert_eq!(shop.credit(Color::White), 800 - 260);

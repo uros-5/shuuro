@@ -6,11 +6,12 @@
 //!
 //! Shuuro shop - buying pieces:
 //! ```
-//! use shuuro::{Shop, PieceType, Piece, Color};
+//! use shuuro::{Shop, PieceType, Piece, Color, Move};
 //!
 //! let mut shop = Shop::default();
 //! for i in 0..5 {
-//!     shop.buy(Piece{piece_type: PieceType::Queen, color: Color::Black});
+//!     let piece = Piece{piece_type: PieceType::Queen, color: Color::Black};
+//!     shop.play(Move::Buy { piece });
 //! }
 //! assert_ne!(shop.to_sfen(Color::Black), "kqqqq");
 //! assert_eq!(shop.credit(Color::Black), 800 - 110 * 3);
@@ -23,8 +24,11 @@
 //! init();
 //! let mut pos = Position::default();
 //! pos.set_hand("KQQNNBkrrrqnnPPP");
-//! pos.place(Piece{ piece_type: PieceType::King, color: Color::White }, D1);
-//! pos.place(Piece{ piece_type: PieceType::King, color: Color::Black }, F12);
+//! 
+//! let white_king = (Piece{ piece_type: PieceType::King, color: Color::White }, D1);
+//! let black_king = (Piece{ piece_type: PieceType::King, color: Color::Black }, F12);
+//! pos.place(white_king.0, white_king.1 );
+//! pos.place(black_king.0, black_king.1);
 //! assert_eq!(pos.generate_sfen(), "3K8/57/57/57/57/57/57/57/57/57/57/5k6 r q3r2n2QB2N3P 1");
 //! ```
 //!
@@ -66,7 +70,7 @@ pub use attacks::{between, get_non_sliding_attacks, get_sliding_attacks, init};
 pub use board_defs::{EMPTY_BB, FILE_BB, RANK_BB};
 pub use error::*;
 pub use hand::Hand;
-pub use moves::Move;
+pub use moves::{Move, MoveRecord};
 pub use plinths_set::generate_plinths;
-pub use position::{MoveRecord, PieceGrid, Position};
+pub use position::{PieceGrid, Position};
 pub use shop::Shop;

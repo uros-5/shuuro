@@ -3,7 +3,7 @@ use std::{fmt, vec};
 
 use crate::{
     between, generate_plinths, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard,
-    Color, Hand, Move, MoveError, Piece, PieceType, SfenError, Square, EMPTY_BB, FILE_BB,
+    Color, Hand, Move, MoveError, MoveRecord, Piece, PieceType, SfenError, Square, EMPTY_BB, FILE_BB,
 };
 
 /// Outcome stores information about outcome after move.
@@ -18,70 +18,6 @@ pub enum Outcome {
     Stalemate,
     MoveNotOk,
     MoveOk,
-}
-
-/// MoveRecord stores information necessary to undo the move.
-#[derive(Debug)]
-pub enum MoveRecord {
-    Normal {
-        from: Square,
-        to: Square,
-        placed: Piece,
-        captured: Option<Piece>,
-        promoted: bool,
-    },
-    Buy {
-        piece: Piece,
-    },
-    Put {
-        to: Square,
-        piece: Piece,
-    },
-}
-
-impl MoveRecord {
-    /// Converts the move into SFEN formatted string.
-    pub fn to_sfen(&self) -> String {
-        match *self {
-            MoveRecord::Normal {
-                from, to, promoted, ..
-            } => format!("{}_{}{}", from, to, if promoted { "*" } else { "" }),
-            MoveRecord::Buy { piece } => format!("+{}", piece),
-            MoveRecord::Put { to, piece } => format!("{}@{}", piece, to),
-        }
-    }
-}
-
-impl PartialEq<Move> for MoveRecord {
-    fn eq(&self, other: &Move) -> bool {
-        match (self, other) {
-            (
-                &MoveRecord::Normal {
-                    from: f1,
-                    to: t1,
-                    promoted,
-                    ..
-                },
-                &Move::Normal {
-                    from: f2,
-                    to: t2,
-                    promote,
-                },
-            ) => f1 == f2 && t1 == t2 && promote == promoted,
-            (&MoveRecord::Buy { piece: piece1 }, &Move::Buy { piece: piece2 }) => piece1 == piece2,
-            (
-                &MoveRecord::Put {
-                    to: to1,
-                    piece: piece1,
-                },
-                &Move::Put {
-                    to: to2,
-                    piece: piece2,
-                },
-            ) => to1 == to2 && piece1 == piece2,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Debug)]
