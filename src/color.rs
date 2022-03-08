@@ -31,7 +31,7 @@ impl Color {
     pub fn from_char(ch: char) -> Option<Color> {
         match ch {
             'b' => Some(Color::Black),
-            'r' => Some(Color::White),
+            'w' => Some(Color::White),
             _ => Some(Color::NoColor),
         }
     }
