@@ -1261,7 +1261,6 @@ impl Position {
                     format!("{}_{}_{}_{}_{}", &move_record.to_sfen(), &sfen.clone(), hand, self.side_to_move.to_string(), ply),
                     1,
                 ));
-                println!("{:?}", self.sfen_history);
             }
         }
     }
