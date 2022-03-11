@@ -571,9 +571,6 @@ impl Position {
         self.side_to_move = opponent;
         self.ply += 1;
 
-        self.log_position();
-        self.detect_repetition()?;
-        self.detect_insufficient_material()?;
 
         let move_record = MoveRecord::Normal {
             from,
@@ -584,6 +581,12 @@ impl Position {
         };
 
         self.move_history.push(move_record);
+
+        self.log_position();
+        self.detect_repetition()?;
+        self.detect_insufficient_material()?;
+
+
         if self.is_checkmate(&self.side_to_move) {
             return Ok(Outcome::Checkmate {
                 color: self.side_to_move.flip(),
@@ -1247,14 +1250,17 @@ impl Position {
                         s
                     }
                 };
-                self.sfen_history.push((
-                    format!("{}_{}_{}", &move_record.to_sfen(), &sfen.clone(), hand),
-                    1,
-                ));
-                self.move_history.push(move_record);
+                self.ply += 1;
+                let ply = self.ply();
+
+                self.move_history.push(move_record.clone());
                 if !self.is_hand_empty(&p.color.flip(), PieceType::Plinth) {
                     self.side_to_move = p.color.flip();
                 }
+                self.sfen_history.push((
+                    format!("{}_{}_{}_{}_{}", &move_record.to_sfen(), &sfen.clone(), hand, self.side_to_move.to_string(), ply),
+                    1,
+                ));
                 println!("{:?}", self.sfen_history);
             }
         }
@@ -1271,6 +1277,21 @@ impl Position {
         self.color_bb[p.color.index()] |= sq;
         self.type_bb[p.piece_type.index()] |= sq;
     }
+    
+    /// Getting move and sfen history in Vec<String>
+    pub fn get_string_history(&self) -> (Vec<String>, Vec<String>) {
+        let mut move_history = vec![];
+        let mut sfen_history = vec![];
+
+        for i in &self.move_history {
+            move_history.push(i.to_sfen());
+        }
+
+        for i in &self.sfen_history {
+            sfen_history.push(i.0.clone());
+        }
+        (sfen_history, move_history)
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1283,7 +1304,7 @@ impl Default for Position {
             side_to_move: Color::Black,
             board: PieceGrid([None; 144]),
             hand: Default::default(),
-            ply: 1,
+            ply: 0,
             move_history: Default::default(),
             sfen_history: Default::default(),
             occupied_bb: Default::default(),
