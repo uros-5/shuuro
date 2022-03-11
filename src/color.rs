@@ -55,6 +55,14 @@ impl Color {
     pub fn index(self) -> usize {
         self as usize
     }
+
+    pub fn to_string(self) -> String {
+        match self {
+            Color::White => String::from("w"),
+            Color::Black => String::from("b"),
+            Color::NoColor => String::from(""),
+        }
+    }
 }
 
 pub struct ColorIter {

@@ -1,3 +1,5 @@
+use std::u8;
+
 use crate::{Color, Hand, Move, MoveRecord, Piece, PieceType};
 
 fn get_pricing() -> [(i32, u8); 7] {
@@ -12,6 +14,7 @@ fn get_pricing() -> [(i32, u8); 7] {
 }
 
 /// Used for buying pieces.
+#[derive(Debug, Clone)]
 pub struct Shop {
     credit: [i32; 2],
     hand: Hand,
@@ -102,6 +105,31 @@ impl Shop {
         for i in history {
             self.sfen_history.push(i);
         }
+    }
+
+    pub fn get_sfen_history(&self, color: &Color) -> Vec<String> {
+        let mut history: Vec<String> = vec![];
+        for i in self.sfen_history.iter() {
+            let mut chars = i.0.chars();
+            chars.next();
+            let c = chars.next().unwrap();
+            match color {
+                &Color::Black => {
+                    if c.is_ascii_lowercase() {
+                        history.push(format!("{} {}", i.0, i.1));
+                    }
+                }
+                &Color::White => {
+                    if c.is_ascii_uppercase() {
+                        history.push(format!("{} {}", i.0, i.1));
+                    }
+                }
+                &Color::NoColor => {
+                    history.push(format!("{} {}", i.0, i.1));
+                }
+            }
+        }
+        return history;
     }
 }
 

@@ -108,7 +108,7 @@ impl fmt::Display for Move {
 }
 
 /// MoveRecord stores information necessary to undo the move.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MoveRecord {
     Buy {
         piece: Piece,
