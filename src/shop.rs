@@ -102,9 +102,11 @@ impl Shop {
     }
 
     pub fn set_sfen_history(&mut self, history: Vec<(String, u8)>) {
-        for i in history {
-            self.sfen_history.push(i);
-        }
+        self.sfen_history = history;
+    }
+
+    pub fn set_move_history(&mut self, history: Vec<MoveRecord>) {
+        self.move_history = history;
     }
 
     pub fn get_sfen_history(&self, color: &Color) -> Vec<String> {

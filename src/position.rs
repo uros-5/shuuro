@@ -571,7 +571,6 @@ impl Position {
         self.side_to_move = opponent;
         self.ply += 1;
 
-
         let move_record = MoveRecord::Normal {
             from,
             to,
@@ -585,7 +584,6 @@ impl Position {
         self.log_position();
         self.detect_repetition()?;
         self.detect_insufficient_material()?;
-
 
         if self.is_checkmate(&self.side_to_move) {
             return Ok(Outcome::Checkmate {
@@ -846,9 +844,11 @@ impl Position {
     }
 
     pub fn set_sfen_history(&mut self, history: Vec<(String, u16)>) {
-        for i in history {
-            self.sfen_history.push(i);
-        }
+        self.sfen_history = history;
+    }
+
+    pub fn set_move_history(&mut self, history: Vec<MoveRecord>) {
+        self.move_history = history;
     }
 
     /// Converts the current state into SFEN formatted string.
@@ -1258,7 +1258,14 @@ impl Position {
                     self.side_to_move = p.color.flip();
                 }
                 self.sfen_history.push((
-                    format!("{}_{}_{}_{}_{}", &move_record.to_sfen(), &sfen.clone(), hand, self.side_to_move.to_string(), ply),
+                    format!(
+                        "{}_{}_{}_{}_{}",
+                        &move_record.to_sfen(),
+                        &sfen.clone(),
+                        hand,
+                        self.side_to_move.to_string(),
+                        ply
+                    ),
                     1,
                 ));
             }
@@ -1276,20 +1283,15 @@ impl Position {
         self.color_bb[p.color.index()] |= sq;
         self.type_bb[p.piece_type.index()] |= sq;
     }
-    
-    /// Getting move and sfen history in Vec<String>
-    pub fn get_string_history(&self) -> (Vec<String>, Vec<String>) {
-        let mut move_history = vec![];
-        let mut sfen_history = vec![];
 
-        for i in &self.move_history {
-            move_history.push(i.to_sfen());
-        }
+    /// Getting sfen_history
+    pub fn get_sfen_history(&self) -> &Vec<(String, u16)> {
+        &self.sfen_history
+    }
 
-        for i in &self.sfen_history {
-            sfen_history.push(i.0.clone());
-        }
-        (sfen_history, move_history)
+    /// Getting move_history
+    pub fn get_move_history(&self) -> &Vec<MoveRecord> {
+        &self.move_history
     }
 }
 
