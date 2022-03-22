@@ -21,6 +21,22 @@ pub enum Outcome {
     MoveOk,
 }
 
+impl Outcome {
+    pub fn to_string(&self) -> String {
+        match &self {
+            Outcome::Check { color } => format!("Check_{}", color.to_string()),
+            Outcome::Checkmate { color } => format!("Checkmate_{}", color.to_string()),
+            Outcome::Draw => format!("Draw"),
+            Outcome::Nothing => format!("Live"),
+            Outcome::DrawByRepetition => format!("RepetitionDraw"),
+            Outcome::DrawByMaterial => format!("MaterialDraw"),
+            Outcome::Stalemate => format!("Stalemate"),
+            Outcome::MoveOk => format!("Live"),
+            Outcome::MoveNotOk => format!("Illegal move"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum MoveType {
     Empty,
