@@ -109,29 +109,8 @@ impl Shop {
         self.move_history = history;
     }
 
-    pub fn get_sfen_history(&self, color: &Color) -> Vec<String> {
-        let mut history: Vec<String> = vec![];
-        for i in self.sfen_history.iter() {
-            let mut chars = i.0.chars();
-            chars.next();
-            let c = chars.next().unwrap();
-            match color {
-                &Color::Black => {
-                    if c.is_ascii_lowercase() {
-                        history.push(format!("{} {}", i.0, i.1));
-                    }
-                }
-                &Color::White => {
-                    if c.is_ascii_uppercase() {
-                        history.push(format!("{} {}", i.0, i.1));
-                    }
-                }
-                &Color::NoColor => {
-                    history.push(format!("{} {}", i.0, i.1));
-                }
-            }
-        }
-        return history;
+    pub fn get_sfen_history(&self, color: &Color) -> &Vec<(String, u8)> {
+        &self.sfen_history
     }
 }
 
