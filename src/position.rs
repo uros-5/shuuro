@@ -1110,7 +1110,7 @@ impl Position {
     }
 
     /// Get hand for specific color (in order K..P).
-    pub fn get_hand(&mut self, c: Color) -> String {
+    pub fn get_hand(&self, c: Color) -> String {
         return self.hand.to_sfen(c);
     }
 
