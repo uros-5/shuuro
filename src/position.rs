@@ -390,12 +390,16 @@ impl Position {
 
     /// Checks if the king with the given color is in check.
     pub fn in_check(&self, c: Color) -> bool {
-        let check_moves = self.check_moves(&self.find_king(c).unwrap());
-        if check_moves.len() > 0 {
-            true
-        } else {
-            false
+        let king = &self.find_king(c);
+        if let Some(k) = king {
+            let check_moves = self.check_moves(k);
+            if check_moves.len() > 0 {
+                return true;
+            } else {
+                return false;
+            }
         }
+        false
     }
 
     /// Checks if given color is in checkmate.
