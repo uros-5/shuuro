@@ -1161,6 +1161,9 @@ impl Position {
                         if bb.is_empty() {
                             continue;
                         } else if self.can_pawn_move(p) {
+                            if file == 0 || file == 11 {
+                                continue;
+                            }
                             return bb;
                         } else {
                             return EMPTY_BB;
