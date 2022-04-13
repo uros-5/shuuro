@@ -209,14 +209,17 @@ pub mod consts {
 
     macro_rules! make_square {
             {0, $t:ident $($ts:ident)+} => {
+                /// Square generated from macro.
                 pub const $t: Square = Square { inner: 0 };
                 make_square!{1, $($ts)*}
             };
             {$n:expr, $t:ident $($ts:ident)+} => {
+                /// Square generated from macro.
                 pub const $t: Square = Square { inner: $n };
                 make_square!{($n + 1), $($ts)*}
             };
             {$n:expr, $t:ident} => {
+                /// Square generated from macro.
                 pub const $t: Square = Square { inner: $n };
             };
         }

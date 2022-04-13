@@ -30,6 +30,9 @@ impl Shop {
     pub fn play(&mut self, mv: Move) {
         match mv {
             Move::Buy { piece } => {
+                if piece.color == Color::NoColor {
+                    return ();
+                }
                 if !self.is_confirmed(piece.color) {
                     let (piece_price, piece_count) = self.pricing[piece.piece_type.index()];
                     if self.credit[piece.color.index()] >= piece_price as i32 {
@@ -108,7 +111,7 @@ impl Shop {
     pub fn set_move_history(&mut self, history: Vec<MoveRecord>) {
         self.move_history = history;
     }
-    
+
     #[warn(unused_variables)]
     pub fn get_sfen_history(&self, _color: &Color) -> &Vec<(String, u8)> {
         &self.sfen_history

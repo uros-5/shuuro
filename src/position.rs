@@ -1977,14 +1977,18 @@ pub mod tests {
     fn place() {
         setup();
         let mut position_set = Position::default();
-        position_set.set_sfen("7L04/57/57/57/57/57/57/57/57/57/57/57 w K 1").expect("error");
-        let cases = [ (A1, 0), (B3, 0), (H1, 0), (G1, 1)];
+        position_set
+            .set_sfen("7L04/57/57/57/57/57/57/57/57/57/57/57 w K 1")
+            .expect("error");
+        let cases = [(A1, 0), (B3, 0), (H1, 0), (G1, 1)];
         for case in cases {
-            let piece = Piece { piece_type: PieceType::King, color: Color::White };
+            let piece = Piece {
+                piece_type: PieceType::King,
+                color: Color::White,
+            };
             position_set.place(piece, case.0);
             assert_eq!(position_set.player_bb(Color::White).count(), case.1);
         }
-        
     }
 
     #[test]
