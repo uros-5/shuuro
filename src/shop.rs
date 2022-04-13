@@ -108,8 +108,9 @@ impl Shop {
     pub fn set_move_history(&mut self, history: Vec<MoveRecord>) {
         self.move_history = history;
     }
-
-    pub fn get_sfen_history(&self, color: &Color) -> &Vec<(String, u8)> {
+    
+    #[warn(unused_variables)]
+    pub fn get_sfen_history(&self, _color: &Color) -> &Vec<(String, u8)> {
         &self.sfen_history
     }
 }

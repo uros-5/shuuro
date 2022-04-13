@@ -1126,10 +1126,12 @@ impl Position {
     fn king_squares(&self, c: &Color) -> BitBoard {
         let files = ['d', 'e', 'f', 'g', 'h', 'i'];
         let mut bb = EMPTY_BB;
+        let plinths = self.color_bb[Color::NoColor.index()];
         let mut all = |num: usize| -> BitBoard {
             for file in files {
                 bb |= Square::from_sfen(&format!("{}{}", file, num)[..]).unwrap();
             }
+            bb &= &!&plinths;
             bb
         };
         match *c {
@@ -1969,6 +1971,20 @@ pub mod tests {
         }
         assert!(position_set.is_hand_empty(&Color::Black, PieceType::Plinth));
         assert!(position_set.is_hand_empty(&Color::White, PieceType::Plinth));
+    }
+
+    #[test]
+    fn place() {
+        setup();
+        let mut position_set = Position::default();
+        position_set.set_sfen("7L04/57/57/57/57/57/57/57/57/57/57/57 w K 1").expect("error");
+        let cases = [ (A1, 0), (B3, 0), (H1, 0), (G1, 1)];
+        for case in cases {
+            let piece = Piece { piece_type: PieceType::King, color: Color::White };
+            position_set.place(piece, case.0);
+            assert_eq!(position_set.player_bb(Color::White).count(), case.1);
+        }
+        
     }
 
     #[test]
