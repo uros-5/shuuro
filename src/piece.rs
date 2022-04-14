@@ -18,7 +18,11 @@ impl Piece {
                 Color::White
             }
         } else {
-            Color::Black
+            if c == 'l' {
+                Color::NoColor
+            } else {
+                Color::Black
+            }
         };
 
         PieceType::from_sfen(c).map(|piece_type| Piece { piece_type, color })

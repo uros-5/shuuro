@@ -31,7 +31,7 @@ impl Color {
     pub fn from_char(ch: char) -> Option<Color> {
         match ch {
             'b' => Some(Color::Black),
-            'r' => Some(Color::White),
+            'w' => Some(Color::White),
             _ => Some(Color::NoColor),
         }
     }
@@ -54,6 +54,14 @@ impl Color {
 
     pub fn index(self) -> usize {
         self as usize
+    }
+
+    pub fn to_string(self) -> String {
+        match self {
+            Color::White => String::from("w"),
+            Color::Black => String::from("b"),
+            Color::NoColor => String::from(""),
+        }
     }
 }
 

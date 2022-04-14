@@ -17,7 +17,7 @@ use crate::{Color, Piece, PieceType};
 /// assert_eq!(0, hand.get(red_pawn));
 /// ```
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Hand {
     inner: [u8; 12],
 }

@@ -6,6 +6,15 @@ const ASCII_12: u8 = 12;
 const ASCII_LOWER_A: u8 = b'a';
 const ASCII_LOWER_L: u8 = b'l';
 
+/*
+
+const ASCII_8: u8 = 8;
+const ASCII_LOWER_H: u8 = b'h';
+
+const ASCII_6: u8 = 6;
+const ASCII_LOWER_F: u8 = b'f';
+*/
+
 /// Represents a position of each cell in the game board.
 ///
 /// # Examples
@@ -200,14 +209,17 @@ pub mod consts {
 
     macro_rules! make_square {
             {0, $t:ident $($ts:ident)+} => {
+                /// Square generated from macro.
                 pub const $t: Square = Square { inner: 0 };
                 make_square!{1, $($ts)*}
             };
             {$n:expr, $t:ident $($ts:ident)+} => {
+                /// Square generated from macro.
                 pub const $t: Square = Square { inner: $n };
                 make_square!{($n + 1), $($ts)*}
             };
             {$n:expr, $t:ident} => {
+                /// Square generated from macro.
                 pub const $t: Square = Square { inner: $n };
             };
         }
