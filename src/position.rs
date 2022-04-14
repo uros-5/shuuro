@@ -1975,7 +1975,7 @@ pub mod tests {
     }
 
     #[test]
-    fn place() {
+    fn place_king() {
         setup();
         let mut position_set = Position::default();
         position_set
@@ -2020,6 +2020,19 @@ pub mod tests {
             assert_eq!(file.count(), case.2);
         }
         assert_eq!(position_set.get_hand(Color::Black), "rrbn");
+    }
+
+    #[test]
+    fn place_in_check() {
+        setup();
+        let black_fen = "5KQ2L02/9L02/57/57/3L08/5L06/2L09/2L09/8L03/57/9L02/6k5 b qrn2pN2P 3";
+        let cases = [PieceType::Queen, PieceType::Pawn];
+        for case in cases {
+            let mut position_set = Position::default();
+            position_set.set_sfen(black_fen);
+            position_set.place(Piece {piece_type: case, color: Color::Black},G11);
+            assert_eq!(position_set.ply(), 4);
+        }
     }
 
     #[test]
