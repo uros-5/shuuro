@@ -1210,10 +1210,16 @@ impl Position {
             return EMPTY_BB;
         }
         let mut all;
+        let mut with_plinths = self.color_bb[Color::NoColor.index()];
         for p in [PieceType::Queen, PieceType::Rook, PieceType::Bishop] {
             let bb = &self.type_bb[p.index()] & &self.color_bb[attacked_color.flip().index()];
             for i in bb {
                 all = get_sliding_attacks(p, i, self.occupied_bb);
+                with_plinths &= &all;
+                if with_plinths.is_any() {
+                    return EMPTY_BB;
+                }
+
                 if (&all & &king).is_any() {
                     match *attacked_color {
                         Color::White => {
@@ -2019,5 +2025,24 @@ pub mod tests {
             assert_eq!(file.count(), case.2);
         }
         assert_eq!(position_set.get_hand(Color::Black), "rrbn");
+    }
+
+    #[test]
+    fn empty_squares_with_plinths() {
+        setup();
+        let mut position_set = Position::default();
+        position_set
+            .set_sfen(
+                "5K1Q4/L056/5L05L0/57/57/7L04/57/2L09/57/8L03/4L02L04/7k4 b q2rb4n3pQ2R3BN3P 3",
+            )
+            .expect("error while parsing sfen");
+        let cases = [(PieceType::Knight, Color::Black, 11)];
+        for case in cases {
+            let file = position_set.empty_squares(Piece {
+                piece_type: case.0,
+                color: case.1,
+            });
+            assert_eq!(file.count(), case.2);
+        }
     }
 }
