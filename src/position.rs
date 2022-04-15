@@ -75,7 +75,7 @@ impl MoveType {
                                 Color::NoColor => sq,
                             }
                         };
-                        &(&bb & &position.color_bb[p.color.flip().index()]) | &square_bb(sq)
+                        &(&bb & &position.color_bb[p.color.flip().index()]) | &(&square_bb(sq) & &!&position.color_bb[2])
                     } else {
                         bb
                     }
@@ -1542,9 +1542,10 @@ pub mod tests {
         let cases = [
             ("f2", PieceType::Rook, Color::White, 13),
             ("e7", PieceType::Knight, Color::Black, 7),
+            ("f6", PieceType::Pawn, Color::Black, 0)
         ];
         let mut pos = Position::new();
-        pos.set_sfen("57/5R5K/57/57/3b1L04k1/55b1/4n7/57/55R1/57/57/57 w - 1")
+        pos.set_sfen("57/5R5K/57/57/3b1L04k1/5p4b1/4n7/57/55R1/57/57/57 w - 1")
             .expect("failed to parse SFEN string");
         for case in cases {
             let bb = pos.move_candidates(
