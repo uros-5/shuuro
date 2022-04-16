@@ -797,7 +797,6 @@ impl Position {
                 MoveError::DrawByInsufficientMaterial => self.game_status = Outcome::DrawByMaterial,
                 MoveError::DrawByStalemate => self.game_status = Outcome::Stalemate,
                 _ => {
-                    println!("{}", error);
                     return Err(SfenError::IllegalMove);
                 }
             },
@@ -1373,7 +1372,12 @@ impl fmt::Display for Position {
             write!(f, "|")?;
             for row in 0..12 {
                 if let Some(ref piece) = *self.piece_at(Square::new(row, file).unwrap()) {
-                    write!(f, "{:>3}|", piece.to_string())?;
+                    write!(f, "{}", piece.to_string())?;
+                    if (&self.color_bb[2] & Square::new(row, file).unwrap()).is_any() {
+                        write!(f, " L|")?;
+                    } else {
+                        write!(f, "  |")?;
+                    }
                 } else {
                     if (&self.color_bb[2] & Square::new(row, file).unwrap()).is_any() {
                         write!(f, "{:>3}|", "L")?;
@@ -1689,6 +1693,19 @@ pub mod tests {
             .expect("failed to parse sfen string");
         let queen_moves = position.legal_moves(&C1);
         assert_eq!(queen_moves.count(), 15);
+    }
+
+    #[test]
+    fn knight_jumps_move() {
+        setup();
+        let sfen = "4K1Q4LN/4L07/2L09/57/57/55L01/6P5/9L02/5kL05/L01L09/5p6/57 w - 17";
+        let mut position = Position::new();
+        position
+            .set_sfen(sfen)
+            .expect("failed to parse sfen string");
+
+        let result = position.play("l1", "j2");
+        assert!(result.is_ok());
     }
 
     #[test]
