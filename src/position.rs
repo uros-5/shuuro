@@ -75,7 +75,10 @@ impl MoveType {
                                 Color::NoColor => sq,
                             }
                         };
-                        &(&bb & &position.color_bb[p.color.flip().index()]) | &(&square_bb(sq) & &!&position.color_bb[2])
+                        let sq = &square_bb(sq) & &!&position.color_bb[p.color.flip().index()];
+                        let moves = &(&bb & &position.color_bb[p.color.flip().index()])
+                            | &(&sq & &!&position.color_bb[2]);
+                        &moves & &!&position.color_bb[p.color.flip().index()]
                     } else {
                         bb
                     }
@@ -541,7 +544,8 @@ impl Position {
                 if moved.piece_type == PieceType::Pawn {
                     let free_sq = from.index() + 12;
                     if to.index() != free_sq {
-                        return Err(MoveError::Inconsistent("The piece cannot move to there"));
+                        ();
+                        //return Err(MoveError::Inconsistent("The piece cannot move to there"));
                     } else if to.in_promotion_zone(moved.color) {
                         promoted = true;
                     }
@@ -554,14 +558,12 @@ impl Position {
             return Err(MoveError::Inconsistent("The piece cannot move to there"));
         }
 
-        if !promoted && !moved.is_placeable_at(to) {
-            return Err(MoveError::NonMovablePiece);
-        }
-
         let placed = if promoted {
             match moved.promote() {
                 Some(promoted) => promoted,
-                None => return Err(MoveError::Inconsistent("This type of piece cannot promote")),
+                None => {
+                    return Err(MoveError::Inconsistent("This type of piece cannot promote"));
+                }
             }
         } else {
             moved
@@ -776,7 +778,10 @@ impl Position {
                 MoveError::Draw => self.game_status = Outcome::Draw,
                 MoveError::DrawByInsufficientMaterial => self.game_status = Outcome::DrawByMaterial,
                 MoveError::DrawByStalemate => self.game_status = Outcome::Stalemate,
-                _ => return Err(SfenError::IllegalMove),
+                _ => {
+                    println!("{}", error);
+                    return Err(SfenError::IllegalMove);
+                }
             },
         }
         return Ok(self.outcome());
@@ -1507,6 +1512,22 @@ pub mod tests {
     }
 
     #[test]
+    fn legal_moves_pawn() {
+        setup();
+        let cases = [(
+            "4K1Q4LN/4L07/2L09/6P5/6q5/55L01/57/9L02/6L05/L01L09/5p6/6k5 w - 11",
+            G4,
+            0,
+        )];
+        for case in cases {
+            let mut pos = Position::default();
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
+            let legal_moves = pos.legal_moves(&case.1);
+            assert_eq!(legal_moves.count(), case.2);
+        }
+    }
+
+    #[test]
     fn move_candidates() {
         setup();
 
@@ -1540,9 +1561,9 @@ pub mod tests {
     fn move_candidates_plinth() {
         setup();
         let cases = [
-            ("f2", PieceType::Rook, Color::White, 13),
-            ("e7", PieceType::Knight, Color::Black, 7),
-            ("f6", PieceType::Pawn, Color::Black, 0)
+            ("f2", PieceType::Rook, Color::White, 13, "f3", "Live"),
+            ("e7", PieceType::Knight, Color::Black, 7, "g8", "Live"),
+            ("f6", PieceType::Pawn, Color::Black, 0, "f7", ""),
         ];
         let mut pos = Position::new();
         pos.set_sfen("57/5R5K/57/57/3b1L04k1/5p4b1/4n7/57/55R1/57/57/57 w - 1")
@@ -1557,7 +1578,79 @@ pub mod tests {
                 crate::position::MoveType::Plinth,
             );
             assert_eq!(case.3, bb.count());
+            let result = pos.play(case.0, case.4);
+            if let Ok(result) = result {
+                assert_eq!(result.to_string(), case.5);
+            } else {
+                assert_eq!(result.is_ok(), false);
+            }
         }
+    }
+
+    #[test]
+    fn pawn_moves() {
+        setup();
+        let cases = [
+            (
+                "4K1Q4LN/4L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 b - 12",
+                "f11",
+                "f10",
+            ),
+            (
+                "2N1L0QKRL01N1/2P4P3P/55L01/57/57/L056/57/57/3L08/8L03/2pp2L05/4qLnk2r1b b - 15",
+                "c11",
+                "c10",
+            ),
+            (
+                "2N1L0QKRL01N1/2P4P3P/55L01/57/57/L056/57/57/3L08/8L03/2pp2L05/4qLnk2r1b b - 15",
+                "d11",
+                "d10",
+            ),
+            (
+                "4KN1Q4/4L0P1P1PP1/1P55/3L08/56L0/6L05/4L01L05/57/57/6L05/p7ppp1/L02q1k3r2 b - 16",
+                "a11",
+                "a10",
+            ),
+        ];
+        let ng_cases = [(
+            "4K1Q4LN/2P1L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 w - 12",
+            "c2",
+            "c3",
+        )];
+
+        for case in cases {
+            let mut position = Position::new();
+            position
+                .set_sfen(case.0)
+                .expect("failed to parse sfen string");
+
+            let played = position.play(case.1, case.2);
+            assert!(played.is_ok());
+        }
+
+        for case in ng_cases {
+            let mut position = Position::new();
+            position
+                .set_sfen(case.0)
+                .expect("failed to parse sfen string");
+
+            let played = position.play(case.1, case.2);
+            assert!(played.is_err());
+        }
+    }
+
+    #[test]
+    fn queen_moves_through() {
+        setup();
+        let sfen = "2q1L0QKRL01N1/2P8P/7P2L01/57/57/L056/57/57/3L08/8L03/2pp2L05/5Lnk2r1b b n 20";
+        let mut position = Position::new();
+        position
+            .set_sfen(sfen)
+            .expect("failed to parse sfen string");
+        let queen_moves = position.legal_moves(&C1);
+        println!("{}", &position);
+        println!("{}", &queen_moves);
+        assert!(false);
     }
 
     #[test]
@@ -1590,7 +1683,7 @@ pub mod tests {
 
         let mut pos = Position::new();
         for case in test_cases.iter() {
-            pos.set_sfen(case.0).expect("failed to parse SFEN string");
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
             assert_eq!(case.1, pos.in_check(Color::Black));
             assert_eq!(case.2, pos.in_check(Color::White));
         }
@@ -2030,8 +2123,17 @@ pub mod tests {
         let cases = [PieceType::Queen, PieceType::Pawn];
         for case in cases {
             let mut position_set = Position::default();
-            position_set.set_sfen(black_fen);
-            position_set.place(Piece {piece_type: case, color: Color::Black},G11);
+            position_set
+                .set_sfen(black_fen)
+                .expect("failed to parse sfen string");
+
+            position_set.place(
+                Piece {
+                    piece_type: case,
+                    color: Color::Black,
+                },
+                G11,
+            );
             assert_eq!(position_set.ply(), 4);
         }
     }
