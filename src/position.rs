@@ -64,17 +64,7 @@ impl MoveType {
                 if p.piece_type != PieceType::Knight {
                     let bb = &(primary_bb) & &!&position.color_bb[2];
                     if p.piece_type == PieceType::Pawn {
-                        let sq = {
-                            match p.color {
-                                Color::White => {
-                                    Square::from_index(sq.index() as u8 + 12 as u8).unwrap()
-                                }
-                                Color::Black => {
-                                    Square::from_index(sq.index() as u8 - 12 as u8).unwrap()
-                                }
-                                Color::NoColor => sq,
-                            }
-                        };
+                        let sq = self.get_pawn_square(sq, &p.color);
                         let sq = &square_bb(sq) & &!&position.color_bb[p.color.flip().index()];
                         let moves = &(&bb & &position.color_bb[p.color.flip().index()])
                             | &(&sq & &!&position.color_bb[2]);
@@ -88,12 +78,29 @@ impl MoveType {
             }
             MoveType::NoKing { king } => {
                 if p.piece_type != PieceType::Knight {
+                    if p.piece_type == PieceType::Pawn {
+                        let up_sq = self.get_pawn_square(sq, &p.color);
+                        let up_sq = square_bb(up_sq);
+                        return &primary_bb & &!&up_sq;
+                    }
                     &(&(bb) & &!&position.color_bb[2]) | &(&bb & &square_bb(king.to_owned()))
                 } else {
                     &bb | &(&bb & &square_bb(king.to_owned()))
                 }
             }
         }
+    }
+
+    pub fn get_pawn_square(&self, sq: Square, color: &Color) -> Square {
+        let sq = {
+            match color {
+                &Color::White => Square::from_index(sq.index() as u8 + 12 as u8).unwrap(),
+                &Color::Black => Square::from_index(sq.index() as u8 - 12 as u8).unwrap(),
+                &Color::NoColor => sq,
+            }
+        };
+
+        sq
     }
 }
 
@@ -224,11 +231,11 @@ impl Position {
                 let enemy_moves = self.enemy_moves(&square);
                 return &my_moves & &!&enemy_moves;
             } else {
-                return self.fix_pin(&pinned_moves, check_moves, my_moves);
+                return self.fix_pin(square, &pinned_moves, check_moves, my_moves);
             }
         }
 
-        return self.fix_pin(&pinned_moves, check_moves, my_moves);
+        return self.fix_pin(square, &pinned_moves, check_moves, my_moves);
     }
 
     /// Returns all non-legal moves.
@@ -430,7 +437,14 @@ impl Position {
     }
 
     /// Returns BitBoard of all moves after fixing pin.
-    fn fix_pin(&self, fixer: &Fixer, checks: Vec<BitBoard>, my_moves: BitBoard) -> BitBoard {
+    fn fix_pin(
+        &self,
+        sq: &Square,
+        fixer: &Fixer,
+        checks: Vec<BitBoard>,
+        my_moves: BitBoard,
+    ) -> BitBoard {
+        let piece = self.piece_at(*sq).unwrap();
         match fixer.square {
             Some(_square) => {
                 if checks.len() == 1 {
@@ -443,7 +457,11 @@ impl Position {
             }
             None => {
                 let mut my_moves = my_moves;
-                if checks.len() > 1 {
+                let enemy_moves = self.enemy_moves(&self.find_king(piece.color).unwrap());
+                if piece.piece_type == PieceType::King {
+                    my_moves = &my_moves & &!&enemy_moves;
+                    return my_moves;
+                } else if checks.len() > 1 {
                     return EMPTY_BB;
                 }
                 for bb in checks.iter() {
@@ -1408,7 +1426,8 @@ impl fmt::Display for Position {
 }
 #[cfg(test)]
 pub mod tests {
-    use crate::{consts::*, Move, MoveError};
+    use crate::attacks::Ray;
+    use crate::{consts::*, Move, MoveError, EMPTY_BB};
     use crate::{init, Color, Piece, PieceType, Position, Square};
     pub const START_POS: &str = "KR55/57/57/57/57/57/57/57/57/57/57/kr55 b - 1";
 
@@ -1528,6 +1547,27 @@ pub mod tests {
     }
 
     #[test]
+    fn king_moves() {
+        setup();
+        let cases = [
+            (
+                "4K6LN/4L07/2L09/57/57/6Q3L01/6P5/5k3L02/6L05/L01L09/5p6/57 b - 19",
+                4,
+            ),
+            (
+                "4K6LN/4L07/2L09/57/57/6Q3L01/6P5/R4k3L02/6L05/L01L09/5p6/57 b - 19",
+                3,
+            ),
+        ];
+        for i in cases {
+            let mut pos = Position::default();
+            pos.set_sfen(i.0).expect("failed to parse sfen string");
+            let legal_moves = pos.legal_moves(&F8);
+            assert_eq!(legal_moves.count(), i.1);
+        }
+    }
+
+    #[test]
     fn move_candidates() {
         setup();
 
@@ -1642,15 +1682,13 @@ pub mod tests {
     #[test]
     fn queen_moves_through() {
         setup();
-        let sfen = "2q1L0QKRL01N1/2P8P/7P2L01/57/57/L056/57/57/3L08/8L03/2pp2L05/5Lnk2r1b b n 20";
+        let sfen = "2q1L0QKRL01N1/2P8P/7P2L01/57/57/L056/57/57/3L08/8L03/2pp2L05/5Lnk2r1b b - 20";
         let mut position = Position::new();
         position
             .set_sfen(sfen)
             .expect("failed to parse sfen string");
         let queen_moves = position.legal_moves(&C1);
-        println!("{}", &position);
-        println!("{}", &queen_moves);
-        assert!(false);
+        assert_eq!(queen_moves.count(), 15);
     }
 
     #[test]

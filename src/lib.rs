@@ -66,7 +66,7 @@ pub use self::color::{Color, ColorIter};
 pub use self::piece::Piece;
 pub use self::piece_type::PieceType;
 pub use self::square::{consts, Square};
-pub use attacks::{between, get_non_sliding_attacks, get_sliding_attacks, init};
+pub use attacks::{between, get_non_sliding_attacks, get_sliding_attacks, init, Ray};
 pub use board_defs::{EMPTY_BB, FILE_BB, RANK_BB};
 pub use error::*;
 pub use hand::Hand;

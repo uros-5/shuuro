@@ -70,7 +70,13 @@ fn get_positive_ray_attacks(dir: Ray, square: usize, blockers: BitBoard) -> BitB
     unsafe {
         let attacks = RAYS[dir as usize][square];
         let mut blocked = &attacks & &blockers;
-        let block_square = blocked.pop();
+        let block_square: Option<Square> = {
+            match dir {
+                Ray::East => blocked.pop_first(),
+                _ => blocked.pop(),
+            }
+        };
+        //let block_square = blocked.pop();
         match block_square {
             Some(i) => &attacks & &!&RAYS[dir as usize][i.index() as usize],
             None => attacks,
