@@ -64,9 +64,8 @@ impl BitBoard {
     pub fn pop(&mut self) -> Option<Square> {
         for i in 0..9 {
             if self.0[i] != 0 {
-                let sq =
-                    Square::from_index((15 * (1 + i) + i) as u8 - self.0[i].leading_zeros() as u8);
-                self.clear_at(sq.unwrap());
+                let sq = Square::from_index(self.0[i].trailing_zeros() as u8 + (i as u8 * 16));
+                self.0[i] &= self.0[i] - 1;
                 return sq;
             }
         }
@@ -87,17 +86,7 @@ impl BitBoard {
         None
     }
 
-    pub fn pop_first(&mut self) -> Option<Square> {
-        for i in 0..9 {
-            if self.0[i] != 0 {
-                let sq = Square::from_index(self.0[i].trailing_zeros() as u8);
-                self.0[i] &= self.0[i] - 1;
-                return sq;
-            }
-        }
 
-        None
-}
 
     pub fn merge(&self) -> [u16; 9] {
         self.0

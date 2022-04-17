@@ -1686,13 +1686,26 @@ pub mod tests {
     #[test]
     fn queen_moves_through() {
         setup();
-        let sfen = "2q1L0QKRL01N1/2P8P/7P2L01/57/57/L056/57/57/3L08/8L03/2pp2L05/5Lnk2r1b b - 20";
-        let mut position = Position::new();
-        position
-            .set_sfen(sfen)
-            .expect("failed to parse sfen string");
-        let queen_moves = position.legal_moves(&C1);
-        assert_eq!(queen_moves.count(), 15);
+        let cases = [
+            (
+                "2q1L0QKRL01N1/2P8P/7P2L01/57/57/L056/57/57/3L08/8L03/2pp2L05/5Lnk2r1b b - 20",
+                C1,
+                15,
+            ),
+            (
+                "2B2KQ5/5R3P2/L06LN4/57/57/2L06L02/57/3L06L01/6L05/3p8/L04p1pp3/2n1rqk3b1 b - 17",
+                F12,
+                7,
+            ),
+        ];
+        for case in cases {
+            let mut position = Position::new();
+            position
+                .set_sfen(case.0)
+                .expect("failed to parse sfen string");
+            let queen_moves = position.legal_moves(&case.1);
+            assert_eq!(queen_moves.count(), case.2);
+        }
     }
 
     #[test]

@@ -4,7 +4,7 @@ use crate::piece_type::PieceType;
 use crate::SQUARE_BB;
 use crate::{Color, Square};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Ray {
     North = 0,
     South,
@@ -71,14 +71,11 @@ fn get_positive_ray_attacks(dir: Ray, square: usize, blockers: BitBoard) -> BitB
         let attacks = RAYS[dir as usize][square];
         let mut blocked = &attacks & &blockers;
         let block_square: Option<Square> = {
-            match dir {
-                Ray::East => blocked.pop_first(),
-                _ => blocked.pop(),
-            }
+            blocked.pop()
         };
         //let block_square = blocked.pop();
         match block_square {
-            Some(i) => &attacks & &!&RAYS[dir as usize][i.index() as usize],
+            Some(i) => {  let a = &attacks & &!&RAYS[dir as usize][i.index() as usize]; if square == 137 {  } return a; },
             None => attacks,
         }
     }
