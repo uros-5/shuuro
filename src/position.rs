@@ -1814,6 +1814,7 @@ pub mod tests {
                 false,
                 Color::White,
             ),
+            ("57/9K2/L06L04/57/57/2L06L02/57/3L05BL01/6LN5/4Qk6/L056/6n5 b - 69", true, Color::Black)
         ];
         for case in cases.iter() {
             let mut pos = Position::new();
