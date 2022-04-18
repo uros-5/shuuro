@@ -14,7 +14,7 @@ fn get_pricing() -> [(i32, u8); 7] {
 }
 
 /// Used for buying pieces.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Shop {
     credit: [i32; 2],
     hand: Hand,
@@ -22,7 +22,6 @@ pub struct Shop {
     pricing: [(i32, u8); 7],
     move_history: Vec<MoveRecord>,
     sfen_history: Vec<(String, u8)>,
-    side_to_move: Color,
 }
 
 impl Shop {
@@ -127,7 +126,6 @@ impl Default for Shop {
             pricing: get_pricing(),
             move_history: Default::default(),
             sfen_history: Default::default(),
-            side_to_move: Color::White,
         };
         shop.set_kings();
         shop

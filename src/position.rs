@@ -610,12 +610,8 @@ impl Position {
             self.occupied_bb ^= to;
             self.type_bb[cap.piece_type.index()] ^= to;
             self.color_bb[cap.color.index()] ^= to;
-            let pc = cap.flip();
-            let pc = match pc.unpromote() {
-                Some(unpromoted) => unpromoted,
-                None => pc,
-            };
-            self.hand.increment(pc);
+
+            //self.hand.increment(pc);
         }
 
         self.side_to_move = opponent;
@@ -745,8 +741,6 @@ impl Position {
                     self.occupied_bb ^= to;
                     self.type_bb[cap.piece_type.index()] ^= to;
                     self.color_bb[cap.color.index()] ^= to;
-                    let unpromoted_cap = cap.unpromote().unwrap_or(*cap);
-                    self.hand.decrement(unpromoted_cap.flip());
                 }
             }
             _ => {
@@ -1440,8 +1434,7 @@ impl fmt::Display for Position {
 }
 #[cfg(test)]
 pub mod tests {
-    use crate::attacks::Ray;
-    use crate::{consts::*, Move, MoveError, EMPTY_BB};
+    use crate::{consts::*, Move, MoveError};
     use crate::{init, Color, Piece, PieceType, Position, Square};
     pub const START_POS: &str = "KR55/57/57/57/57/57/57/57/57/57/57/kr55 b - 1";
 
@@ -1814,7 +1807,11 @@ pub mod tests {
                 false,
                 Color::White,
             ),
-            ("57/9K2/L06L04/57/57/2L06L02/57/3L05BL01/6LN5/4Qk6/L056/6n5 b - 69", true, Color::Black)
+            (
+                "57/9K2/L06L04/57/57/2L06L02/57/3L05BL01/6LN5/4Qk6/L056/6n5 b - 69",
+                true,
+                Color::Black,
+            ),
         ];
         for case in cases.iter() {
             let mut pos = Position::new();
