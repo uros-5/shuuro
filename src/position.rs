@@ -559,8 +559,10 @@ impl Position {
 
         match captured {
             Some(_i) => {
-                if to.in_promotion_zone(moved.color) {
-                    promoted = true;
+                if moved.piece_type == PieceType::Pawn {
+                    if to.in_promotion_zone(moved.color) {
+                        promoted = true;
+                    }
                 }
             }
             None => {
