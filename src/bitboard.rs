@@ -86,8 +86,6 @@ impl BitBoard {
         None
     }
 
-
-
     pub fn merge(&self) -> [u16; 9] {
         self.0
     }

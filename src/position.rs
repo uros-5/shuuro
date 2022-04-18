@@ -65,10 +65,11 @@ impl MoveType {
                     let bb = &(primary_bb) & &!&position.color_bb[2];
                     if p.piece_type == PieceType::Pawn {
                         let sq = self.get_pawn_square(sq, &p.color);
+                        let primary_bb = &primary_bb & &!&square_bb(sq);
                         let sq = &square_bb(sq) & &!&position.color_bb[p.color.flip().index()];
-                        let moves = &(&bb & &position.color_bb[p.color.flip().index()])
-                            | &(&sq & &!&position.color_bb[2]);
-                        &moves & &!&position.color_bb[p.color.flip().index()]
+                        let primary_bb = &primary_bb & &position.color_bb[p.color.flip().index()];
+                        let moves = &primary_bb | &(&sq & &!&position.color_bb[2]);
+                        moves
                     } else {
                         bb
                     }
@@ -557,7 +558,11 @@ impl Position {
         }
 
         match captured {
-            Some(_i) => {}
+            Some(_i) => {
+                if to.in_promotion_zone(moved.color) {
+                    promoted = true;
+                }
+            }
             None => {
                 if moved.piece_type == PieceType::Pawn {
                     let free_sq = from.index() + 12;
@@ -1684,6 +1689,22 @@ pub mod tests {
     }
 
     #[test]
+    fn pawn_captures_last_rank() {
+        setup();
+        let sfen =
+            "4KN1Q4/4L0P1P1PP1/8r3/3L08/56L0/6L05/4L01L01q3/57/57/6L05/pP3k2ppp1/L01r9 w - 33";
+        let mut position = Position::new();
+        position
+            .set_sfen(sfen)
+            .expect("failed to parse sfen string");
+        let pawn_moves = position.legal_moves(&B11);
+        assert_eq!(pawn_moves.count(), 2);
+        let result = position.play("b11", "c12");
+        assert!(result.is_ok());
+        assert_eq!(position.piece_at(C12).unwrap().piece_type, PieceType::Queen);
+    }
+
+    #[test]
     fn queen_moves_through() {
         setup();
         let cases = [
@@ -1937,7 +1958,7 @@ pub mod tests {
             },
             Move::Normal {
                 from: E8,
-                to: E1,
+                to: E2,
                 promote: false,
             },
             Move::Normal {
@@ -1948,8 +1969,6 @@ pub mod tests {
         ];
 
         for case in test_cases.iter() {
-            pos.set_sfen(base_sfen)
-                .expect("failed to parse SFEN string");
             pos.make_move(*case)
                 .unwrap_or_else(|_| panic!("failed to make a move: {}", case));
             pos.unmake_move()
