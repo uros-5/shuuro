@@ -632,6 +632,10 @@ impl Position {
         self.detect_repetition()?;
         self.detect_insufficient_material()?;
 
+        if let Err(_e) = self.is_stalemate(&self.side_to_move()) {
+            return Err(MoveError::DrawByStalemate);
+        }
+
         if self.is_checkmate(&self.side_to_move) {
             return Ok(Outcome::Checkmate {
                 color: self.side_to_move.flip(),
@@ -1777,6 +1781,19 @@ pub mod tests {
             pos.set_sfen(case.0).expect("failed to parse sfen string");
             assert_eq!(case.1, pos.in_check(Color::Black));
             assert_eq!(case.2, pos.in_check(Color::White));
+        }
+    }
+
+    #[test]
+    fn is_stalemate() {
+        setup();
+        let sfen = "57/2r9/K56/3q8/57/57/57/57/56k/57/57/57 b - 1";
+        let mut pos = Position::new();
+        pos.set_sfen(sfen).expect("failed to parse sfen string");
+        println!("{}", pos);
+        let res = pos.play("d4", "c4");
+        if let Ok(res) = res {
+            assert_eq!(res.to_string(), "Stalemate");
         }
     }
 
