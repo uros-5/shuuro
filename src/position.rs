@@ -418,6 +418,9 @@ impl Position {
         let king = self.find_king(*color);
         match king {
             Some(k) => {
+                if !self.in_check(*color) {
+                    return false;
+                }
                 let king_moves = self.legal_moves(&k);
                 if !king_moves.is_any() {
                     let mut final_moves = EMPTY_BB;
@@ -631,10 +634,6 @@ impl Position {
         self.log_position();
         self.detect_repetition()?;
         self.detect_insufficient_material()?;
-
-        if let Err(_e) = self.is_stalemate(&self.side_to_move()) {
-            return Err(MoveError::DrawByStalemate);
-        }
 
         if self.is_checkmate(&self.side_to_move) {
             return Ok(Outcome::Checkmate {
@@ -1790,7 +1789,6 @@ pub mod tests {
         let sfen = "57/2r9/K56/3q8/57/57/57/57/56k/57/57/57 b - 1";
         let mut pos = Position::new();
         pos.set_sfen(sfen).expect("failed to parse sfen string");
-        println!("{}", pos);
         let res = pos.play("d4", "c4");
         if let Ok(res) = res {
             assert_eq!(res.to_string(), "Stalemate");
