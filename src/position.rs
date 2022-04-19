@@ -518,7 +518,7 @@ impl Position {
 
     /// Saves position in sfen_history
     fn log_position(&mut self) {
-        let sfen = self.generate_sfen().split(' ').take(3).join(" ");
+        let mut sfen = self.generate_sfen().split(' ').take(3).join(" ");
         let in_check = self.in_check(self.side_to_move());
         let continuous_check = if in_check {
             let past = if self.sfen_history.len() >= 2 {
@@ -531,6 +531,10 @@ impl Position {
         } else {
             0
         };
+        if self.move_history.len() > 0 {
+            sfen.push(' ');
+            sfen.push_str(&self.move_history.last().unwrap().to_sfen());
+        }
 
         self.sfen_history.push((sfen, continuous_check));
     }
@@ -820,7 +824,7 @@ impl Position {
             if entry.0 == cur.0 {
                 cnt += 1;
 
-                if cnt == 4 {
+                if cnt == 3 {
                     let prev = self.sfen_history.get(self.sfen_history.len() - 2).unwrap();
 
                     if cur.1 * 2 >= (i as u16) {
@@ -1738,6 +1742,7 @@ pub mod tests {
 
         let result = position.play("l1", "j2");
         assert!(result.is_ok());
+        println!("{:?}", &position.get_sfen_history().last().unwrap());
     }
 
     #[test]
@@ -1834,13 +1839,9 @@ pub mod tests {
             assert!(pos.make_move(Move::new(A4, H4, false)).is_ok());
         }
 
-        assert!(pos.make_move(Move::new(D9, I9, false)).is_ok());
-        assert!(pos.make_move(Move::new(H4, A4, false)).is_ok());
-        assert!(pos.make_move(Move::new(I9, D9, false)).is_ok());
-
         assert_eq!(
             Some(MoveError::RepetitionDraw),
-            pos.make_move(Move::new(A4, H4, false)).err()
+            pos.make_move(Move::new(D9, I9, false)).err()
         );
     }
 
