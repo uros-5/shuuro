@@ -532,7 +532,7 @@ impl Position {
             0
         };
         if self.move_history.len() > 0 {
-            sfen.push(' ');
+            sfen.push_str(format!(" {} ", self.ply()).as_str());
             sfen.push_str(&self.move_history.last().unwrap().to_sfen());
         }
 
@@ -818,10 +818,12 @@ impl Position {
         }
 
         let cur = self.sfen_history.last().unwrap();
+        let cur_s = cur.0.split(" ").last();
 
         let mut cnt = 0;
         for (i, entry) in self.sfen_history.iter().rev().enumerate() {
-            if entry.0 == cur.0 {
+            let entry_s = entry.0.split(" ").last();
+            if entry_s == cur_s {
                 cnt += 1;
 
                 if cnt == 3 {
@@ -1742,7 +1744,6 @@ pub mod tests {
 
         let result = position.play("l1", "j2");
         assert!(result.is_ok());
-        println!("{:?}", &position.get_sfen_history().last().unwrap());
     }
 
     #[test]
@@ -1830,7 +1831,7 @@ pub mod tests {
         setup();
 
         let mut pos = Position::new();
-        pos.set_sfen("12/57/PPPQP4K2/7RR3/57/57/57/4pp6/2kr8/57/57/57 b 1r2R 1")
+        pos.set_sfen("57/57/PPPQP4K2/7RR3/57/57/57/4pp6/2kr8/57/57/57 b - 1")
             .expect("failed to parse SFEN string");
         for _ in 0..2 {
             assert!(pos.make_move(Move::new(D9, I9, false)).is_ok());
@@ -1838,7 +1839,6 @@ pub mod tests {
             assert!(pos.make_move(Move::new(I9, D9, false)).is_ok());
             assert!(pos.make_move(Move::new(A4, H4, false)).is_ok());
         }
-
         assert_eq!(
             Some(MoveError::RepetitionDraw),
             pos.make_move(Move::new(D9, I9, false)).err()
