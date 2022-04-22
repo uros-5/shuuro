@@ -24,6 +24,9 @@ pub enum SfenError {
     #[error("an illegal board state notation is found")]
     IllegalBoardState,
 
+    #[error("check on first move is found")]
+    IllegalFirstMove,
+
     #[error("plinths can contain only knights")]
     IllegalPieceTypeOnPlynth,
 }

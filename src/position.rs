@@ -286,7 +286,8 @@ impl Position {
                         & &s.1;
                     for psq in bb {
                         // this piece is pinned
-                        let mut pinned = &between(ksq, psq) & &self.occupied_bb;
+                        let mut pinned =
+                            &(&between(ksq, psq) & &self.occupied_bb) & &!&self.color_bb[2];
                         // this is fix for pin
                         //let fixed = &(&between(psq, ksq) & &!&pinned) | &bb;
                         if pinned.count() == 1
@@ -872,8 +873,8 @@ impl Position {
         self.sfen_history.clear();
         self.log_position();
         /*
-        if self.in_check(self.side_to_move.flip()) && self.sfen_history.len() < 2 {
-            return Err(SfenError::IllegalBoardState);
+        if self.in_check(self.side_to_move.flip()) {
+            return Err(SfenError::IllegalFirstMove);
         }
         */
         // Make moves following the initial position, optional.
@@ -1642,6 +1643,16 @@ pub mod tests {
     }
 
     #[test]
+    fn check_while_knight_on_plinth() {
+        setup();
+        let sfen = "4K5B1/5P2L03/57/2L02Q6/4L04L02/57/56L0/1L055/57/5Ln5L0/3p8/1q3kn5 b - 11";
+        let mut pos = Position::new();
+        pos.set_sfen(sfen).expect("failed to parse SFEN string");
+        let legal_moves = pos.legal_moves(&F10);
+        assert_eq!(legal_moves.count(), 6);
+    }
+
+    #[test]
     fn pawn_moves() {
         setup();
         let cases = [
@@ -1775,7 +1786,7 @@ pub mod tests {
                 false,
                 false,
             ),
-            ("KQP8/2n8/57/57/57/57/57/k11/57/57/57/57 b - 1", false, true),
+            ("KQP8/2n8/57/57/57/57/57/k11/57/57/57/57 w - 1", false, true),
         ];
 
         let mut pos = Position::new();
@@ -1824,6 +1835,7 @@ pub mod tests {
             ),
         ];
         for case in cases.iter() {
+            println!("{}", case.0);
             let mut pos = Position::new();
             pos.set_sfen(case.0).expect("failed to parse SFEN string");
             assert_eq!(case.1, pos.is_checkmate(&case.2));
