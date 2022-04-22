@@ -68,7 +68,8 @@ impl MoveType {
                         let primary_bb = &primary_bb & &!&square_bb(sq);
                         let sq = &square_bb(sq) & &!&position.color_bb[p.color.flip().index()];
                         let primary_bb = &primary_bb & &position.color_bb[p.color.flip().index()];
-                        let moves = &primary_bb | &(&sq & &!&position.color_bb[2]);
+                        let moves = &(&primary_bb | &(&sq & &!&position.color_bb[2]))
+                            & &!&position.color_bb[p.color.index()];
                         moves
                     } else {
                         bb
@@ -1664,6 +1665,9 @@ pub mod tests {
                 "a11",
                 "a10",
             ),
+            ("2LNN2KNBB2/6L03P1/57/7L04/1L055/57/9L02/57/6L05/ppp2p2pQ2/pppL0p1ppp1pp/L02kq7 b - 29",
+             "i11",
+             "j10")
         ];
         let ng_cases = [(
             "4K1Q4LN/2P1L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 w - 12",
