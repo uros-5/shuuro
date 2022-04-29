@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use std::{fmt, vec};
+use std::{fmt, u8, vec};
 
 use crate::{
     between, generate_plinths, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard,
@@ -947,7 +947,12 @@ impl Position {
             match c {
                 n if n.is_digit(11) => {
                     if let Some(n) = n.to_digit(11) {
-                        num_pieces = num_pieces * 13 + (n as u8);
+                        if num_pieces != 0 {
+                            let num2 = format!("{}{}", num_pieces, n as u8).parse::<u8>().unwrap();
+                            num_pieces = num2;
+                            continue;
+                        }
+                        num_pieces = n as u8;
                     }
                 }
                 s => {
@@ -1583,6 +1588,15 @@ pub mod tests {
     }
 
     #[test]
+    fn parse_sfen_hand() {
+        setup();
+        let mut pos = Position::new();
+        pos.set_sfen("6KL04/3L08/57/57/9L02/4L07/6L04L0/3L08/57/57/1L055/57 b kr12pQ9P 1")
+            .expect("failed to parse sfen string");
+        assert_eq!(pos.hand(Piece::from_sfen('p').unwrap()), 12);
+    }
+
+    #[test]
     fn move_candidates() {
         setup();
 
@@ -1835,7 +1849,6 @@ pub mod tests {
             ),
         ];
         for case in cases.iter() {
-            println!("{}", case.0);
             let mut pos = Position::new();
             pos.set_sfen(case.0).expect("failed to parse SFEN string");
             assert_eq!(case.1, pos.is_checkmate(&case.2));
