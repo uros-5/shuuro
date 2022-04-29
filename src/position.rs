@@ -576,11 +576,7 @@ impl Position {
             }
             None => {
                 if moved.piece_type == PieceType::Pawn {
-                    let free_sq = from.index() + 12;
-                    if to.index() != free_sq {
-                        ();
-                        //return Err(MoveError::Inconsistent("The piece cannot move to there"));
-                    } else if to.in_promotion_zone(moved.color) {
+                    if to.in_promotion_zone(moved.color) {
                         promoted = true;
                     }
                 }
@@ -1942,6 +1938,16 @@ pub mod tests {
             to: K5,
             promote: false,
         };
+        assert!(pos.make_move(move_).is_ok());
+    }
+
+    #[test]
+    fn pawn_promoted() {
+        setup();
+        let mut pos = Position::new();
+        pos.set_sfen("7K4/1L01p1N6/57/5R2B3/1L05L04/9L02/57/5L06/57/7L04/5L04L01/2r2k1n4 b - 28")
+            .expect("failed to parse SFEN string");
+        let move_ = Move::from_sfen("d2_d1").unwrap();
         assert!(pos.make_move(move_).is_ok());
     }
 
