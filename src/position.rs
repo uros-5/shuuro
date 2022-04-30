@@ -467,7 +467,7 @@ impl Position {
             Some(_square) => {
                 if checks.len() == 1 {
                     let checks = checks.get(0).unwrap();
-                    return checks & &fixer.fix;
+                    return &(checks & &fixer.fix) & &my_moves;
                 } else if checks.len() > 1 {
                     return EMPTY_BB;
                 }
@@ -1592,6 +1592,16 @@ pub mod tests {
             let legal_moves = pos.legal_moves(&case.1);
             assert_eq!(legal_moves.count(), case.2);
         }
+    }
+
+    #[test]
+    fn check_while_pinned() {
+        setup();
+        let mut pos = Position::default();
+        pos.set_sfen("5K6/55PL0/3N8/2L09/5L06/8nL02/1L03Q4L01/7L04/57/57/L03pr6/5k1Q4 b - 50")
+            .expect("failed to parse sfen string");
+        let legal_moves = pos.legal_moves(&F11);
+        assert_eq!(legal_moves.count(), 0);
     }
 
     #[test]
