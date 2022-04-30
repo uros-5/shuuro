@@ -1569,6 +1569,16 @@ pub mod tests {
     }
 
     #[test]
+    fn pawn_check_king() {
+        setup();
+        let mut pos = Position::new();
+        pos.set_sfen("57/9K2/8L03/56L0/5Q6/L03L07/55L01/1L055/5P6/4k7/L056/7L04 b - 72")
+            .expect("failed to parse SFEN string");
+        let in_check = pos.in_check(Color::Black);
+        assert!(in_check);
+    }
+
+    #[test]
     fn legal_moves_pawn() {
         setup();
         let cases = [(
