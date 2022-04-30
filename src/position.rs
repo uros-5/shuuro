@@ -261,18 +261,19 @@ impl Position {
                 }
                 let ksq = ksq.unwrap();
                 let mut pin = Fixer::default();
+                let plinths = self.color_bb[2].clone();
                 for s in [
                     (
                         PieceType::Queen,
-                        get_sliding_attacks(PieceType::Queen, ksq, EMPTY_BB),
+                        get_sliding_attacks(PieceType::Queen, ksq, plinths),
                     ),
                     (
                         PieceType::Rook,
-                        get_sliding_attacks(PieceType::Rook, ksq, EMPTY_BB),
+                        get_sliding_attacks(PieceType::Rook, ksq, plinths),
                     ),
                     (
                         PieceType::Bishop,
-                        get_sliding_attacks(PieceType::Bishop, ksq, EMPTY_BB),
+                        get_sliding_attacks(PieceType::Bishop, ksq, plinths),
                     ),
                     /*(
                         PieceType::Pawn,
@@ -377,6 +378,17 @@ impl Position {
                             ksq,
                             Piece {
                                 piece_type: PieceType::Knight,
+                                color: i.color,
+                            },
+                            MoveType::Plinth,
+                        ),
+                    ),
+                    (
+                        PieceType::Pawn,
+                        self.move_candidates(
+                            ksq,
+                            Piece {
+                                piece_type: PieceType::Pawn,
                                 color: i.color,
                             },
                             MoveType::Plinth,
@@ -1544,6 +1556,16 @@ pub mod tests {
                 assert!((&red & *sq).is_any());
             }
         }
+    }
+
+    #[test]
+    fn pawn_not_pinned() {
+        setup();
+        let mut pos = Position::new();
+        pos.set_sfen("57/9K2/8L0Q2/4P6L0/6P5/L03L07/55L01/1L055/2q9/57/L056/6kL04 w - 55")
+            .expect("failed to parse SFEN string");
+        let lm = pos.legal_moves(&G5);
+        assert_eq!(lm.count(), 1);
     }
 
     #[test]
