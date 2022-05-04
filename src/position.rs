@@ -83,7 +83,7 @@ impl MoveType {
                     if p.piece_type == PieceType::Pawn {
                         let up_sq = self.get_pawn_square(sq, &p.color);
                         let up_sq = square_bb(up_sq);
-                        return &primary_bb & &!&up_sq;
+                        return &bb & &!&up_sq;
                     }
                     &(&(bb) & &!&position.color_bb[2]) | &(&bb & &square_bb(king.to_owned()))
                 } else {
@@ -1433,7 +1433,7 @@ impl fmt::Display for Position {
 }
 #[cfg(test)]
 pub mod tests {
-    use crate::{consts::*, Move, MoveError};
+    use crate::{consts::*, Move};
     use crate::{init, Color, Piece, PieceType, Position, Square};
     pub const START_POS: &str = "KR55/57/57/57/57/57/57/57/57/57/57/kr55 b - 1";
 
