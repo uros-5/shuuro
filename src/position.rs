@@ -817,9 +817,11 @@ impl Position {
 
         let cur = self.sfen_history.last().unwrap();
         let lm = cur.1;
+        let lm_str = cur.0.split_whitespace().rev().last().unwrap();
         let mut cnt = 0;
         for (_i, entry) in self.sfen_history.iter().rev().enumerate() {
-            if lm == entry.1 {
+            let s = entry.0.split_whitespace().rev().last().unwrap();
+            if lm == entry.1 && s == lm_str {
                 cnt += 1;
                 if cnt == 3 {
                     return Err(MoveError::RepetitionDraw);
