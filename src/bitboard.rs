@@ -86,8 +86,12 @@ impl BitBoard {
         None
     }
 
-    pub fn merge(&self) -> [u16; 9] {
-        self.0
+    pub fn merge(&self) -> u16 {
+        let mut merged = self.0[0];
+        for i in 1..9 {
+            merged |= self.0[i];
+        }
+        merged
     }
 }
 
