@@ -65,12 +65,14 @@ impl MoveType {
                     let bb = &(primary_bb) & &!&position.color_bb[2];
                     if p.piece_type == PieceType::Pawn {
                         let sq = self.get_pawn_square(sq, &p.color);
+                        let n_and_p =
+                            &position.color_bb[p.color.flip().index()] & &position.color_bb[2];
                         let primary_bb = &primary_bb & &!&square_bb(sq);
                         let sq = &square_bb(sq) & &!&position.color_bb[p.color.flip().index()];
                         let primary_bb = &primary_bb & &position.color_bb[p.color.flip().index()];
                         let moves = &(&primary_bb | &(&sq & &!&position.color_bb[2]))
                             & &!&position.color_bb[p.color.index()];
-                        moves
+                        &moves & &!&n_and_p
                     } else {
                         bb
                     }
@@ -1534,6 +1536,17 @@ pub mod tests {
                 assert!((&red & *sq).is_any());
             }
         }
+    }
+
+    #[test]
+    fn pawn_vs_knight() {
+        setup();
+        let sfen = "6L03B1/2LN2K3P2/3pPL04L01/57/57/57/7L04/3L08/8L03/q56/L056/3kqbr5 b - 38";
+        let mut pos = Position::new();
+        pos.set_sfen(sfen).expect("failed to parse SFEN string");
+        println!("{pos}");
+        let lm = pos.legal_moves(&D3);
+        assert!(lm.count() == 1);
     }
 
     #[test]
