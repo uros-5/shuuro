@@ -14,7 +14,7 @@ fn get_pricing() -> [(i32, u8); 7] {
 }
 
 /// Used for buying pieces.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Shop {
     credit: [i32; 2],
     hand: Hand,
