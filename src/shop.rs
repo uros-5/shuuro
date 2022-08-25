@@ -1,4 +1,7 @@
-use std::u8;
+use std::{
+    sync::{Arc, Mutex},
+    u8,
+};
 
 use crate::{Color, Hand, Move, MoveRecord, Piece, PieceType};
 
@@ -20,8 +23,8 @@ pub struct Shop {
     hand: Hand,
     confirmed: [bool; 2],
     pricing: [(i32, u8); 7],
-    move_history: Vec<MoveRecord>,
-    sfen_history: Vec<(String, u8)>,
+    move_history: Arc<Mutex<Vec<MoveRecord>>>,
+    sfen_history: Arc<Mutex<Vec<(String, u8)>>>,
 }
 
 impl Shop {
@@ -41,8 +44,10 @@ impl Shop {
                                 self.credit(piece.color) - piece_price;
                             let move_record = MoveRecord::Buy { piece };
                             self.sfen_history
+                                .lock()
+                                .unwrap()
                                 .push((move_record.to_sfen().clone(), self.hand.get(piece)));
-                            self.move_history.push(move_record);
+                            self.move_history.lock().unwrap().push(move_record);
                         }
                         if self.credit[piece.color.index()] == 0 {
                             self.confirm(piece.color);
@@ -104,16 +109,20 @@ impl Shop {
     }
 
     pub fn set_sfen_history(&mut self, history: Vec<(String, u8)>) {
-        self.sfen_history = history;
+        let mut h = self.sfen_history.lock().unwrap();
+        h.clear();
+        h.extend(history);
     }
 
     pub fn set_move_history(&mut self, history: Vec<MoveRecord>) {
-        self.move_history = history;
+        let mut h = self.move_history.lock().unwrap();
+        h.clear();
+        h.extend(history);
     }
 
     #[warn(unused_variables)]
-    pub fn get_sfen_history(&self, _color: &Color) -> &Vec<(String, u8)> {
-        &self.sfen_history
+    pub fn get_sfen_history(&self, _color: &Color) -> Vec<(String, u8)> {
+        self.sfen_history.lock().unwrap().clone()
     }
 }
 
