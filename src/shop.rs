@@ -29,7 +29,7 @@ pub struct Shop {
 
 impl Shop {
     /// Buying piece with specific color.
-    pub fn play(&mut self, mv: Move) -> Option<String> {
+    pub fn play(&mut self, mv: Move) -> Option<[bool; 2]> {
         match mv {
             Move::Buy { piece } => {
                 if piece.color == Color::NoColor {
@@ -52,7 +52,7 @@ impl Shop {
                         if self.credit[piece.color.index()] == 0 {
                             self.confirm(piece.color);
                         }
-                        return Some(piece.to_string());
+                        return Some(self.confirmed);
                     }
                 }
             }
