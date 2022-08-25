@@ -29,11 +29,11 @@ pub struct Shop {
 
 impl Shop {
     /// Buying piece with specific color.
-    pub fn play(&mut self, mv: Move) {
+    pub fn play(&mut self, mv: Move) -> Option<String> {
         match mv {
             Move::Buy { piece } => {
                 if piece.color == Color::NoColor {
-                    return ();
+                    return None;
                 }
                 if !self.is_confirmed(piece.color) {
                     let (piece_price, piece_count) = self.pricing[piece.piece_type.index()];
@@ -52,11 +52,13 @@ impl Shop {
                         if self.credit[piece.color.index()] == 0 {
                             self.confirm(piece.color);
                         }
+                        return Some(piece.to_string());
                     }
                 }
             }
             _ => (),
         }
+        None
     }
 
     /// Confirm your choice of pieces.

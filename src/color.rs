@@ -65,6 +65,16 @@ impl Color {
     }
 }
 
+impl From<usize> for Color {
+    fn from(u: usize) -> Self {
+        match u {
+            0 => Self::White,
+            1 => Self::Black,
+            _ => Self::NoColor,
+        }
+    }
+}
+
 pub struct ColorIter {
     current: Option<Color>,
 }
