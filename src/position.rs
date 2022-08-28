@@ -1288,7 +1288,7 @@ impl Position {
     }
 
     /// Placing piece on square.
-    pub fn place(&mut self, p: Piece, sq: Square) {
+    pub fn place(&mut self, p: Piece, sq: Square) -> Option<String> {
         if self.hand.get(p) > 0 {
             if (&self.empty_squares(p) & sq).is_any() {
                 self.update_bb(p, sq);
@@ -1321,8 +1321,11 @@ impl Position {
                     ),
                     1,
                 ));
+
+                return Some(move_record.to_sfen());
             }
         }
+        None
     }
 
     /// Generating random plinths.
