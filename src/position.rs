@@ -1310,19 +1310,17 @@ impl Position {
                 if !self.is_hand_empty(&p.color.flip(), PieceType::Plinth) {
                     self.side_to_move = p.color.flip();
                 }
-                self.sfen_history.push((
-                    format!(
-                        "{}_{}_{}_{}_{}",
-                        &move_record.to_sfen(),
-                        &sfen.clone(),
-                        hand,
-                        self.side_to_move.to_string(),
-                        ply
-                    ),
-                    1,
-                ));
+                let record = format!(
+                    "{}_{}_{}_{}_{}",
+                    &move_record.to_sfen(),
+                    &sfen.clone(),
+                    hand,
+                    self.side_to_move.to_string(),
+                    ply
+                );
+                self.sfen_history.push((record.clone(), 1));
 
-                return Some(move_record.to_sfen());
+                return Some(record);
             }
         }
         None
