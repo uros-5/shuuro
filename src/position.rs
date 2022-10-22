@@ -951,7 +951,7 @@ impl Position {
         let mut num_pieces: u8 = 0;
         for c in s.chars() {
             match c {
-                n if n.is_digit(11) => {
+                n if n.is_numeric() => {
                     if let Some(n) = n.to_digit(9) {
                         if num_pieces != 0 {
                             let num2 = format!("{}{}", num_pieces, n as u8).parse::<u8>().unwrap();

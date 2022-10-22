@@ -24,7 +24,6 @@ impl Piece {
                 Color::Black
             }
         };
-
         PieceType::from_sfen(c).map(|piece_type| Piece { piece_type, color })
     }
     /// Returns an instance of `Piece` after promotion.

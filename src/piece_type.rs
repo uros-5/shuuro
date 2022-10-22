@@ -29,9 +29,9 @@ impl PieceType {
             'b' | 'B' => PieceType::Bishop,
             'n' | 'N' => PieceType::Knight,
             'p' | 'P' => PieceType::Pawn,
-            'L' => PieceType::Plinth,
             'c' | 'C' => PieceType::ArchRook,
             'a' | 'A' => PieceType::ArchBishop,
+            'L' => PieceType::Plinth,
             _ => return None,
         })
     }
