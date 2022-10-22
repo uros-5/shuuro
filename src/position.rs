@@ -263,7 +263,6 @@ impl Position {
 
     /// Returns Fixer struct, who has fix for pin(if it exist).
     fn pinned_moves(&self, square: &Square) -> Fixer {
-        println!("{}", &square);
         let piece = self.piece_at(*square);
         match piece {
             Some(i) => {
@@ -578,7 +577,6 @@ impl Position {
             self.occupied_bb ^= to;
             self.type_bb[cap.piece_type.index()] ^= to;
             self.color_bb[cap.color.index()] ^= to;
-
             //self.hand.increment(pc);
         }
 
@@ -1410,6 +1408,7 @@ impl fmt::Display for Position {
 }
 #[cfg(test)]
 pub mod tests {
+    use crate::position::Outcome;
     use crate::{consts::*, Move};
     use crate::{init, Color, Piece, PieceType, Position, Square};
     pub const START_POS: &str = "KR55/57/57/57/57/57/57/57/57/57/57/kr55 b - 1";
@@ -2333,9 +2332,7 @@ pub mod tests {
             let mut position = Position::default();
             position.update_variant();
             position.set_sfen(case.0).expect("error while parsing sfen");
-            println!("{}", &position);
             let check = position.in_check(case.1);
-            println!("{}", check);
             assert_eq!(check, true);
         }
     }
@@ -2351,9 +2348,40 @@ pub mod tests {
             let mut position = Position::default();
             position.update_variant();
             position.set_sfen(case.0).expect("error while parsing sfen");
-            println!("{}", &position);
             let moves = position.legal_moves(&G2);
             assert_eq!(moves.count(), case.1);
+        }
+    }
+
+    #[test]
+    fn is_fairy_mate() {
+        setup();
+        let cases = ["2LN3KQ4/L09L01/57/8L03/57/57/5L03AL01/2A3L05/1L055/3n2a5/2p9/3cqkC5 b - 24"];
+        for case in cases {
+            let mut position = Position::default();
+            position.update_variant();
+            position.set_sfen(case).expect("error while parsing sfen");
+            assert!(position.is_checkmate(&Color::Black));
+        }
+    }
+
+    #[test]
+    fn make_fairy_mate() {
+        setup();
+        let cases = ["2LN3KQ4/L09L01/57/8L03/57/57/5L03AL01/2A3L05/1L055/3n2aC4/2p9/3cqk6 w - 24"];
+        for case in cases {
+            let mut position = Position::default();
+            position.update_variant();
+            position.set_sfen(case).expect("error while parsing sfen");
+            let mate = position.make_move(Move::from_sfen("h10_g12").unwrap());
+            if let Ok(mate) = mate {
+                assert_eq!(
+                    mate,
+                    Outcome::Checkmate {
+                        color: Color::White
+                    }
+                );
+            }
         }
     }
 }
