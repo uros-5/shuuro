@@ -2,9 +2,9 @@ use itertools::Itertools;
 use std::{fmt, u8, vec};
 
 use crate::{
-    between, generate_plinths, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard,
-    Color, Hand, Move, MoveError, MoveRecord, Piece, PieceType, SfenError, Square, EMPTY_BB,
-    FILE_BB, piece_type::Variant,
+    between, generate_plinths, get_non_sliding_attacks, get_sliding_attacks, piece_type::Variant,
+    square_bb, BitBoard, Color, Hand, Move, MoveError, MoveRecord, Piece, PieceType, SfenError,
+    Square, EMPTY_BB, FILE_BB,
 };
 
 /// Outcome stores information about outcome after move.
@@ -58,7 +58,7 @@ impl MoveType {
 
     pub fn moves(&self, position: &Position, bb: BitBoard, p: Piece, sq: Square) -> BitBoard {
         let primary_bb = &bb & &!&position.color_bb[p.color.index()];
-        let knights = [4,6,7];
+        let knights = [4, 6, 7];
         match self {
             MoveType::Empty => bb,
             MoveType::Plinth => {
@@ -952,7 +952,7 @@ impl Position {
         for c in s.chars() {
             match c {
                 n if n.is_digit(11) => {
-                    if let Some(n) = n.to_digit(11) {
+                    if let Some(n) = n.to_digit(9) {
                         if num_pieces != 0 {
                             let num2 = format!("{}{}", num_pieces, n as u8).parse::<u8>().unwrap();
                             num_pieces = num2;
@@ -1068,7 +1068,7 @@ impl Position {
             }
             s
         }
-        let knights = [4,6,7];
+        let knights = [4, 6, 7];
         let board = (0..12)
             .map(|row| {
                 let mut s = String::new();
@@ -1385,7 +1385,7 @@ impl Default for Position {
             color_bb: Default::default(),
             type_bb: Default::default(),
             game_status: Outcome::MoveOk,
-            variant: Variant::Normal
+            variant: Variant::Normal,
         }
     }
 }
@@ -2361,5 +2361,4 @@ pub mod tests {
             assert_eq!(file.count(), case.1);
         }
     }
-
 }
