@@ -406,6 +406,28 @@ impl Position {
                             MoveType::Plinth,
                         ),
                     ),
+                    (
+                        PieceType::ArchRook,
+                        self.move_candidates(
+                            ksq,
+                            Piece {
+                                piece_type: PieceType::ArchRook,
+                                color: i.color,
+                            },
+                            MoveType::Plinth,
+                        ),
+                    ),
+                    (
+                        PieceType::ArchBishop,
+                        self.move_candidates(
+                            ksq,
+                            Piece {
+                                piece_type: PieceType::ArchBishop,
+                                color: i.color,
+                            },
+                            MoveType::Plinth,
+                        ),
+                    ),
                 ]
                 .iter()
                 {
@@ -431,6 +453,7 @@ impl Position {
         if let Some(k) = king {
             let check_moves = self.check_moves(k);
             if check_moves.len() > 0 {
+                println!("{}", &check_moves[0]);
                 return true;
             } else {
                 return false;
