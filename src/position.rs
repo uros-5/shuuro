@@ -263,6 +263,7 @@ impl Position {
 
     /// Returns Fixer struct, who has fix for pin(if it exist).
     fn pinned_moves(&self, square: &Square) -> Fixer {
+        println!("{}", &square);
         let piece = self.piece_at(*square);
         match piece {
             Some(i) => {
@@ -275,28 +276,21 @@ impl Position {
                 let mut pin = Fixer::default();
                 let plinths = self.color_bb[2].clone();
                 for s in [
-                    (
-                        PieceType::Queen,
-                        get_sliding_attacks(PieceType::Queen, ksq, plinths),
-                    ),
-                    (
-                        PieceType::Rook,
-                        get_sliding_attacks(PieceType::Rook, ksq, plinths),
-                    ),
-                    (
-                        PieceType::Bishop,
-                        get_sliding_attacks(PieceType::Bishop, ksq, plinths),
-                    ),
-                    /*(
-                        PieceType::Pawn,
-                        get_non_sliding_attacks(PieceType::Pawn, ksq, i.color.flip()),
-                    )*/
+                    (PieceType::Queen,),
+                    (PieceType::Rook,),
+                    (PieceType::Bishop,),
+                    (PieceType::ArchRook,),
+                    (PieceType::ArchBishop,),
                 ]
                 .iter()
                 {
+                    if self.variant.wrong(s.0.index()) {
+                        continue;
+                    }
+                    let piece_attacks = get_sliding_attacks(s.0, ksq, plinths);
                     // this is enemy
                     let bb = &(&self.type_bb[s.0.index()] & &self.color_bb[i.color.flip().index()])
-                        & &s.1;
+                        & &piece_attacks;
                     for psq in bb {
                         // this piece is pinned
                         let mut pinned =
@@ -351,89 +345,27 @@ impl Position {
                 let ksq = ksq.unwrap();
                 let mut all: Vec<BitBoard> = vec![];
                 for s in [
-                    (
-                        PieceType::Queen,
-                        self.move_candidates(
-                            ksq,
-                            Piece {
-                                piece_type: PieceType::Queen,
-                                color: i.color,
-                            },
-                            MoveType::Plinth,
-                        ),
-                    ),
-                    (
-                        PieceType::Rook,
-                        self.move_candidates(
-                            ksq,
-                            Piece {
-                                piece_type: PieceType::Rook,
-                                color: i.color,
-                            },
-                            MoveType::Plinth,
-                        ),
-                    ),
-                    (
-                        PieceType::Bishop,
-                        self.move_candidates(
-                            ksq,
-                            Piece {
-                                piece_type: PieceType::Bishop,
-                                color: i.color,
-                            },
-                            MoveType::Plinth,
-                        ),
-                    ),
-                    (
-                        PieceType::Knight,
-                        self.move_candidates(
-                            ksq,
-                            Piece {
-                                piece_type: PieceType::Knight,
-                                color: i.color,
-                            },
-                            MoveType::Plinth,
-                        ),
-                    ),
-                    (
-                        PieceType::Pawn,
-                        self.move_candidates(
-                            ksq,
-                            Piece {
-                                piece_type: PieceType::Pawn,
-                                color: i.color,
-                            },
-                            MoveType::Plinth,
-                        ),
-                    ),
-                    (
-                        PieceType::ArchRook,
-                        self.move_candidates(
-                            ksq,
-                            Piece {
-                                piece_type: PieceType::ArchRook,
-                                color: i.color,
-                            },
-                            MoveType::Plinth,
-                        ),
-                    ),
-                    (
-                        PieceType::ArchBishop,
-                        self.move_candidates(
-                            ksq,
-                            Piece {
-                                piece_type: PieceType::ArchBishop,
-                                color: i.color,
-                            },
-                            MoveType::Plinth,
-                        ),
-                    ),
+                    PieceType::Queen,
+                    PieceType::Rook,
+                    PieceType::Bishop,
+                    PieceType::Knight,
+                    PieceType::Pawn,
+                    PieceType::ArchRook,
+                    PieceType::ArchBishop,
                 ]
                 .iter()
                 {
+                    if self.variant.wrong(s.index()) {
+                        continue;
+                    }
+                    let p = Piece {
+                        piece_type: *s,
+                        color: i.color,
+                    };
+                    let move_candidates = self.move_candidates(ksq, p, MoveType::Plinth);
                     // this is enemy
-                    let bb = &(&self.type_bb[s.0.index()] & &self.color_bb[i.color.flip().index()])
-                        & &s.1;
+                    let bb = &(&self.type_bb[s.index()] & &self.color_bb[i.color.flip().index()])
+                        & &move_candidates;
                     for psq in bb {
                         // this is fix for check
                         let fix = &between(ksq, psq);
@@ -453,7 +385,6 @@ impl Position {
         if let Some(k) = king {
             let check_moves = self.check_moves(k);
             if check_moves.len() > 0 {
-                println!("{}", &check_moves[0]);
                 return true;
             } else {
                 return false;
@@ -2382,6 +2313,47 @@ pub mod tests {
                 color: case.2,
             });
             assert_eq!(file.count(), case.1);
+        }
+    }
+
+    #[test]
+    fn is_check_fairy() {
+        setup();
+        let cases = [
+            (
+                "7K2Q1/2C1L01N5/6c5/1L05L04/57/8La3/57/4L07/56L0/57/1L09L0/3k8 w - 1",
+                Color::White,
+            ),
+            (
+                "55Q1/2C1L01NK4/6c5/1L05L01a2/57/8L03/57/4L07/56L0/57/1L09L0/3k8 w - 1",
+                Color::White,
+            ),
+        ];
+        for case in cases {
+            let mut position = Position::default();
+            position.update_variant();
+            position.set_sfen(case.0).expect("error while parsing sfen");
+            println!("{}", &position);
+            let check = position.in_check(case.1);
+            println!("{}", check);
+            assert_eq!(check, true);
+        }
+    }
+
+    #[test]
+    fn is_piece_pinned_by_fairy() {
+        setup();
+        let cases = [(
+            "4C1K3Q1/4L01N5/57/1L05L04/6c5/8L03/57/4L07/56L0/57/1L09L0/2a1k7 w - 9",
+            0,
+        )];
+        for case in cases {
+            let mut position = Position::default();
+            position.update_variant();
+            position.set_sfen(case.0).expect("error while parsing sfen");
+            println!("{}", &position);
+            let moves = position.legal_moves(&G2);
+            assert_eq!(moves.count(), case.1);
         }
     }
 }
