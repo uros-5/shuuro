@@ -4,7 +4,7 @@ use std::{fmt, u8, vec};
 use crate::{
     between, generate_plinths, get_non_sliding_attacks, get_sliding_attacks, square_bb, BitBoard,
     Color, Hand, Move, MoveError, MoveRecord, Piece, PieceType, SfenError, Square, EMPTY_BB,
-    FILE_BB,
+    FILE_BB, piece_type::Variant,
 };
 
 /// Outcome stores information about outcome after move.
@@ -58,10 +58,11 @@ impl MoveType {
 
     pub fn moves(&self, position: &Position, bb: BitBoard, p: Piece, sq: Square) -> BitBoard {
         let primary_bb = &bb & &!&position.color_bb[p.color.index()];
+        let knights = [4,6,7];
         match self {
             MoveType::Empty => bb,
             MoveType::Plinth => {
-                if p.piece_type != PieceType::Knight {
+                if !knights.contains(&p.piece_type.index()) {
                     let bb = &(primary_bb) & &!&position.color_bb[2];
                     if p.piece_type == PieceType::Pawn {
                         let sq = self.get_pawn_square(sq, &p.color);
@@ -81,7 +82,7 @@ impl MoveType {
                 }
             }
             MoveType::NoKing { king } => {
-                if p.piece_type != PieceType::Knight {
+                if !knights.contains(&p.piece_type.index()) {
                     if p.piece_type == PieceType::Pawn {
                         let up_sq = self.get_pawn_square(sq, &p.color);
                         let up_sq = square_bb(up_sq);
@@ -180,7 +181,8 @@ pub struct Position {
     occupied_bb: BitBoard,
     color_bb: [BitBoard; 3],
     game_status: Outcome,
-    pub type_bb: [BitBoard; 7],
+    variant: Variant,
+    pub type_bb: [BitBoard; 15],
 }
 
 impl Position {
@@ -221,6 +223,14 @@ impl Position {
 
     pub fn outcome(&self) -> &Outcome {
         return &self.game_status;
+    }
+
+    pub fn variant(&self) -> String {
+        self.variant.to_string()
+    }
+
+    pub fn update_variant(&mut self) {
+        self.variant = self.variant.other();
     }
 
     /// Returns all legal moves where piece can be moved.
@@ -769,6 +779,14 @@ impl Position {
             PieceType::Knight => get_non_sliding_attacks(PieceType::Knight, sq, p.color),
             PieceType::Pawn => get_non_sliding_attacks(PieceType::Pawn, sq, p.color),
             PieceType::King => get_non_sliding_attacks(PieceType::King, sq, p.color),
+            PieceType::ArchRook => {
+                &get_non_sliding_attacks(PieceType::Knight, sq, p.color)
+                    | &get_sliding_attacks(PieceType::Rook, sq, blockers)
+            }
+            PieceType::ArchBishop => {
+                &get_non_sliding_attacks(PieceType::Knight, sq, p.color)
+                    | &get_sliding_attacks(PieceType::Bishop, sq, blockers)
+            }
             _ => EMPTY_BB,
         };
         move_list.moves(&self, bb, p, sq)
@@ -1050,6 +1068,7 @@ impl Position {
             }
             s
         }
+        let knights = [4,6,7];
         let board = (0..12)
             .map(|row| {
                 let mut s = String::new();
@@ -1065,7 +1084,7 @@ impl Position {
                             }
 
                             if (&self.color_bb[2] & sq).is_any() {
-                                if pc.piece_type == PieceType::Knight {
+                                if knights.contains(&pc.piece_type.index()) {
                                     s.push_str("L");
                                 } else {
                                     ()
@@ -1366,6 +1385,7 @@ impl Default for Position {
             color_bb: Default::default(),
             type_bb: Default::default(),
             game_status: Outcome::MoveOk,
+            variant: Variant::Normal
         }
     }
 }
@@ -1545,7 +1565,6 @@ pub mod tests {
         let sfen = "6L03B1/2LN2K3P2/3pPL04L01/57/57/57/7L04/3L08/8L03/q56/L056/3kqbr5 b - 38";
         let mut pos = Position::new();
         pos.set_sfen(sfen).expect("failed to parse SFEN string");
-        println!("{pos}");
         let lm = pos.legal_moves(&D3);
         assert!(lm.count() == 1);
     }
@@ -2342,4 +2361,5 @@ pub mod tests {
             assert_eq!(file.count(), case.1);
         }
     }
+
 }

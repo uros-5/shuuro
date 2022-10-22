@@ -9,7 +9,9 @@ pub enum PieceType {
     Bishop = 3,
     Knight = 4,
     Pawn = 5,
-    Plinth = 6,
+    ArchRook = 6,
+    ArchBishop = 7,
+    Plinth = 8,
 }
 
 impl PieceType {
@@ -28,6 +30,8 @@ impl PieceType {
             'n' | 'N' => PieceType::Knight,
             'p' | 'P' => PieceType::Pawn,
             'L' => PieceType::Plinth,
+            'c' | 'C' => PieceType::ArchRook,
+            'a' | 'A' => PieceType::ArchBishop,
             _ => return None,
         })
     }
@@ -79,6 +83,8 @@ impl PieceType {
                 | PieceType::King
                 | PieceType::Knight
                 | PieceType::Pawn
+                | PieceType::ArchBishop
+                | PieceType::ArchRook
         )
     }
 
@@ -101,6 +107,8 @@ impl fmt::Display for PieceType {
                 PieceType::Rook => "r",
                 PieceType::Queen => "q",
                 PieceType::Plinth => "L",
+                PieceType::ArchRook => "c",
+                PieceType::ArchBishop => "a",
             }
         )
     }
@@ -132,7 +140,9 @@ impl iter::Iterator for PieceTypeIter {
                 PieceType::Bishop => Some(PieceType::Knight),
                 PieceType::Knight => Some(PieceType::Pawn),
                 PieceType::Pawn => Some(PieceType::Plinth),
-                PieceType::Plinth => None,
+                PieceType::Plinth => Some(PieceType::ArchBishop),
+                PieceType::ArchBishop => Some(PieceType::ArchRook),
+                PieceType::ArchRook => None
             };
         }
 
@@ -154,7 +164,7 @@ mod tests {
             ('b', PieceType::Bishop),
             ('p', PieceType::Pawn),
         ];
-        let ng_cases = ['\0', ' ', '_', 'a', 'z', '+'];
+        let ng_cases = ['\0', ' ', '_', 'G', 'z', '+'];
         for case in ok_cases.iter() {
             assert_eq!(Some(case.1), PieceType::from_sfen(case.0));
             assert_eq!(
@@ -205,6 +215,61 @@ mod tests {
                     assert!(i.unpromote().is_none())
                 }
             }
+        }
+    }
+}
+
+const NOT_FOR_DEFAULT: [u8;2] = [6,7];
+const NOT_FOR_FAIRY: [u8;2] = [2,3];
+
+#[derive(Clone, Debug)]
+pub enum Variant {
+    Normal,
+    Fairy
+}
+
+impl Variant {
+    pub fn other(&self) -> Self {
+        match &self {
+            Self::Normal => Self::Fairy,
+            Self::Fairy => Self::Normal
+        }
+    }
+
+    pub fn wrong(&self, p: usize) -> bool {
+        if p == 6 {
+            return false;
+        }
+        match &self {
+            Self::Normal => NOT_FOR_DEFAULT.contains(&(p as u8)),
+            Self::Fairy => NOT_FOR_FAIRY.contains(&(p as u8))
+        }
+    }
+    
+    pub fn start_credit(&self) -> i32 {
+        match &self {
+            Self::Normal => 800,
+            Self::Fairy => 870 
+        }
+    } 
+}
+
+impl From<&String> for Variant {
+    fn from(v: &String) -> Self {
+        if v == "" {
+            Self::Normal
+        }
+        else {
+            Self::Fairy
+        }
+    }
+}
+
+impl ToString for Variant {
+    fn to_string(&self) -> String {
+        match &self {
+            Self::Normal => String::from(""),
+            Self::Fairy => String::from("fairy")
         }
     }
 }

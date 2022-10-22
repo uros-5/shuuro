@@ -42,12 +42,12 @@ pub fn get_non_sliding_attacks(piece_type: PieceType, square: Square, color: Col
 
 pub fn get_sliding_attacks(piece_type: PieceType, square: Square, blockers: BitBoard) -> BitBoard {
     match piece_type {
-        PieceType::Bishop => get_bishop_attacks(square.index(), blockers),
-        PieceType::Rook => get_rook_attacks(square.index(), blockers),
+        PieceType::Bishop | PieceType::ArchBishop => get_bishop_attacks(square.index(), blockers),
+        PieceType::Rook | PieceType::ArchRook => get_rook_attacks(square.index(), blockers),
         PieceType::Queen => {
             &get_bishop_attacks(square.index(), blockers)
                 | &get_rook_attacks(square.index(), blockers)
-        }
+        },
         _ => EMPTY_BB,
     }
 }

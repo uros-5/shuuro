@@ -3,12 +3,12 @@ use std::{
     u8,
 };
 
-use crate::{Color, Hand, Move, MoveRecord, Piece, PieceType};
+use crate::{piece_type::Variant, Color, Hand, Move, MoveRecord, Piece, PieceType};
 
-fn get_pricing() -> [(i32, u8); 7] {
-    let prices = [0, 110, 70, 40, 40, 10, 0];
-    let count = [1, 3, 6, 9, 9, 18, 0];
-    let mut pricing: [(i32, u8); 7] = [(0, 0); 7];
+fn get_pricing() -> [(i32, u8); 9] {
+    let prices = [0, 110, 70, 40, 40, 10, 0, 150, 150];
+    let count = [1, 3, 6, 9, 9, 18, 0, 3, 3];
+    let mut pricing: [(i32, u8); 9] = [(0, 0); 9];
     let pt_iter = PieceType::iter();
     for pt in pt_iter {
         pricing[pt.index()] = (prices[pt.index()], count[pt.index()]);
@@ -22,20 +22,32 @@ pub struct Shop {
     credit: [i32; 2],
     hand: Hand,
     confirmed: [bool; 2],
-    pricing: [(i32, u8); 7],
+    pricing: [(i32, u8); 9],
     move_history: Arc<Mutex<Vec<MoveRecord>>>,
     sfen_history: Arc<Mutex<Vec<(String, u8)>>>,
+    variant: Variant,
 }
 
 impl Shop {
+    /// Change variant
+    pub fn change_variant(&mut self) {
+        self.variant = self.variant.other();
+        let credit = self.variant.start_credit();
+        self.credit = [credit, credit];
+
+    }
+
     /// Buying piece with specific color.
     pub fn play(&mut self, mv: Move) -> Option<[bool; 2]> {
         match mv {
             Move::Buy { piece } => {
-                if piece.color == Color::NoColor {
+                if self.variant.wrong(piece.piece_type.index()) {
                     return None;
                 }
-                if !self.is_confirmed(piece.color) {
+                else if piece.color == Color::NoColor {
+                    return None;
+                }
+                else if !self.is_confirmed(piece.color) {
                     let (piece_price, piece_count) = self.pricing[piece.piece_type.index()];
                     if self.credit[piece.color.index()] >= piece_price as i32 {
                         if self.hand.get(piece) < piece_count {
@@ -71,8 +83,9 @@ impl Shop {
     /// Set hand from string. Panics if wrong piece is found.
     pub fn set_hand(&mut self, s: &str) {
         for i in s.chars() {
+            let piece = Piece::from_sfen(i).unwrap();
             self.play(Move::Buy {
-                piece: Piece::from_sfen(i).unwrap(),
+                piece 
             });
         }
     }
@@ -137,6 +150,7 @@ impl Default for Shop {
             pricing: get_pricing(),
             move_history: Default::default(),
             sfen_history: Default::default(),
+            variant: Variant::Normal,
         };
         shop.set_kings();
         shop

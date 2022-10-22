@@ -2,7 +2,7 @@ use crate::color::Color;
 use std::{fmt, iter};
 
 const ASCII_1: u8 = 1;
-const ASCII_12: u8 = 12;
+const _ASCII_12: u8 = 12;
 const ASCII_LOWER_A: u8 = b'a';
 const ASCII_LOWER_L: u8 = b'l';
 

@@ -19,7 +19,7 @@ use crate::{Color, Piece, PieceType};
 
 #[derive(Debug, Clone, Default)]
 pub struct Hand {
-    inner: [u8; 12],
+    inner: [u8; 16],
 }
 
 impl Hand {
@@ -93,9 +93,11 @@ impl Hand {
             PieceType::Bishop => 3,
             PieceType::Knight => 4,
             PieceType::Pawn => 5,
+            PieceType::ArchBishop => 6,
+            PieceType::ArchRook => 7,
             _ => return None,
         };
-        let offset = if p.color == Color::Black { 0 } else { 6 };
+        let offset = if p.color == Color::Black { 0 } else { 8 };
 
         Some(base + offset)
     }
