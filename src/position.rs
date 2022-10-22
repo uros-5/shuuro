@@ -1005,7 +1005,7 @@ impl Position {
                         self.set_piece(sq, None);
                         j += 1;
                     }
-                    n if n.is_digit(11) => {
+                    n if n.is_numeric() => {
                         if let Some(n) = n.to_digit(11) {
                             for _ in 0..n {
                                 if j >= 12 {
