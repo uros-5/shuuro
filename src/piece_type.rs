@@ -222,7 +222,7 @@ mod tests {
 const NOT_FOR_DEFAULT: [u8; 2] = [6, 7];
 const NOT_FOR_FAIRY: [u8; 2] = [2, 3];
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Variant {
     Normal,
     Fairy,

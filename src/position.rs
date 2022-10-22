@@ -225,8 +225,8 @@ impl Position {
         return &self.game_status;
     }
 
-    pub fn variant(&self) -> String {
-        self.variant.to_string()
+    pub fn variant(&self) -> Variant {
+        self.variant
     }
 
     pub fn update_variant(&mut self) {
