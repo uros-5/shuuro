@@ -6,8 +6,8 @@ use std::{
 use crate::{piece_type::Variant, Color, Hand, Move, MoveRecord, Piece, PieceType};
 
 fn get_pricing() -> [(i32, u8); 9] {
-    let prices = [0, 110, 70, 40, 40, 10, 0, 150, 150];
-    let count = [1, 3, 6, 9, 9, 18, 0, 3, 3];
+    let prices = [0, 110, 70, 40, 40, 10, 150, 150, 0];
+    let count = [1, 3, 6, 9, 9, 18, 3, 3, 0];
     let mut pricing: [(i32, u8); 9] = [(0, 0); 9];
     let pt_iter = PieceType::iter();
     for pt in pt_iter {
@@ -34,7 +34,6 @@ impl Shop {
         self.variant = self.variant.other();
         let credit = self.variant.start_credit();
         self.credit = [credit, credit];
-
     }
 
     /// Buying piece with specific color.
@@ -43,11 +42,9 @@ impl Shop {
             Move::Buy { piece } => {
                 if self.variant.wrong(piece.piece_type.index()) {
                     return None;
-                }
-                else if piece.color == Color::NoColor {
+                } else if piece.color == Color::NoColor {
                     return None;
-                }
-                else if !self.is_confirmed(piece.color) {
+                } else if !self.is_confirmed(piece.color) {
                     let (piece_price, piece_count) = self.pricing[piece.piece_type.index()];
                     if self.credit[piece.color.index()] >= piece_price as i32 {
                         if self.hand.get(piece) < piece_count {
@@ -84,9 +81,7 @@ impl Shop {
     pub fn set_hand(&mut self, s: &str) {
         for i in s.chars() {
             let piece = Piece::from_sfen(i).unwrap();
-            self.play(Move::Buy {
-                piece 
-            });
+            self.play(Move::Buy { piece });
         }
     }
     /// Converts entire hand by color to string.

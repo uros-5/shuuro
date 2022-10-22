@@ -238,7 +238,7 @@ impl Variant {
 
     pub fn wrong(&self, p: usize) -> bool {
         if p == 8 {
-            return false;
+            return true;
         }
         match &self {
             Self::Normal => NOT_FOR_DEFAULT.contains(&(p as u8)),
