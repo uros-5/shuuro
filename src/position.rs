@@ -808,7 +808,7 @@ impl Position {
     /////////////////////////////////////////////////////////////////////////
 
     /// Parses the given SFEN string and updates the game state.
-    pub fn set_sfen(&mut self, sfen_str: &str) -> Result<(), SfenError> {
+    pub fn set_sfen(&mut self, sfen_str: &str) -> Result<Outcome, SfenError> {
         let mut parts = sfen_str.split_whitespace();
 
         // Build the initial position, all parts are required.
@@ -830,11 +830,12 @@ impl Position {
             .and_then(|s| self.parse_sfen_ply(s))?;
         self.sfen_history.clear();
         self.log_position();
-        /*
         if self.in_check(self.side_to_move.flip()) {
-            return Err(SfenError::IllegalFirstMove);
+            return Ok(Outcome::Checkmate {
+                color: self.side_to_move,
+            });
+            //return Err(SfenError::IllegalFirstMove);
         }
-        */
         // Make moves following the initial position, optional.
         if let Some("moves") = parts.next() {
             for m in parts {
@@ -852,7 +853,7 @@ impl Position {
             }
         }
 
-        Ok(())
+        Ok(Outcome::Nothing)
     }
 
     pub fn set_sfen_history(&mut self, history: Vec<(String, u16)>) {
@@ -1862,6 +1863,7 @@ pub mod tests {
         for case in cases.iter() {
             let mut pos = Position::new();
             pos.set_sfen(case.0).expect("failed to parse SFEN string");
+            println!("{}", &case.0);
             assert_eq!(case.1, pos.is_checkmate(&case.2));
         }
     }
