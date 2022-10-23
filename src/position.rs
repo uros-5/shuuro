@@ -831,9 +831,10 @@ impl Position {
         self.sfen_history.clear();
         self.log_position();
         if self.in_check(self.side_to_move.flip()) {
-            return Ok(Outcome::Checkmate {
+            self.game_status = Outcome::Checkmate {
                 color: self.side_to_move,
-            });
+            };
+            return Ok(self.game_status.clone());
             //return Err(SfenError::IllegalFirstMove);
         }
         // Make moves following the initial position, optional.
