@@ -1209,7 +1209,16 @@ impl Position {
         }
         let mut all;
         let occupied_bb = &self.occupied_bb | self.player_bb(Color::NoColor);
-        for p in [PieceType::Queen, PieceType::Rook, PieceType::Bishop] {
+        for p in [
+            PieceType::Queen,
+            PieceType::Rook,
+            PieceType::Bishop,
+            PieceType::ArchRook,
+            PieceType::ArchBishop,
+        ] {
+            if self.variant.wrong(p.index()) {
+                continue;
+            }
             let bb = &self.type_bb[p.index()] & &self.color_bb[attacked_color.flip().index()];
             for i in bb {
                 all = get_sliding_attacks(p, i, occupied_bb);
@@ -1409,7 +1418,7 @@ impl fmt::Display for Position {
 #[cfg(test)]
 pub mod tests {
     use crate::position::Outcome;
-    use crate::{consts::*, Move};
+    use crate::{consts::*, Move, Shop};
     use crate::{init, Color, Piece, PieceType, Position, Square};
     pub const START_POS: &str = "KR55/57/57/57/57/57/57/57/57/57/57/kr55 b - 1";
 
@@ -2350,6 +2359,70 @@ pub mod tests {
             position.set_sfen(case.0).expect("error while parsing sfen");
             let moves = position.legal_moves(&G2);
             assert_eq!(moves.count(), case.1);
+        }
+    }
+
+    #[test]
+    fn fairy_shop() {
+        let cases = [
+            ("knnaaacqKCCCQQPPP", [3, 0], [1, 3], [230, 160]),
+            ("KCAAAAACCCRRRQQkccppaaaaa", [3, 3], [2, 3], [90, 200]),
+            ("KRRRRRNNNNBBBCAkcrrrrbn", [1, 1], [1, 0], [450, 700]),
+        ];
+        for case in cases {
+            let mut shop = Shop::default();
+            shop.change_variant();
+            shop.set_hand(case.0);
+
+            assert_eq!(
+                shop.get(Piece {
+                    piece_type: PieceType::ArchRook,
+                    color: Color::White
+                }),
+                case.1[0]
+            );
+            assert_eq!(
+                shop.get(Piece {
+                    piece_type: PieceType::ArchBishop,
+                    color: Color::White
+                }),
+                case.1[1]
+            );
+            assert_eq!(
+                shop.get(Piece {
+                    piece_type: PieceType::ArchRook,
+                    color: Color::Black
+                }),
+                case.2[0]
+            );
+            assert_eq!(
+                shop.get(Piece {
+                    piece_type: PieceType::ArchBishop,
+                    color: Color::Black
+                }),
+                case.2[1]
+            );
+            assert_eq!(shop.credit(Color::White), case.3[0]);
+            assert_eq!(shop.credit(Color::Black), case.3[1]);
+        }
+    }
+
+    #[test]
+    fn check_in_fairy_deploy() {
+        setup();
+        let cases = [(
+            "4C1K5/4L07/57/1L05L04/57/8L03/57/4L07/56L0/57/1L09L0/4k1c5 w aQN 4",
+            Color::White,
+            G1,
+            true,
+        )];
+
+        for case in cases {
+            let mut position = Position::default();
+            position.update_variant();
+            position.set_sfen(case.0).expect("error while parsing sfen");
+            let check = position.in_check(case.1);
+            assert_eq!(check, case.3);
         }
     }
 

@@ -6,7 +6,7 @@ use std::{
 use crate::{piece_type::Variant, Color, Hand, Move, MoveRecord, Piece, PieceType};
 
 fn get_pricing() -> [(i32, u8); 9] {
-    let prices = [0, 110, 70, 40, 40, 10, 150, 150, 0];
+    let prices = [0, 110, 70, 40, 40, 10, 130, 130, 0];
     let count = [1, 3, 6, 9, 9, 18, 3, 3, 0];
     let mut pricing: [(i32, u8); 9] = [(0, 0); 9];
     let pt_iter = PieceType::iter();
