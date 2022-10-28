@@ -242,7 +242,7 @@ impl Variant {
         }
         match &self {
             Self::Normal => NOT_FOR_DEFAULT.contains(&(p as u8)),
-            Self::Fairy => NOT_FOR_FAIRY.contains(&(p as u8)),
+            Self::Fairy => false,
         }
     }
 

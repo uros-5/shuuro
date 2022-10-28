@@ -2369,8 +2369,8 @@ pub mod tests {
     fn fairy_shop() {
         let cases = [
             ("knnaaacqKCCCQQPPP", [3, 0], [1, 3], [230, 160]),
-            ("KCAAAAACCCRRRQQkccppaaaaa", [3, 3], [2, 3], [90, 200]),
-            ("KRRRRRNNNNBBBCAkcrrrrbn", [1, 1], [1, 0], [450, 700]),
+            ("KCAAAAACCCRRRQQkccppaaaaa", [3, 3], [2, 3], [20, 200]),
+            ("KRRRRRNNNNBBBCAkcrrrrbn", [1, 0], [1, 0], [110, 380]),
         ];
         for case in cases {
             let mut shop = Shop::default();
