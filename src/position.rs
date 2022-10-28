@@ -1152,7 +1152,7 @@ impl Position {
                     continue;
                 }
                 match p.piece_type {
-                    PieceType::Knight => {
+                    PieceType::Knight | PieceType::ArchRook | PieceType::ArchBishop => {
                         return bb;
                     }
                     PieceType::King => {
@@ -1864,7 +1864,6 @@ pub mod tests {
         for case in cases.iter() {
             let mut pos = Position::new();
             pos.set_sfen(case.0).expect("failed to parse SFEN string");
-            println!("{}", &case.0);
             assert_eq!(case.1, pos.is_checkmate(&case.2));
         }
     }
@@ -2427,6 +2426,17 @@ pub mod tests {
             let check = position.in_check(case.1);
             assert_eq!(check, case.3);
         }
+    }
+
+    #[test]
+    fn deploy_fairy_on_plinth() {
+        setup();
+        let fen = "3KL0L0L0L0L0L0L0R/57/57/57/57/57/57/57/57/57/57/5k6 w 3C2P 4";
+        let mut position = Position::default();
+        position.update_variant();
+        position.set_sfen(fen).expect("error while parsing sfen");
+        let moves = position.empty_squares(Piece::from_sfen('C').unwrap());
+        assert_eq!(moves.count(), 10);
     }
 
     #[test]
