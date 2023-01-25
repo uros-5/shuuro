@@ -1,4 +1,4 @@
-use crate::{Color, PieceType, Square};
+use crate::{Color, PieceType};
 use std::fmt;
 
 /// Represents a piece on the game board.
@@ -17,12 +17,10 @@ impl Piece {
             } else {
                 Color::White
             }
+        } else if c == 'l' {
+            Color::NoColor
         } else {
-            if c == 'l' {
-                Color::NoColor
-            } else {
-                Color::Black
-            }
+            Color::Black
         };
         PieceType::from_sfen(c).map(|piece_type| Piece { piece_type, color })
     }
@@ -84,14 +82,14 @@ impl Piece {
             color: self.color.flip(),
         }
     }
-    /// Tests if it is legal to place this piece at the given square.
-    pub fn is_placeable_at(self, sq: Square) -> bool {
-        match self.piece_type {
-            PieceType::Pawn => sq.relative_file(self.color) > 0,
-            PieceType::Knight => sq.relative_file(self.color) > 1,
-            _ => true,
-        }
-    }
+    // Tests if it is legal to place this piece at the given square.
+    // pub fn is_placeable_at(self, sq: Square) -> bool {
+    //     match self.piece_type {
+    //         PieceType::Pawn => sq.relative_file(self.color) > 0,
+    //         PieceType::Knight => sq.relative_file(self.color) > 1,
+    //         _ => true,
+    //     }
+    // }
 }
 
 impl fmt::Display for Piece {

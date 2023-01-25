@@ -9,7 +9,7 @@ pub enum PieceType {
     Bishop = 3,
     Knight = 4,
     Pawn = 5,
-    ArchRook = 6,
+    Chancellor = 6,
     ArchBishop = 7,
     Plinth = 8,
 }
@@ -29,7 +29,7 @@ impl PieceType {
             'b' | 'B' => PieceType::Bishop,
             'n' | 'N' => PieceType::Knight,
             'p' | 'P' => PieceType::Pawn,
-            'c' | 'C' => PieceType::ArchRook,
+            'c' | 'C' => PieceType::Chancellor,
             'a' | 'A' => PieceType::ArchBishop,
             'L' => PieceType::Plinth,
             _ => return None,
@@ -84,8 +84,16 @@ impl PieceType {
                 | PieceType::Knight
                 | PieceType::Pawn
                 | PieceType::ArchBishop
-                | PieceType::ArchRook
+                | PieceType::Chancellor
         )
+    }
+
+    pub fn is_fairy_piece(&self) -> bool {
+        match &self {
+            Self::Chancellor => true,
+            Self::ArchBishop => true,
+            _ => false,
+        }
     }
 
     /// Converts the instance into the unique number for array indexing purpose.
@@ -107,7 +115,7 @@ impl fmt::Display for PieceType {
                 PieceType::Rook => "r",
                 PieceType::Queen => "q",
                 PieceType::Plinth => "L",
-                PieceType::ArchRook => "c",
+                PieceType::Chancellor => "c",
                 PieceType::ArchBishop => "a",
             }
         )
@@ -141,8 +149,8 @@ impl iter::Iterator for PieceTypeIter {
                 PieceType::Knight => Some(PieceType::Pawn),
                 PieceType::Pawn => Some(PieceType::Plinth),
                 PieceType::Plinth => Some(PieceType::ArchBishop),
-                PieceType::ArchBishop => Some(PieceType::ArchRook),
-                PieceType::ArchRook => None,
+                PieceType::ArchBishop => Some(PieceType::Chancellor),
+                PieceType::Chancellor => None,
             };
         }
 
@@ -215,60 +223,6 @@ mod tests {
                     assert!(i.unpromote().is_none())
                 }
             }
-        }
-    }
-}
-
-const NOT_FOR_DEFAULT: [u8; 2] = [6, 7];
-const NOT_FOR_FAIRY: [u8; 2] = [2, 3];
-
-#[derive(Clone, Copy, Debug)]
-pub enum Variant {
-    Normal,
-    Fairy,
-}
-
-impl Variant {
-    pub fn other(&self) -> Self {
-        match &self {
-            Self::Normal => Self::Fairy,
-            Self::Fairy => Self::Normal,
-        }
-    }
-
-    pub fn wrong(&self, p: usize) -> bool {
-        if p == 8 {
-            return true;
-        }
-        match &self {
-            Self::Normal => NOT_FOR_DEFAULT.contains(&(p as u8)),
-            Self::Fairy => false,
-        }
-    }
-
-    pub fn start_credit(&self) -> i32 {
-        match &self {
-            Self::Normal => 800,
-            Self::Fairy => 870,
-        }
-    }
-}
-
-impl From<&String> for Variant {
-    fn from(v: &String) -> Self {
-        if v == "" {
-            Self::Normal
-        } else {
-            Self::Fairy
-        }
-    }
-}
-
-impl ToString for Variant {
-    fn to_string(&self) -> String {
-        match &self {
-            Self::Normal => String::from(""),
-            Self::Fairy => String::from("fairy"),
         }
     }
 }

@@ -3,7 +3,8 @@ use std::{
     u8,
 };
 
-use crate::{piece_type::Variant, Color, Hand, Move, MoveRecord, Piece, PieceType};
+use crate::{variant::Variant, Color, Piece, PieceType};
+// use crate::{Hand, Move, MoveRecord};
 
 fn get_pricing() -> [(i32, u8); 9] {
     let prices = [0, 110, 70, 40, 40, 10, 130, 130, 0];
@@ -30,8 +31,8 @@ pub struct Shop {
 
 impl Shop {
     /// Change variant
-    pub fn change_variant(&mut self) {
-        self.variant = self.variant.other();
+    pub fn change_variant(&mut self, variant: &String) {
+        self.variant = self.variant.change_variant(variant);
         let credit = self.variant.start_credit();
         self.credit = [credit, credit];
     }
@@ -40,7 +41,7 @@ impl Shop {
     pub fn play(&mut self, mv: Move) -> Option<[bool; 2]> {
         match mv {
             Move::Buy { piece } => {
-                if self.variant.wrong(piece.piece_type.index()) {
+                if self.variant.can_buy(&piece.piece_type) {
                     return None;
                 } else if piece.color == Color::NoColor {
                     return None;
@@ -145,7 +146,7 @@ impl Default for Shop {
             pricing: get_pricing(),
             move_history: Default::default(),
             sfen_history: Default::default(),
-            variant: Variant::Normal,
+            variant: Variant::Shuuro,
         };
         shop.set_kings();
         shop
