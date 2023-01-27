@@ -51,6 +51,7 @@ pub mod color;
 pub mod error;
 pub mod piece;
 pub mod piece_type;
+pub mod square;
 pub mod variant;
 // pub mod plinths_set;
 pub mod shop;
