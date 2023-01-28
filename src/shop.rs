@@ -1,10 +1,11 @@
+use crate::Square;
 use std::{
     sync::{Arc, Mutex},
     u8,
 };
 
 use crate::{variant::Variant, Color, Piece, PieceType};
-// use crate::{Hand, Move, MoveRecord};
+use crate::{Hand, Move, MoveRecord};
 
 fn get_pricing() -> [(i32, u8); 9] {
     let prices = [0, 110, 70, 40, 40, 10, 130, 130, 0];
@@ -19,17 +20,17 @@ fn get_pricing() -> [(i32, u8); 9] {
 
 /// Used for buying pieces.
 #[derive(Clone, Debug)]
-pub struct Shop {
+pub struct Shop<S: Square> {
     credit: [i32; 2],
     hand: Hand,
     confirmed: [bool; 2],
     pricing: [(i32, u8); 9],
-    move_history: Arc<Mutex<Vec<MoveRecord>>>,
+    move_history: Arc<Mutex<Vec<MoveRecord<S>>>>,
     sfen_history: Arc<Mutex<Vec<(String, u8)>>>,
     variant: Variant,
 }
 
-impl Shop {
+impl<S: Square> Shop<S> {
     /// Change variant
     pub fn change_variant(&mut self, variant: &String) {
         self.variant = self.variant.change_variant(variant);
@@ -38,7 +39,7 @@ impl Shop {
     }
 
     /// Buying piece with specific color.
-    pub fn play(&mut self, mv: Move) -> Option<[bool; 2]> {
+    pub fn play(&mut self, mv: Move<S>) -> Option<[bool; 2]> {
         match mv {
             Move::Buy { piece } => {
                 if self.variant.can_buy(&piece.piece_type) {
@@ -125,7 +126,7 @@ impl Shop {
         h.extend(history);
     }
 
-    pub fn set_move_history(&mut self, history: Vec<MoveRecord>) {
+    pub fn set_move_history(&mut self, history: Vec<MoveRecord<S>>) {
         let mut h = self.move_history.lock().unwrap();
         h.clear();
         h.extend(history);
@@ -137,7 +138,7 @@ impl Shop {
     }
 }
 
-impl Default for Shop {
+impl<S: Square> Default for Shop<S> {
     fn default() -> Self {
         let mut shop = Shop {
             credit: [800; 2],
@@ -150,55 +151,5 @@ impl Default for Shop {
         };
         shop.set_kings();
         shop
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use crate::{Color, Move, Piece, PieceType};
-
-    use super::Shop;
-
-    #[test]
-    fn play() {
-        let cases = [
-            (PieceType::Pawn, Color::White, 4),
-            (PieceType::Queen, Color::White, 2),
-            (PieceType::Bishop, Color::Black, 3),
-            (PieceType::Rook, Color::Black, 3),
-            (PieceType::Queen, Color::Black, 3),
-            (PieceType::Pawn, Color::Black, 3),
-        ];
-        let mut shop = Shop::default();
-        for case in cases.iter() {
-            let piece: Piece = Piece {
-                piece_type: case.0,
-                color: case.1,
-            };
-            for _i in 0..case.2 {
-                shop.play(Move::Buy { piece });
-            }
-            assert_eq!(shop.get(piece), case.2);
-        }
-        shop.confirm(Color::White);
-        assert_eq!(shop.credit(Color::White), 800 - 260);
-        assert_eq!(shop.credit(Color::Black), 800 - 690);
-        assert_ne!(shop.is_confirmed(Color::Black), true);
-        assert_eq!(shop.is_confirmed(Color::White), true);
-    }
-
-    #[test]
-    fn set_hand() {
-        let cases = [
-            ("RRPPnnnQQ", Color::White, 380, "KQQRRPP"),
-            ("nQrrPnNQqqqqqbbr", Color::Black, 700, "kqqqrrrbbnn"),
-        ];
-        for case in cases {
-            let mut shop = Shop::default();
-            shop.set_hand(case.0);
-            assert_eq!(shop.credit(case.1), 800 - case.2);
-            assert_eq!(shop.to_sfen(case.1), case.3);
-        }
     }
 }

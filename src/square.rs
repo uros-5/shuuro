@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::Color;
 
 #[macro_export]
@@ -19,7 +21,7 @@ macro_rules! knight {
     };
 }
 
-pub trait Square: Sized {
+pub trait Square: Sized + fmt::Display + PartialEq + Clone + Copy {
     fn new(file: u8, rank: u8) -> Option<Self>;
     fn make_square(rank: Option<Self>, file: u8) -> Option<Self>;
     fn from_sfen(s: &str) -> Option<Self>;

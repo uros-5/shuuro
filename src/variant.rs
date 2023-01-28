@@ -24,8 +24,8 @@ impl Variant {
         Variant::from(variant)
     }
 
-    pub fn can_buy(&self, piece: PieceType) -> bool {
-        if piece == PieceType::Plinth {
+    pub fn can_buy(&self, piece: &PieceType) -> bool {
+        if piece == &PieceType::Plinth {
             return false;
         } else if let Self::Shuuro = &self {
             if piece.is_fairy_piece() {

@@ -47,20 +47,26 @@
 ////! ```
 
 #![recursion_limit = "144"]
+pub mod bitboard;
 pub mod color;
 pub mod error;
+pub mod hand;
+pub mod moves;
 pub mod piece;
 pub mod piece_type;
+pub mod shop;
 pub mod square;
 pub mod variant;
 // pub mod plinths_set;
-pub mod shop;
 
 pub use self::color::{Color, ColorIter};
 pub use self::piece::Piece;
 pub use self::piece_type::PieceType;
 pub use error::*;
+pub use hand::Hand;
+pub use moves::*;
 pub use shop::Shop;
+pub use square::Square;
 pub use variant::Variant;
 // pub use plinths_set::generate_plinths;
 // pub use shop::Shop;
