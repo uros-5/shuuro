@@ -47,6 +47,7 @@
 ////! ```
 
 #![recursion_limit = "144"]
+pub mod attacks;
 pub mod bitboard;
 pub mod color;
 pub mod error;
@@ -54,6 +55,7 @@ pub mod hand;
 pub mod moves;
 pub mod piece;
 pub mod piece_type;
+pub mod position;
 pub mod shop;
 pub mod square;
 pub mod variant;

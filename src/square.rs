@@ -56,6 +56,10 @@ pub trait Square: Sized + fmt::Display + PartialEq + Clone + Copy {
     fn right_down(&self) -> Option<[Self; 3]> {
         knight!(right, down, self)
     }
+    fn diagonal_left_up(&self) -> Option<Self>;
+    fn diagonal_right_up(&self) -> Option<Self>;
+    fn diagonal_left_down(&self) -> Option<Self>;
+    fn diagonal_right_down(&self) -> Option<Self>;
     fn knight(&self) -> Vec<Self> {
         let mut all = vec![];
         let temp = [
