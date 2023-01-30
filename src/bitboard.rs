@@ -13,8 +13,8 @@ pub trait BitBoard<S: Square>:
     + Not
     + Default
     + for<'a> BitAnd<&'a Self, Output = Self>
+    + for<'a> BitOr<Self, Output = Self>
     + for<'a> BitAndAssign<&'a Self>
-    + for<'a> BitOr<&'a Self, Output = Self>
     + for<'a> BitOrAssign<&'a Self>
     + for<'a> BitXor<&'a Self, Output = Self>
     + for<'a> BitXorAssign<&'a Self>

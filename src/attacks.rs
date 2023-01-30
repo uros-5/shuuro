@@ -1,4 +1,5 @@
 use crate::{bitboard::BitBoard, Color, PieceType, Square};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Ray {
@@ -12,7 +13,18 @@ pub enum Ray {
     SouthWest,
 }
 
-pub trait Attacks<S: Square, T: BitBoard<S>> {
+pub trait Attacks<S, T>
+where
+    S: Square,
+    T: BitBoard<S>,
+    for<'b> &'b T: BitOr<&'b T, Output = T>,
+    for<'b> &'b T: BitAnd<&'b T, Output = T>,
+    for<'b> &'b T: BitOr<T, Output = T>,
+    for<'b> &'b T: BitAndAssign<&'b T>,
+    for<'b> &'b T: BitOrAssign<&'b T>,
+    for<'b> &'b T: BitXor<&'b T, Output = T>,
+    for<'b> &'b T: BitXorAssign<&'b T>,
+{
     fn init_pawn_attacks();
     fn init_knight_attacks();
     fn init_king_attacks();
@@ -36,16 +48,16 @@ pub trait Attacks<S: Square, T: BitBoard<S>> {
     fn get_negative_ray_attacks(dir: Ray, square: usize, blockers: T) -> T;
 
     fn get_bishop_attacks(square: usize, blockers: T) -> T {
-        (Self::get_positive_ray_attacks(Ray::NorthWest, square, blockers)
+        &(&Self::get_positive_ray_attacks(Ray::NorthWest, square, blockers)
             | &Self::get_positive_ray_attacks(Ray::NorthEast, square, blockers))
-            | &(Self::get_negative_ray_attacks(Ray::SouthWest, square, blockers)
+            | &(&Self::get_negative_ray_attacks(Ray::SouthWest, square, blockers)
                 | &Self::get_negative_ray_attacks(Ray::SouthEast, square, blockers))
     }
 
     fn get_rook_attacks(square: usize, blockers: T) -> T {
-        (Self::get_positive_ray_attacks(Ray::North, square, blockers)
+        &(&Self::get_positive_ray_attacks(Ray::North, square, blockers)
             | &Self::get_positive_ray_attacks(Ray::East, square, blockers))
-            | &(Self::get_negative_ray_attacks(Ray::South, square, blockers)
+            | &(&Self::get_negative_ray_attacks(Ray::South, square, blockers)
                 | &Self::get_negative_ray_attacks(Ray::West, square, blockers))
     }
 }
