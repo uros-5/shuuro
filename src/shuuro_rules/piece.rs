@@ -1,4 +1,4 @@
-use crate::{Color, PieceType};
+use crate::shuuro_rules::{Color, PieceType};
 use std::fmt;
 
 /// Represents a piece on the game board.
@@ -104,7 +104,7 @@ impl fmt::Display for Piece {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::piece_type::PieceTypeIter;
+    use crate::shuuro_rules::piece_type::PieceTypeIter;
 
     #[test]
     fn from_sfen() {

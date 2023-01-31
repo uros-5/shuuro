@@ -1,4 +1,4 @@
-use crate::{Color, Piece, PieceType};
+use crate::shuuro_rules::{Color, Piece, PieceType};
 
 /// Manages the number of each pieces in each player's hand.
 ///

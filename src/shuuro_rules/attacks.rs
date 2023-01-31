@@ -1,4 +1,4 @@
-use crate::{bitboard::BitBoard, Color, PieceType, Square};
+use crate::shuuro_rules::{bitboard::BitBoard, Color, PieceType, Square};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
 
 #[derive(Clone, Copy, Debug)]

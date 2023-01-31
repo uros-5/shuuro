@@ -1,4 +1,4 @@
-use crate::{Piece, Square};
+use crate::shuuro_rules::{Piece, Square};
 use std::fmt;
 
 /// Represents a move which either is a normal move or a drop move.
@@ -17,16 +17,12 @@ impl<S: Square> Move<S> {
         }
 
         if s.contains("_") {
-            return Self::get_normal_move(&s);
+            Self::get_normal_move(&s)
         } else {
             let buy_move = Self::get_buy_move(&s);
             match buy_move {
-                Some(m) => {
-                    return Some(m);
-                }
-                None => {
-                    return Self::get_put_move(&s);
-                }
+                Some(m) => Some(m),
+                None => Self::get_put_move(&s),
             }
         }
     }
@@ -109,7 +105,7 @@ impl<S: Square> fmt::Display for Move<S> {
                 write!(f, "{}@{}", piece, to)
             }
             Move::Normal { from, to, promote } => {
-                write!(f, "{}_{}{}", from, to, if promote { "" } else { "" })
+                write!(f, "{}_{}{}", from, to, if promote { "fixthis" } else { "" })
             }
         }
     }

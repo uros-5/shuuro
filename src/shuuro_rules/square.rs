@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::Color;
+use crate::shuuro_rules::Color;
 
 #[macro_export]
 macro_rules! knight {

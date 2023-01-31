@@ -1,4 +1,4 @@
-use crate::{get_non_sliding_attacks, BitBoard, Color, PieceType, Square, EMPTY_BB};
+use crate::shuuro_rules::{get_non_sliding_attacks, BitBoard, Color, PieceType, Square, EMPTY_BB};
 use rand::prelude::*;
 fn two_plynths(ranks: &[char; 6], files: &[u8; 6]) -> BitBoard {
     let bb;
@@ -40,8 +40,8 @@ pub fn generate_plinths() -> BitBoard {
 
 #[cfg(test)]
 mod tests {
-    use crate::init;
-    use crate::plinths_set::generate_plinths;
+    use crate::shuuro_rules::init;
+    use crate::shuuro_rules::plinths_set::generate_plinths;
     #[test]
     fn generate_all_plinths() {
         init();

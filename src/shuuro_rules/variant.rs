@@ -1,4 +1,4 @@
-use crate::PieceType;
+use crate::shuuro_rules::PieceType;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Variant {

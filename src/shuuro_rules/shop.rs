@@ -1,11 +1,11 @@
-use crate::Square;
+use crate::shuuro_rules::Square;
 use std::{
     sync::{Arc, Mutex},
     u8,
 };
 
-use crate::{variant::Variant, Color, Piece, PieceType};
-use crate::{Hand, Move, MoveRecord};
+use crate::shuuro_rules::{variant::Variant, Color, Piece, PieceType};
+use crate::shuuro_rules::{Hand, Move, MoveRecord};
 
 fn get_pricing() -> [(i32, u8); 9] {
     let prices = [0, 110, 70, 40, 40, 10, 130, 130, 0];

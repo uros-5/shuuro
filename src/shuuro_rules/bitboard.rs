@@ -3,7 +3,7 @@ use std::{
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not},
 };
 
-use crate::Square;
+use crate::shuuro_rules::Square;
 
 pub trait BitBoard<S: Square>:
     Sized
