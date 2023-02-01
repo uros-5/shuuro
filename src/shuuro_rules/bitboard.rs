@@ -12,8 +12,8 @@ pub trait BitBoard<S: Square>:
     + Debug
     + Not
     + Default
+    + for<'b> BitOr<&'b Self, Output = Self>
     + for<'a> BitAnd<&'a Self, Output = Self>
-    + for<'a> BitOr<Self, Output = Self>
     + for<'a> BitAndAssign<&'a Self>
     + for<'a> BitOrAssign<&'a Self>
     + for<'a> BitXor<&'a Self, Output = Self>
@@ -23,17 +23,20 @@ pub trait BitBoard<S: Square>:
     + BitOrAssign<S>
     + BitXor<S>
     + BitXorAssign<S>
+where
+    for<'a> &'a Self: BitOr<&'a Self, Output = Self>,
+    for<'a> &'a Self: Not<Output = Self>,
 {
-    fn empty(&self) -> Self;
+    fn empty() -> Self;
     fn is_any(&self) -> Self;
     fn is_empty(&self) -> Self;
     fn clear_at(&mut self);
     fn clear_all(&mut self);
     fn count(&self) -> u32;
     fn set_all(&mut self);
-    fn pop<T: Square>(&mut self) -> Option<T>;
-    fn pop_reverse<T: Square>(&mut self) -> Option<T>;
+    fn pop(&mut self) -> Option<S>;
+    fn pop_reverse(&mut self) -> Option<S>;
     fn merged(&self) -> u16;
-    fn from_square<T: Square>(sq: T) -> Self;
+    fn from_square(sq: &S) -> Self;
     fn toggle(&mut self);
 }
