@@ -6,6 +6,7 @@ pub mod hand;
 pub mod moves;
 pub mod piece;
 pub mod piece_type;
+pub mod plinths_set;
 pub mod position;
 pub mod shop;
 pub mod square;

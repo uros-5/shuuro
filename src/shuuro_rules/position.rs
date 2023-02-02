@@ -13,6 +13,7 @@ where
     for<'b> &'b B: BitOr<&'b B, Output = B>,
     for<'b> &'b B: BitAnd<&'b B, Output = B>,
     for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
     B: Not,
 {
     fn new() -> Self;
@@ -41,6 +42,7 @@ where
     B: BitBoard<S>,
     for<'b> &'b B: BitOr<&'b B, Output = B>,
     for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
 {
     pub square: Option<S>,
     pub bb: B,
@@ -52,6 +54,7 @@ where
     B: BitBoard<S>,
     for<'b> &'b B: BitOr<&'b B, Output = B>,
     for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
 {
     pub fn new(square: S, bb: B) -> Self {
         Pin {
@@ -113,6 +116,7 @@ where
         for<'b> &'b B: BitOr<&'b B, Output = B>,
         for<'b> &'b B: BitAnd<&'b B, Output = B>,
         for<'a> &'a B: Not<Output = B>,
+        for<'a> &'a B: BitOr<&'a S, Output = B>,
     {
         match self {
             MoveType::Empty => B::empty(),
@@ -136,6 +140,7 @@ where
         for<'b> &'b B: BitOr<&'b B, Output = B>,
         for<'b> &'b B: BitAnd<&'b B, Output = B>,
         for<'a> &'a B: Not<Output = B>,
+        for<'a> &'a B: BitOr<&'a S, Output = B>,
     {
         let my_color = p.color;
         let without_main_color = bb & &!&position.player_bb(my_color);

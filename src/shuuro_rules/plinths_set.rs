@@ -1,51 +1,45 @@
-use crate::shuuro_rules::{get_non_sliding_attacks, BitBoard, Color, PieceType, Square, EMPTY_BB};
-use rand::prelude::*;
-fn two_plynths(ranks: &[char; 6], files: &[u8; 6]) -> BitBoard {
-    let bb;
-    let mut rang = thread_rng();
-    let mut gen_square = || -> Square {
-        let rank = rang.gen_range(0..6);
-        let file = rang.gen_range(0..6);
-        let square = &format!("{}{}", ranks[rank], files[file])[..];
-        Square::from_sfen(square).unwrap()
-    };
-    let sq_1 = gen_square();
-    bb = &EMPTY_BB | sq_1;
-    let outside = get_non_sliding_attacks(PieceType::King, sq_1, Color::White);
-    loop {
-        let sq_2 = gen_square();
-        if (&outside & sq_2).is_empty() {
-            return &bb | sq_2;
-        }
-    }
-}
+use std::ops::{BitAnd, BitOr};
 
-pub fn generate_plinths() -> BitBoard {
-    let left = ['a', 'b', 'c', 'd', 'e', 'f'];
-    let right = ['g', 'h', 'i', 'j', 'k', 'l'];
-    let mut bb = EMPTY_BB;
-    for i in [left, right] {
-        for j in [[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]] {
-            loop {
-                let new_bb = two_plynths(&i, &j);
-                if new_bb.count() == 2 {
-                    bb |= &new_bb;
-                    break;
-                }
+use rand::prelude::*;
+
+use crate::{bitboard::BitBoard, Square};
+
+pub trait PlinthGen<S: Square> {
+    fn gen_square<const R: usize, const F: usize>(
+        &self,
+        rang: &mut ThreadRng,
+        ranks: &[char; R],
+        files: &[char; F],
+    ) -> S {
+        let rank = rang.gen_range(0..R);
+        let file = rang.gen_range(0..F);
+        S::from_sfen(&format!("{}{}", ranks[rank], files[file])[..]).unwrap()
+    }
+
+    fn two_plinths<B, const C: usize>(&self, ranks: &[char; C], files: &[char; C]) -> B
+    where
+        B: BitBoard<S>,
+        for<'a> &'a B: BitOr<&'a S, Output = B>,
+        for<'a> &'a B: BitOr<S, Output = B>,
+        for<'a> &'a B: BitAnd<S, Output = B>,
+    {
+        let mut rang = thread_rng();
+        let sq1: S = self.gen_square(&mut rang, ranks, files);
+        let bb = &B::empty() | sq1;
+        let attacks: B = self.moves(sq1);
+        loop {
+            let sq2: S = self.gen_square(&mut rang, ranks, files);
+            let check = &attacks & sq2;
+            if check.is_empty() {
+                return &bb | sq2;
             }
         }
     }
-    bb
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::shuuro_rules::init;
-    use crate::shuuro_rules::plinths_set::generate_plinths;
-    #[test]
-    fn generate_all_plinths() {
-        init();
-        let bb = generate_plinths();
-        assert_eq!(bb.count(), 8);
-    }
+    fn moves<B: BitBoard<S>>(&self, sq: S) -> B;
+    fn random_number() -> u8;
+    fn generate_plinths<B, const R: usize, const F: usize>(
+        &self,
+        ranks: &[char; R],
+        files: &[char; F],
+    ) -> B;
 }

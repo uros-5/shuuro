@@ -23,13 +23,13 @@ pub trait BitBoard<S: Square>:
     + BitOrAssign<S>
     + BitXor<S>
     + BitXorAssign<S>
-where
-    for<'a> &'a Self: BitOr<&'a Self, Output = Self>,
-    for<'a> &'a Self: Not<Output = Self>,
+// where
+//     for<'a> &'a Self: BitOr<&'a Self, Output = Self>,
+//     for<'a> &'a Self: Not<Output = Self>,
 {
     fn empty() -> Self;
-    fn is_any(&self) -> Self;
-    fn is_empty(&self) -> Self;
+    fn is_any(&self) -> bool;
+    fn is_empty(&self) -> bool;
     fn clear_at(&mut self);
     fn clear_all(&mut self);
     fn count(&self) -> u32;
