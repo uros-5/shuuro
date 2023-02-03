@@ -23,6 +23,7 @@ pub trait BitBoard<S: Square>:
     + BitOrAssign<S>
     + BitXor<S>
     + BitXorAssign<S>
+    + Iterator<Item = S>
 // where
 //     for<'a> &'a Self: BitOr<&'a Self, Output = Self>,
 //     for<'a> &'a Self: Not<Output = Self>,

@@ -27,12 +27,17 @@ impl Variant {
     pub fn can_buy(&self, piece: &PieceType) -> bool {
         if piece == &PieceType::Plinth {
             return false;
-        } else if let Self::Shuuro = &self {
-            if piece.is_fairy_piece() {
-                return false;
-            }
         }
-        true
+        match &self {
+            Self::Shuuro | Self::Standard => {
+                if piece.is_fairy_piece() {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+            _ => return true,
+        }
     }
 
     pub fn start_credit(&self) -> i32 {
