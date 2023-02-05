@@ -17,7 +17,7 @@ pub enum PieceType {
 impl PieceType {
     /// Returns an iterator over all variants.
     pub fn iter() -> PieceTypeIter {
-        PieceTypeIter::new()
+        PieceTypeIter::default()
     }
 
     /// Creates a new instance of `PieceType` from SFEN formatted string.
@@ -49,8 +49,8 @@ impl PieceType {
         use self::PieceType::*;
 
         match self {
-            Pawn => return Some(PieceType::Queen),
-            _ => return None,
+            Pawn => Some(PieceType::Queen),
+            _ => None,
         }
     }
 
@@ -68,8 +68,8 @@ impl PieceType {
         use self::PieceType::*;
 
         match self {
-            Queen => return Some(Pawn),
-            _ => return None,
+            Queen => Some(Pawn),
+            _ => None,
         }
     }
 
@@ -122,8 +122,8 @@ pub struct PieceTypeIter {
     current: Option<PieceType>,
 }
 
-impl PieceTypeIter {
-    pub fn new() -> PieceTypeIter {
+impl Default for PieceTypeIter {
+    fn default() -> Self {
         PieceTypeIter {
             current: Some(PieceType::King),
         }
@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn promote() {
-        let iterator = PieceTypeIter::new();
+        let iterator = PieceTypeIter::default();
         for i in iterator {
             match i {
                 PieceType::Pawn => assert_eq!(Some(PieceType::Queen), i.promote()),
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     fn unpromote() {
-        let iterator = PieceTypeIter::new();
+        let iterator = PieceTypeIter::default();
         for i in iterator {
             match i {
                 PieceType::Queen => assert_eq!(Some(PieceType::Pawn), i.unpromote()),

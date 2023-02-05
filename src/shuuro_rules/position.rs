@@ -45,7 +45,31 @@ where
     /// It's useful for all three stages of the game.
     fn make_move(&mut self, m: Move<S>) -> Result<Outcome, MoveError>;
     /// Detecting ininsufficient material for both sides.
-    fn detect_insufficient_material(&self) -> Result<(), MoveError>;
+    fn detect_insufficient_material(&self) -> Result<(), MoveError> {
+        let major = [PieceType::Rook, PieceType::Queen];
+        let minor = [PieceType::Knight, PieceType::Bishop];
+        if self.occupied_bb().count() == 2 {
+            return Err(MoveError::DrawByInsufficientMaterial);
+        }
+        for c in Color::iter() {
+            let mut bb = B::empty();
+            for i in major {
+                bb |= &(&self.player_bb(c) & &self.type_bb(&i));
+            }
+            if bb.is_any() {
+                return Ok(());
+            }
+            for i in minor {
+                bb |= &(&self.player_bb(c) & &self.type_bb(&i));
+            }
+            if bb.count() == 1 && bb.count() == 0 {
+                continue;
+            }
+
+            return Ok(());
+        }
+        Err(MoveError::DrawByInsufficientMaterial)
+    }
     /// If last position has appeared three times then it's draw.
     fn detect_repetition(&self) -> Result<(), MoveError>;
     /// Saves position in sfen_history.
@@ -58,8 +82,19 @@ where
     fn set_move_history(&mut self, history: Vec<MoveRecord<S>>);
     ///  Returns history of all moves in `MoveRecord` format.
     fn move_history(&self) -> &[MoveRecord<S>];
+    fn get_move_history(&self) -> &Vec<MoveRecord<S>>;
     /// Returns history of all moves in `Vec` format.
     fn get_sfen_history(&self) -> &Vec<(String, u16)>;
+    /// Check if last move leads to stalemate.
+    fn is_stalemate(&self, color: &Color) -> Result<(), MoveError> {
+        let moves = self.legal_moves(color);
+        for m in moves {
+            if m.1.count() > 0 {
+                return Ok(());
+            }
+        }
+        Err(MoveError::DrawByStalemate)
+    }
     // SFEN PART
     /// Convert current position to sfen.
     fn to_sfen(&self) -> String;
@@ -81,7 +116,6 @@ where
     fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool;
     fn place(&mut self, p: Piece, sq: S) -> Option<String>;
     fn update_bb(&mut self, p: Piece, sq: S);
-    fn get_move_history(&self) -> &Vec<MoveRecord<S>>;
     fn halfmoves(&self) -> B;
     fn us(&self) -> B;
     fn them(&self) -> B;
