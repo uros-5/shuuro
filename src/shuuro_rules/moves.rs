@@ -16,13 +16,13 @@ impl<S: Square> Move<S> {
             return None;
         }
 
-        if s.contains("_") {
-            Self::get_normal_move(&s)
+        if s.contains('_') {
+            Self::get_normal_move(s)
         } else {
-            let buy_move = Self::get_buy_move(&s);
+            let buy_move = Self::get_buy_move(s);
             match buy_move {
                 Some(m) => Some(m),
-                None => Self::get_put_move(&s),
+                None => Self::get_put_move(s),
             }
         }
     }
@@ -49,7 +49,7 @@ impl<S: Square> Move<S> {
 
     /// Getting buy move from str.
     pub fn get_buy_move(s: &str) -> Option<Self> {
-        if s.len() == 2 && s.chars().nth(0).unwrap() == '+' {
+        if s.len() == 2 && s.starts_with('+') {
             if let Some(piece) = Piece::from_sfen(s.chars().nth(1).unwrap()) {
                 return Some(Self::Buy { piece });
             }
@@ -59,7 +59,7 @@ impl<S: Square> Move<S> {
 
     /// Getting put move from str.
     pub fn get_put_move(s: &str) -> Option<Self> {
-        let mut fen_parts = s.split("@");
+        let mut fen_parts = s.split('@');
         if let Some(piece_str) = fen_parts.next() {
             if let Some(piece_char) = piece_str.chars().next() {
                 if let Some(piece) = Piece::from_sfen(piece_char) {
@@ -71,12 +71,12 @@ impl<S: Square> Move<S> {
                 }
             }
         }
-        return None;
+        None
     }
 
     /// Getting normal move from str.
     pub fn get_normal_move(s: &str) -> Option<Self> {
-        let mut fen_parts = s.split("_");
+        let mut fen_parts = s.split('_');
         if let Some(from) = fen_parts.next() {
             if let Some(from) = Square::from_sfen(from) {
                 if let Some(to) = fen_parts.next() {
@@ -91,7 +91,7 @@ impl<S: Square> Move<S> {
             }
         }
 
-        return None;
+        None
     }
 }
 
@@ -99,10 +99,10 @@ impl<S: Square> fmt::Display for Move<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
             Move::Buy { piece } => {
-                write!(f, "+{}", piece)
+                write!(f, "+{piece}")
             }
             Move::Put { to, piece } => {
-                write!(f, "{}@{}", piece, to)
+                write!(f, "{piece}@{to}")
             }
             Move::Normal { from, to, promote } => {
                 write!(f, "{}_{}{}", from, to, if promote { "fixthis" } else { "" })
@@ -134,8 +134,8 @@ impl<S: Square> MoveRecord<S> {
     /// Converts the move into SFEN formatted string.
     pub fn to_sfen(&self) -> String {
         match *self {
-            MoveRecord::Buy { piece } => format!("+{}", piece),
-            MoveRecord::Put { to, piece } => format!("{}@{}", piece, to),
+            MoveRecord::Buy { piece } => format!("+{piece}"),
+            MoveRecord::Put { to, piece } => format!("{piece}@{to}"),
             MoveRecord::Normal {
                 from, to, promoted, ..
             } => format!("{}_{}{}", from, to, if promoted { "*" } else { "" }),

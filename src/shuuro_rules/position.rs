@@ -29,17 +29,64 @@ where
     fn player_bb(&self, c: Color) -> B;
     /// Returns occupied bitboard, all pieces except plinths.
     fn occupied_bb(&self) -> B;
-    /// Returns the number of the given piece in hand.
-    fn hand(&self, p: Piece) -> u8;
+    /// Returns `BitBoard` of all `PieceType`.
+    fn type_bb(&self, pt: &PieceType) -> B;
     /// Returns the side to make a move next.
     fn side_to_move(&self) -> Color;
     /// Returns a history of all moves made since the beginning of the game.
     fn ply(&self) -> u16;
+    /// Returns current status of the game.
+    fn outcome(&self) -> Outcome;
+    /// Returns current variant.
+    fn variant(&self) -> Variant;
+    /// Changing to other variant.
+    fn update_variant(&mut self, variant: Variant);
+    /// Make move from `Move`. It can be of three types.
+    /// It's useful for all three stages of the game.
+    fn make_move(&mut self, m: Move<S>) -> Result<Outcome, MoveError>;
+    /// Detecting ininsufficient material for both sides.
+    fn detect_insufficient_material(&self) -> Result<(), MoveError>;
+    /// If last position has appeared three times then it's draw.
+    fn detect_repetition(&self) -> Result<(), MoveError>;
+    /// Saves position in sfen_history.
+    fn log_position(&mut self);
+    /// Set `Position` from `&str`.
+    fn set_sfen(&mut self, sfe_str: &str) -> Result<Outcome, SfenError>;
+    /// Set sfen history.
+    fn set_sfen_history(&mut self, history: Vec<(String, u16)>);
+    /// Set history of previous moves.
+    fn set_move_history(&mut self, history: Vec<MoveRecord<S>>);
     ///  Returns history of all moves in `MoveRecord` format.
     fn move_history(&self) -> &[MoveRecord<S>];
-    fn outcome(&self);
-    fn variant(&self) -> Variant;
-    fn update_variant(&mut self);
+    /// Returns history of all moves in `Vec` format.
+    fn get_sfen_history(&self) -> &Vec<(String, u16)>;
+    // SFEN PART
+    /// Convert current position to sfen.
+    fn to_sfen(&self) -> String;
+    fn parse_sfen_hand(&mut self, s: &str) -> Result<(), SfenError>;
+    fn parse_sfen_ply(&mut self, s: &str) -> Result<(), SfenError>;
+    fn parse_sfen_board(&mut self, s: &str) -> Result<(), SfenError>;
+    fn generate_sfen(&self);
+    // PLACEMENT PART
+    fn generate_plinths(&mut self);
+    fn set_hand(&mut self, s: &str);
+    fn get_hand(&self, c: Color) -> String;
+    /// Returns the number of the given piece in hand.
+    fn hand(&self, p: Piece) -> u8;
+    fn king_squares(&self, c: &Color) -> B;
+    fn empty_squares(&self, p: Piece) -> B;
+    fn is_king_placed(&self, c: Color) -> bool;
+    fn checks(&self, attacked_color: &Color) -> B;
+    fn can_pawn_move(&self, p: Piece) -> bool;
+    fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool;
+    fn place(&mut self, p: Piece, sq: S) -> Option<String>;
+    fn update_bb(&mut self, p: Piece, sq: S);
+    fn get_move_history(&self) -> &Vec<MoveRecord<S>>;
+    fn halfmoves(&self) -> B;
+    fn us(&self) -> B;
+    fn them(&self) -> B;
+    /// Create move from `&str`.
+    fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError>;
     /// Returns a `BitBoard` where the given piece at the given square can move.
     fn move_candidates(&self, sq: &S, p: Piece, move_type: MoveType<S>) -> B {
         let blockers = move_type.blockers(self, &p.color);
@@ -116,7 +163,7 @@ where
         ]
         .iter()
         {
-            if self.variant().can_buy(s) {
+            if !self.variant().can_buy(s) {
                 continue;
             }
             let piece_attacks = A::get_sliding_attacks(*s, &ksq, plinths);
@@ -152,7 +199,7 @@ where
     /// Returns Vector of all checks.
     fn check_moves(&self, color: &Color) -> Vec<B> {
         let mut all = vec![];
-        let ksq = self.find_king(&color);
+        let ksq = self.find_king(color);
         if ksq.is_none() {
             return vec![];
         }
@@ -270,8 +317,6 @@ where
             Color::NoColor => B::empty(),
         }
     }
-    /// Returns `BitBoard` of all `PieceType`.
-    fn type_bb(&self, pt: &PieceType) -> B;
     /// Returns `Square` if King is available.
     fn find_king(&self, c: &Color) -> Option<S> {
         let mut bb = &self.type_bb(&PieceType::King) & &self.player_bb(*c);
@@ -281,36 +326,6 @@ where
             None
         }
     }
-    /// Saves position in sfen_history.
-    fn log_position(&mut self);
-    fn make_move(&mut self, m: Move<S>) -> Result<Outcome, MoveError>;
-    fn detect_insufficient_material(&self) -> Result<(), MoveError>;
-    fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError>;
-    fn detect_repetition(&self) -> Result<(), MoveError>;
-    fn set_sfen(&mut self, sfe_str: &str) -> Result<Outcome, SfenError>;
-    fn set_sfen_history(&mut self, history: Vec<(String, u16)>);
-    fn set_move_history(&mut self, history: Vec<MoveRecord<S>>);
-    fn to_sfen(&self) -> String;
-    fn parse_sfen_hand(&mut self, s: &str) -> Result<(), SfenError>;
-    fn parse_sfen_ply(&mut self, s: &str) -> Result<(), SfenError>;
-    fn parse_sfen_board(&mut self, s: &str) -> Result<(), SfenError>;
-    fn generate_sfen(&self);
-    fn set_hand(&mut self, s: &str);
-    fn get_hand(&self, c: Color) -> String;
-    fn king_squares(&self, c: &Color) -> B;
-    fn empty_squares(&self, p: Piece) -> B;
-    fn is_king_placed(&self, c: Color) -> bool;
-    fn checks(&self, attacked_color: &Color) -> B;
-    fn can_pawn_move(&self, p: Piece) -> bool;
-    fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool;
-    fn place(&mut self, p: Piece, sq: S) -> Option<String>;
-    fn generate_plinths(&mut self);
-    fn update_bb(&mut self, p: Piece, sq: S);
-    fn get_sfen_history(&self) -> &Vec<(String, u16)>;
-    fn get_move_history(&self) -> &Vec<MoveRecord<S>>;
-    fn halfmoves(&self) -> B;
-    fn us(&self) -> B;
-    fn them(&self) -> B;
 }
 
 pub struct Pin<S, B>

@@ -29,14 +29,8 @@ impl Variant {
             return false;
         }
         match &self {
-            Self::Shuuro | Self::Standard => {
-                if piece.is_fairy_piece() {
-                    return false;
-                } else {
-                    return true;
-                }
-            }
-            _ => return true,
+            Self::Shuuro | Self::Standard => !piece.is_fairy_piece(),
+            _ => true,
         }
     }
 

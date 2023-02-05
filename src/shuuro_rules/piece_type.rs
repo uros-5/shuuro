@@ -89,11 +89,7 @@ impl PieceType {
     }
 
     pub fn is_fairy_piece(&self) -> bool {
-        match &self {
-            Self::Chancellor => true,
-            Self::ArchBishop => true,
-            _ => false,
-        }
+        matches!(self, Self::Chancellor | Self::ArchBishop)
     }
 
     /// Converts the instance into the unique number for array indexing purpose.
