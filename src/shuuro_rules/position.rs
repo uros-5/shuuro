@@ -51,6 +51,8 @@ where
     fn sfen_to_bb(&mut self, piece: Piece, j: u8, i: usize);
     /// Returns a history of all moves made since the beginning of the game.
     fn ply(&self) -> u16;
+    /// Increment ply
+    fn increment_ply(&mut self);
     /// Change side to move.
     fn flip_side_to_move(&mut self);
     /// Set new stm
@@ -145,7 +147,7 @@ where
     fn set_sfen_history(&mut self, history: Vec<(String, u16)>);
     /// Set history of previous moves.
     fn set_move_history(&mut self, history: Vec<MoveRecord<S>>);
-    ///  Returns history of all moves in `MoveRecord` format.
+    /// Returns history of all moves in `MoveRecord` format.
     fn move_history(&self) -> &[MoveRecord<S>];
     fn get_move_history(&self) -> &Vec<MoveRecord<S>>;
     /// Returns history of all moves in `Vec` format.
@@ -399,13 +401,112 @@ where
     fn clear_hand(&mut self);
     /// Returns the number of the given piece in hand.
     fn hand(&self, p: Piece) -> u8;
-    fn king_squares(&self, c: &Color) -> B;
+    fn king_squares<const K: usize>(&self, c: &Color) -> B {
+        let files: [&str; K] = self.king_files();
+        let mut bb = B::empty();
+        let plinths = self.player_bb(Color::NoColor);
+        let mut all = |num: usize| -> B {
+            for file in files {
+                bb |= S::from_sfen(&format!("{file}{num}")[..]).unwrap();
+            }
+            bb &= &!&plinths;
+            bb
+        };
+        match *c {
+            Color::Black => all(12),
+            Color::White => all(1),
+            Color::NoColor => B::empty(),
+        }
+    }
+    fn king_files<const K: usize>(&self) -> [&str; K];
     fn empty_squares(&self, p: Piece) -> B;
-    fn is_king_placed(&self, c: Color) -> bool;
-    fn checks(&self, attacked_color: &Color) -> B;
-    fn can_pawn_move(&self, p: Piece) -> bool;
+    fn is_king_placed(&self, c: Color) -> bool {
+        let king = &self.player_bb(c) & &self.type_bb(&PieceType::King);
+        if king.count() == 1 {
+            return true;
+        }
+        false
+    }
+    fn checks(&self, attacked_color: &Color) -> B {
+        let king = &self.type_bb(&PieceType::King) & &self.player_bb(*attacked_color);
+        if king.is_empty() {
+            return B::empty();
+        }
+        let mut all;
+        let occupied_bb = &self.occupied_bb() | &self.player_bb(Color::NoColor);
+        for p in [
+            PieceType::Queen,
+            PieceType::Rook,
+            PieceType::Bishop,
+            PieceType::Chancellor,
+            PieceType::ArchBishop,
+        ] {
+            if !self.variant().can_buy(&p) {
+                continue;
+            }
+            let bb = &self.type_bb(&p) & &self.player_bb(attacked_color.flip());
+            for i in bb {
+                all = A::get_sliding_attacks(p, &i, occupied_bb);
+                if (&all & &king).is_any() {
+                    match *attacked_color {
+                        Color::White => {
+                            let files = self.white_files();
+                            return &(&files & &all) & &!&king;
+                        }
+                        Color::Black => {
+                            let files = self.black_files();
+                            return &(&files & &all) & &!&king;
+                        }
+                        Color::NoColor => {
+                            return B::empty();
+                        }
+                    }
+                }
+            }
+        }
+        B::empty()
+    }
+    fn white_files(&self) -> B;
+    fn black_files(&self) -> B;
+    fn can_pawn_move(&self, p: Piece) -> bool {
+        self.is_hand_empty(p.color, PieceType::Pawn)
+    }
     fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool;
-    fn place(&mut self, p: Piece, sq: S) -> Option<String>;
+    fn decrement_hand(&mut self, p: Piece);
+    fn place(&mut self, p: Piece, sq: S) -> Option<String> {
+        if self.get_hand_piece(p) > 0 && (&self.empty_squares(p) & &sq).is_any() {
+            self.update_bb(p, sq);
+            self.decrement_hand(p);
+            let move_record = MoveRecord::Put { to: sq, piece: p };
+            let sfen = self.generate_sfen().split(' ').next().unwrap().to_string();
+            let hand = {
+                let s = self.get_hand(Color::White) + &self.get_hand(Color::Black)[..];
+                if s.is_empty() {
+                    String::from(" ")
+                } else {
+                    s
+                }
+            };
+            self.increment_ply();
+            let ply = self.ply();
+
+            self.insert_move(move_record.clone());
+            if !self.is_hand_empty(p.color, PieceType::Plinth) {
+                self.flip_side_to_move();
+            }
+            let record = format!(
+                "{}_{}_{}_{}_{}",
+                &move_record.to_sfen(),
+                &sfen,
+                hand,
+                self.side_to_move().to_string(),
+                ply
+            );
+            self.insert_sfen(&record);
+            return Some(record);
+        }
+        None
+    }
     fn update_bb(&mut self, p: Piece, sq: S);
     fn halfmoves(&self) -> B;
     fn dimensions(&self) -> usize;
@@ -825,4 +926,64 @@ where
             _ => sq,
         }
     }
+}
+
+pub trait PositionBoard<S, B, A>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    Self: Sized,
+    A: Attacks<S, B>,
+    for<'b> &'b B: BitOr<&'b B, Output = B>,
+    for<'b> &'b B: BitAnd<&'b B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    B: Not,
+{
+}
+
+pub trait PositionSfen<S, B, A>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    Self: Sized,
+    A: Attacks<S, B>,
+    for<'b> &'b B: BitOr<&'b B, Output = B>,
+    for<'b> &'b B: BitAnd<&'b B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    B: Not,
+{
+}
+
+pub trait PositionPlacement<S, B, A>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    Self: Sized,
+    A: Attacks<S, B>,
+    for<'b> &'b B: BitOr<&'b B, Output = B>,
+    for<'b> &'b B: BitAnd<&'b B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    B: Not,
+{
+}
+
+pub trait PositionMove<S, B, A>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    Self: Sized,
+    A: Attacks<S, B>,
+    for<'b> &'b B: BitOr<&'b B, Output = B>,
+    for<'b> &'b B: BitAnd<&'b B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    B: Not,
+{
 }
