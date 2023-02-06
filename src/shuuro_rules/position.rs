@@ -1,8 +1,11 @@
 use std::{
+    cmp::Ordering,
     collections::HashMap,
     hash::Hash,
     ops::{BitAnd, BitOr, Not},
 };
+
+use itertools::Itertools;
 
 use crate::{
     attacks::Attacks, bitboard::BitBoard, Color, Move, MoveError, MoveRecord, Piece, PieceType,
@@ -19,10 +22,13 @@ where
     for<'b> &'b B: BitAnd<&'b B, Output = B>,
     for<'a> &'a B: Not<Output = B>,
     for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
     B: Not,
 {
     /// Creates a new instance of `Position` with an empty board.
     fn new() -> Self;
+    /// Sets a piece at the given square.
+    fn set_piece(&mut self, sq: S, p: Option<Piece>);
     /// Returns a piece at the given square.
     fn piece_at(&self, sq: S) -> &Option<Piece>;
     /// Returns a bitboard containing pieces of the given player.
@@ -31,12 +37,28 @@ where
     fn occupied_bb(&self) -> B;
     /// Returns `BitBoard` of all `PieceType`.
     fn type_bb(&self, pt: &PieceType) -> B;
+    /// Mutate player BitBoard(XOR).
+    fn xor_player_bb(&mut self, color: Color, sq: S);
+    /// Mutate PieceType BitBoard(XOR).
+    fn xor_type_bb(&mut self, piece_type: PieceType, sq: S);
+    /// Mutate occupied BitBoard(XOR).
+    fn xor_occupied(&mut self, sq: S);
     /// Returns the side to make a move next.
     fn side_to_move(&self) -> Color;
+    /// All BitBoards are empty.
+    fn empty_all_bb(&mut self);
+    /// Generate BitBoards from sfen
+    fn sfen_to_bb(&mut self, piece: Piece, j: u8, i: usize);
     /// Returns a history of all moves made since the beginning of the game.
     fn ply(&self) -> u16;
+    /// Change side to move.
+    fn flip_side_to_move(&mut self);
+    /// Set new stm
+    fn update_side_to_move(&mut self, c: Color);
     /// Returns current status of the game.
     fn outcome(&self) -> Outcome;
+    /// Set new outcome
+    fn update_outcome(&mut self, outcome: Outcome);
     /// Returns current variant.
     fn variant(&self) -> Variant;
     /// Changing to other variant.
@@ -44,6 +66,10 @@ where
     /// Make move from `Move`. It can be of three types.
     /// It's useful for all three stages of the game.
     fn make_move(&mut self, m: Move<S>) -> Result<Outcome, MoveError>;
+    /// Insert new sfen to sfen history.
+    fn insert_sfen(&mut self, sfen: &str);
+    /// Insert new MoveRecord to move_history.
+    fn insert_move(&mut self, m: MoveRecord<S>);
     /// Detecting ininsufficient material for both sides.
     fn detect_insufficient_material(&self) -> Result<(), MoveError> {
         let major = [PieceType::Rook, PieceType::Queen];
@@ -73,9 +99,48 @@ where
     /// If last position has appeared three times then it's draw.
     fn detect_repetition(&self) -> Result<(), MoveError>;
     /// Saves position in sfen_history.
-    fn log_position(&mut self);
+    fn log_position(&mut self) {
+        let mut sfen = self.generate_sfen().split(' ').take(3).join(" ");
+        let move_history = self.get_move_history();
+        if !move_history.is_empty() {
+            sfen.push_str(format!(" {} ", self.ply()).as_str());
+            sfen.push_str(&move_history.last().unwrap().to_sfen());
+        }
+        self.insert_sfen(&sfen);
+    }
     /// Set `Position` from `&str`.
-    fn set_sfen(&mut self, sfe_str: &str) -> Result<Outcome, SfenError>;
+    fn set_sfen(&mut self, sfen_str: &str) -> Result<Outcome, SfenError> {
+        let mut parts = sfen_str.split_whitespace();
+        parts
+            .next()
+            .ok_or(SfenError::MissingDataFields)
+            .and_then(|s| self.parse_sfen_board(s))?;
+        parts
+            .next()
+            .ok_or(SfenError::MissingDataFields)
+            .and_then(|s| self.parse_sfen_stm(s))?;
+        parts
+            .next()
+            .ok_or(SfenError::MissingDataFields)
+            .and_then(|s| self.parse_sfen_hand(s))?;
+        parts
+            .next()
+            .ok_or(SfenError::MissingDataFields)
+            .and_then(|s| self.parse_sfen_ply(s))?;
+        self.clear_sfen_history();
+        self.log_position();
+        if self.in_check(self.side_to_move().flip()) {
+            let checkmate = Outcome::Checkmate {
+                color: self.side_to_move(),
+            };
+            self.update_outcome(checkmate.clone());
+            return Ok(checkmate);
+        }
+        Ok(Outcome::Nothing)
+    }
+
+    /// Clear sfen_history
+    fn clear_sfen_history(&mut self);
     /// Set sfen history.
     fn set_sfen_history(&mut self, history: Vec<(String, u16)>);
     /// Set history of previous moves.
@@ -97,15 +162,241 @@ where
     }
     // SFEN PART
     /// Convert current position to sfen.
-    fn to_sfen(&self) -> String;
-    fn parse_sfen_hand(&mut self, s: &str) -> Result<(), SfenError>;
+    fn to_sfen(&self) -> String {
+        let sfen_history = self.get_sfen_history();
+        let move_history = self.get_move_history();
+        let ply = self.ply();
+        if sfen_history.is_empty() {
+            return self.generate_sfen();
+        }
+        if move_history.is_empty() {
+            format!("{} {}", sfen_history.first().unwrap().0, ply);
+        }
+        format!(
+            "{} {}",
+            &sfen_history.first().unwrap().0,
+            ply - move_history.len() as u16
+        )
+    }
+
+    fn parse_sfen_hand(&mut self, s: &str) -> Result<(), SfenError> {
+        if s == "-" {
+            self.clear_hand();
+            return Ok(());
+        }
+
+        let mut num_pieces: u8 = 0;
+        for c in s.chars() {
+            match c {
+                n if n.is_numeric() => {
+                    if let Some(n) = n.to_digit(9) {
+                        if num_pieces != 0 {
+                            let num2 = format!("{}{}", num_pieces, n as u8).parse::<u8>().unwrap();
+                            num_pieces = num2;
+                            continue;
+                        }
+                        num_pieces = n as u8;
+                    }
+                }
+                s => {
+                    match Piece::from_sfen(s) {
+                        Some(p) => {
+                            self.insert_in_hand(p, if num_pieces == 0 { 1 } else { num_pieces })
+                        }
+                        None => return Err(SfenError::IllegalPieceType),
+                    };
+                    num_pieces = 0;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn parse_sfen_ply(&mut self, s: &str) -> Result<(), SfenError>;
-    fn parse_sfen_board(&mut self, s: &str) -> Result<(), SfenError>;
-    fn generate_sfen(&self);
+    fn parse_sfen_stm(&mut self, s: &str) -> Result<(), SfenError> {
+        let stm = match s {
+            "b" => Color::Black,
+            "w" => Color::White,
+            _ => return Err(SfenError::IllegalSideToMove),
+        };
+        self.update_side_to_move(stm);
+        Ok(())
+    }
+    fn parse_sfen_board(&mut self, s: &str) -> Result<(), SfenError> {
+        let rows = s.split('/');
+        self.empty_all_bb();
+        for (i, row) in rows.enumerate() {
+            if i >= 12 {
+                return Err(SfenError::IllegalBoardState);
+            }
+
+            let mut j = 0;
+
+            let mut is_promoted = false;
+            for c in row.chars() {
+                match c {
+                    '+' => {
+                        is_promoted = true;
+                    }
+                    '0' => {
+                        let sq = Square::new(j, i as u8).unwrap();
+                        self.set_piece(sq, None);
+                        j += 1;
+                    }
+                    n if n.is_numeric() => {
+                        if let Some(n) = n.to_digit(11) {
+                            for _ in 0..n {
+                                if j >= 12 {
+                                    return Err(SfenError::IllegalBoardState);
+                                }
+
+                                let sq = Square::new(j, i as u8).unwrap();
+
+                                self.set_piece(sq, None);
+
+                                j += 1;
+                            }
+                        }
+                    }
+                    s => match Piece::from_sfen(s) {
+                        Some(mut piece) => {
+                            if j >= 12 {
+                                return Err(SfenError::IllegalBoardState);
+                            }
+
+                            if is_promoted {
+                                if let Some(promoted) = piece.piece_type.promote() {
+                                    piece.piece_type = promoted;
+                                } else {
+                                    return Err(SfenError::IllegalPieceType);
+                                }
+                            }
+
+                            self.sfen_to_bb(piece, j, i);
+                            j += 1;
+                            is_promoted = false;
+                        }
+                        None => return Err(SfenError::IllegalPieceType),
+                    },
+                }
+            }
+        }
+
+        Ok(())
+    }
+    fn generate_sfen(&self) -> String {
+        fn add_num_space(num_spaces: i32, mut s: String) -> String {
+            if num_spaces == 10 {
+                s.push_str("55");
+            } else if num_spaces == 11 {
+                s.push_str("56");
+            } else if num_spaces == 12 {
+                s.push_str("57");
+            } else if num_spaces > 0 {
+                s.push_str(&num_spaces.to_string());
+            }
+            s
+        }
+        let knights = [
+            PieceType::Knight,
+            PieceType::Chancellor,
+            PieceType::ArchBishop,
+        ];
+
+        let dimension = self.dimensions();
+
+        let board = (0..dimension)
+            .map(|row| {
+                let mut s = String::new();
+                let mut num_spaces = 0;
+                for file in 0..dimension {
+                    let sq = S::new(file as u8, row as u8).unwrap();
+                    match *self.piece_at(sq) {
+                        Some(pc) => {
+                            if num_spaces > 0 {
+                                let mut _s = add_num_space(num_spaces, s);
+                                s = _s;
+                                num_spaces = 0;
+                            }
+
+                            if (&self.player_bb(Color::NoColor) & &sq).is_any() {
+                                if knights.contains(&pc.piece_type) {
+                                    s.push('L');
+                                } else {
+
+                                    //return Err(SfenError::IllegalPieceTypeOnPlinth);
+                                }
+                            }
+
+                            s.push_str(&pc.to_string());
+                        }
+                        None => {
+                            if (&self.player_bb(Color::NoColor) & &sq).is_any() {
+                                let mut _s = add_num_space(num_spaces, s);
+                                s = _s;
+                                num_spaces = 0;
+                                s.push_str("L0");
+                            } else {
+                                num_spaces += 1;
+                            }
+                        }
+                    }
+                }
+
+                if num_spaces > 0 {
+                    let _s = add_num_space(num_spaces, s);
+                    s = _s;
+                    //num_spaces = 0;
+                }
+
+                s
+            })
+            .join("/");
+
+        let color = if self.side_to_move() == Color::Black {
+            "b"
+        } else {
+            "w"
+        };
+
+        let mut hand = [Color::Black, Color::White]
+            .iter()
+            .map(|c| {
+                PieceType::iter()
+                    .filter(|pt| pt.is_hand_piece())
+                    .map(|pt| {
+                        let pc = Piece {
+                            piece_type: pt,
+                            color: *c,
+                        };
+                        let n = self.get_hand_piece(pc);
+
+                        if n == 0 {
+                            "".to_string()
+                        } else if n == 1 {
+                            format!("{pc}")
+                        } else {
+                            format!("{n}{pc}")
+                        }
+                    })
+                    .join("")
+            })
+            .join("");
+
+        if hand.is_empty() {
+            hand = "-".to_string();
+        }
+
+        format!("{} {} {} {}", board, color, hand, self.ply())
+    }
     // PLACEMENT PART
     fn generate_plinths(&mut self);
+    fn insert_in_hand(&mut self, p: Piece, num: u8);
     fn set_hand(&mut self, s: &str);
     fn get_hand(&self, c: Color) -> String;
+    fn get_hand_piece(&self, p: Piece) -> u8;
+    fn clear_hand(&mut self);
     /// Returns the number of the given piece in hand.
     fn hand(&self, p: Piece) -> u8;
     fn king_squares(&self, c: &Color) -> B;
@@ -117,6 +408,7 @@ where
     fn place(&mut self, p: Piece, sq: S) -> Option<String>;
     fn update_bb(&mut self, p: Piece, sq: S);
     fn halfmoves(&self) -> B;
+    fn dimensions(&self) -> usize;
     fn us(&self) -> B;
     fn them(&self) -> B;
     /// Create move from `&str`.
@@ -250,7 +542,7 @@ where
         ]
         .iter()
         {
-            if self.variant().can_buy(s) {
+            if !self.variant().can_buy(s) {
                 continue;
             }
             let p = Piece {
@@ -306,13 +598,14 @@ where
     fn fix_pin(&self, sq: &S, pins: &HashMap<S, Pin<S, B>>, checks: &Vec<B>, my_moves: B) -> B {
         let piece = self.piece_at(*sq).unwrap();
         if let Some(pin) = pins.get(sq) {
-            if checks.len() == 1 {
-                let checks = checks.get(0).unwrap();
-                return &(checks & &pin.fix()) & &my_moves;
-            } else if checks.len() > 1 {
-                return B::empty();
+            match (1).cmp(&checks.len()) {
+                Ordering::Equal => {
+                    let checks = checks.get(0).unwrap();
+                    &(checks & &pin.fix()) & &my_moves
+                }
+                Ordering::Greater => B::empty(),
+                Ordering::Less => &pin.fix() & &my_moves,
             }
-            &pin.fix() & &my_moves
         } else {
             let mut my_moves = my_moves;
             let enemy_moves = self.enemy_moves(&piece.color);
@@ -459,6 +752,7 @@ where
         for<'b> &'b B: BitAnd<&'b B, Output = B>,
         for<'a> &'a B: Not<Output = B>,
         for<'a> &'a B: BitOr<&'a S, Output = B>,
+        for<'a> &'a B: BitAnd<&'a S, Output = B>,
     {
         match self {
             MoveType::Empty => B::empty(),
@@ -483,6 +777,7 @@ where
         for<'b> &'b B: BitAnd<&'b B, Output = B>,
         for<'a> &'a B: Not<Output = B>,
         for<'a> &'a B: BitOr<&'a S, Output = B>,
+        for<'a> &'a B: BitAnd<&'a S, Output = B>,
     {
         let my_color = p.color;
         let without_main_color = bb & &!&position.player_bb(my_color);

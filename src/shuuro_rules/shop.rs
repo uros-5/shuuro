@@ -15,7 +15,7 @@ fn get_pricing() -> [(i32, u8); 9] {
     for pt in pt_iter {
         pricing[pt.index()] = (prices[pt.index()], count[pt.index()]);
     }
-    return pricing;
+    pricing
 }
 
 /// Used for buying pieces.
@@ -40,34 +40,30 @@ impl<S: Square> Shop<S> {
 
     /// Buying piece with specific color.
     pub fn play(&mut self, mv: Move<S>) -> Option<[bool; 2]> {
-        match mv {
-            Move::Buy { piece } => {
-                if self.variant.can_buy(&piece.piece_type) {
-                    return None;
-                } else if piece.color == Color::NoColor {
-                    return None;
-                } else if !self.is_confirmed(piece.color) {
-                    let (piece_price, piece_count) = self.pricing[piece.piece_type.index()];
-                    if self.credit[piece.color.index()] >= piece_price as i32 {
-                        if self.hand.get(piece) < piece_count {
-                            self.hand.increment(piece);
-                            self.credit[piece.color.index()] =
-                                self.credit(piece.color) - piece_price;
-                            let move_record = MoveRecord::Buy { piece };
-                            self.sfen_history
-                                .lock()
-                                .unwrap()
-                                .push((move_record.to_sfen().clone(), self.hand.get(piece)));
-                            self.move_history.lock().unwrap().push(move_record);
-                        }
-                        if self.credit[piece.color.index()] == 0 {
-                            self.confirm(piece.color);
-                        }
-                        return Some(self.confirmed);
+        if let Move::Buy { piece } = mv {
+            if !self.variant.can_buy(&piece.piece_type) {
+                return None;
+            } else if piece.color == Color::NoColor {
+                return None;
+            } else if !self.is_confirmed(piece.color) {
+                let (piece_price, piece_count) = self.pricing[piece.piece_type.index()];
+                if self.credit[piece.color.index()] >= piece_price as i32 {
+                    if self.hand.get(piece) < piece_count {
+                        self.hand.increment(piece);
+                        self.credit[piece.color.index()] = self.credit(piece.color) - piece_price;
+                        let move_record = MoveRecord::Buy { piece };
+                        self.sfen_history
+                            .lock()
+                            .unwrap()
+                            .push((move_record.to_sfen().clone(), self.hand.get(piece)));
+                        self.move_history.lock().unwrap().push(move_record);
                     }
+                    if self.credit[piece.color.index()] == 0 {
+                        self.confirm(piece.color);
+                    }
+                    return Some(self.confirmed);
                 }
             }
-            _ => (),
         }
         None
     }

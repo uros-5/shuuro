@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn promote() {
-        let iterator = PieceTypeIter::new();
+        let iterator = PieceTypeIter::default();
         for i in iterator {
             match i {
                 PieceType::Pawn => {
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn unpromote() {
-        let iterator = PieceTypeIter::new();
+        let iterator = PieceTypeIter::default();
         for i in iterator {
             match i {
                 PieceType::Queen => {
