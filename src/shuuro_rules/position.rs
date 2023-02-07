@@ -227,9 +227,10 @@ where
     }
     fn parse_sfen_board(&mut self, s: &str) -> Result<(), SfenError> {
         let rows = s.split('/');
+        let dimension = self.dimensions();
         self.empty_all_bb();
         for (i, row) in rows.enumerate() {
-            if i >= 12 {
+            if i >= dimension as usize {
                 return Err(SfenError::IllegalBoardState);
             }
 
@@ -249,7 +250,7 @@ where
                     n if n.is_numeric() => {
                         if let Some(n) = n.to_digit(11) {
                             for _ in 0..n {
-                                if j >= 12 {
+                                if j >= dimension {
                                     return Err(SfenError::IllegalBoardState);
                                 }
 
@@ -263,7 +264,7 @@ where
                     }
                     s => match Piece::from_sfen(s) {
                         Some(mut piece) => {
-                            if j >= 12 {
+                            if j >= dimension {
                                 return Err(SfenError::IllegalBoardState);
                             }
 
@@ -313,7 +314,7 @@ where
                 let mut s = String::new();
                 let mut num_spaces = 0;
                 for file in 0..dimension {
-                    let sq = S::new(file as u8, row as u8).unwrap();
+                    let sq = S::new(file, row).unwrap();
                     match *self.piece_at(sq) {
                         Some(pc) => {
                             if num_spaces > 0 {
@@ -413,7 +414,7 @@ where
             bb
         };
         match *c {
-            Color::Black => all(12),
+            Color::Black => all(self.dimensions() as usize),
             Color::White => all(1),
             Color::NoColor => B::empty(),
         }
@@ -509,7 +510,7 @@ where
     }
     fn update_bb(&mut self, p: Piece, sq: S);
     fn halfmoves(&self) -> B;
-    fn dimensions(&self) -> usize;
+    fn dimensions(&self) -> u8;
     fn us(&self) -> B;
     fn them(&self) -> B;
     /// Create move from `&str`.
@@ -926,64 +927,4 @@ where
             _ => sq,
         }
     }
-}
-
-pub trait PositionBoard<S, B, A>
-where
-    S: Square + Hash,
-    B: BitBoard<S>,
-    Self: Sized,
-    A: Attacks<S, B>,
-    for<'b> &'b B: BitOr<&'b B, Output = B>,
-    for<'b> &'b B: BitAnd<&'b B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    B: Not,
-{
-}
-
-pub trait PositionSfen<S, B, A>
-where
-    S: Square + Hash,
-    B: BitBoard<S>,
-    Self: Sized,
-    A: Attacks<S, B>,
-    for<'b> &'b B: BitOr<&'b B, Output = B>,
-    for<'b> &'b B: BitAnd<&'b B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    B: Not,
-{
-}
-
-pub trait PositionPlacement<S, B, A>
-where
-    S: Square + Hash,
-    B: BitBoard<S>,
-    Self: Sized,
-    A: Attacks<S, B>,
-    for<'b> &'b B: BitOr<&'b B, Output = B>,
-    for<'b> &'b B: BitAnd<&'b B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    B: Not,
-{
-}
-
-pub trait PositionMove<S, B, A>
-where
-    S: Square + Hash,
-    B: BitBoard<S>,
-    Self: Sized,
-    A: Attacks<S, B>,
-    for<'b> &'b B: BitOr<&'b B, Output = B>,
-    for<'b> &'b B: BitAnd<&'b B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    B: Not,
-{
 }

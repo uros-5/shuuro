@@ -13,7 +13,7 @@ pub trait PlinthGen<S: Square> {
     ) -> S {
         let rank = rang.gen_range(0..R);
         let file = rang.gen_range(0..F);
-        S::from_sfen(&format!("{}{}", ranks[rank], files[file])[..]).unwrap()
+        S::from_sfen(&format!("{}{}", files[file], ranks[rank])[..]).unwrap()
     }
 
     fn two_plinths<B, const R: usize, const F: usize>(
@@ -31,7 +31,7 @@ pub trait PlinthGen<S: Square> {
         let sq1: S = self.gen_square(&mut rang, ranks, files);
         #[allow(clippy::op_ref)]
         let bb = &B::empty() | sq1;
-        let attacks: B = self.moves(sq1);
+        let attacks: B = self.king_moves(sq1);
         loop {
             let sq2: S = self.gen_square(&mut rang, ranks, files);
             let check = &attacks & sq2;
@@ -41,8 +41,9 @@ pub trait PlinthGen<S: Square> {
             }
         }
     }
-    fn moves<B: BitBoard<S>>(&self, sq: S) -> B;
+    fn king_moves<B: BitBoard<S>>(&self, sq: S) -> B;
     fn random_number() -> u8;
+    fn plinths_count(&self, count: usize) -> bool;
     fn generate_plinths<B, const R: usize, const F: usize>(
         &self,
         left_ranks: &[u8; R],
@@ -59,13 +60,13 @@ pub trait PlinthGen<S: Square> {
         let mut bb = B::empty();
         for i in [left_files, right_files] {
             for j in [left_ranks, right_ranks] {
-                loop {
-                    let new_bb = self.two_plinths(j, i);
-                    if new_bb.count() == 2 {
-                        bb |= &new_bb;
-                        break;
-                    }
+                let new_bb = self.two_plinths(j, i);
+                if new_bb.count() == 2 {
+                    bb |= &new_bb;
                 }
+            }
+            if self.plinths_count(bb.count()) {
+                break;
             }
         }
         bb
