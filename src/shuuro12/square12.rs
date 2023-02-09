@@ -111,38 +111,3 @@ impl Square for Square12 {
         self.inner as usize
     }
 }
-
-pub trait S {
-    fn s_m() -> u8 {
-        10
-    }
-}
-
-pub trait B<T: S>
-where
-    Self: Iterator<Item = T>,
-{
-    fn b_m(&self) {
-        println!("{}", T::s_m() - 10)
-    }
-}
-
-pub struct RealS {
-    something: u8,
-}
-
-impl S for RealS {}
-
-pub struct RealB<T: S> {
-    container: T,
-}
-
-impl<T: S> Iterator for RealB<T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        todo!()
-    }
-}
-
-impl<T: S> B<T> for RealB<T> {}

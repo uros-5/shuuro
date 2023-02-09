@@ -8,17 +8,17 @@ use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, N
 #[derive(Clone, Copy, Debug, Default)]
 pub struct B12<S: Square>(pub [u16; 9], PhantomData<S>);
 
-impl<S: Square> B12<S> {
-    pub const fn new(b: [u16; 9]) -> B12<S> {
+impl B12<Square12> {
+    pub const fn new(b: [u16; 9]) -> B12<Square12> {
         B12(b, PhantomData)
     }
 }
 
-impl<S: Square> BitAnd<&B12<S>> for &B12<S> {
-    type Output = B12<S>;
+impl BitAnd<&B12<Square12>> for &B12<Square12> {
+    type Output = B12<Square12>;
 
     #[inline(always)]
-    fn bitand(self, rhs: &B12<S>) -> B12<S> {
+    fn bitand(self, rhs: &B12<Square12>) -> B12<Square12> {
         B12::new([
             self.0[0] & rhs.0[0],
             self.0[1] & rhs.0[1],
@@ -33,11 +33,11 @@ impl<S: Square> BitAnd<&B12<S>> for &B12<S> {
     }
 }
 
-impl<S: Square> BitXor<&B12<S>> for B12<S> {
-    type Output = B12<S>;
+impl BitXor<&B12<Square12>> for B12<Square12> {
+    type Output = B12<Square12>;
 
     #[inline(always)]
-    fn bitxor(self, rhs: &B12<S>) -> B12<S> {
+    fn bitxor(self, rhs: &B12<Square12>) -> B12<Square12> {
         B12::new([
             self.0[0] ^ rhs.0[0],
             self.0[1] ^ rhs.0[1],
@@ -52,11 +52,11 @@ impl<S: Square> BitXor<&B12<S>> for B12<S> {
     }
 }
 
-impl<S: Square> BitOr<&B12<S>> for &B12<S> {
-    type Output = B12<S>;
+impl BitOr<&B12<Square12>> for &B12<Square12> {
+    type Output = B12<Square12>;
 
     #[inline(always)]
-    fn bitor(self, rhs: &B12<S>) -> B12<S> {
+    fn bitor(self, rhs: &B12<Square12>) -> B12<Square12> {
         B12::new([
             self.0[0] | rhs.0[0],
             self.0[1] | rhs.0[1],
@@ -71,8 +71,8 @@ impl<S: Square> BitOr<&B12<S>> for &B12<S> {
     }
 }
 
-impl<S: Square> Not for B12<S> {
-    type Output = B12<S>;
+impl Not for B12<Square12> {
+    type Output = B12<Square12>;
 
     fn not(self) -> Self::Output {
         B12::new([
@@ -82,8 +82,8 @@ impl<S: Square> Not for B12<S> {
     }
 }
 
-impl<S: Square> Not for &B12<S> {
-    type Output = B12<S>;
+impl Not for &B12<Square12> {
+    type Output = B12<Square12>;
 
     fn not(self) -> Self::Output {
         B12::new([
@@ -93,29 +93,29 @@ impl<S: Square> Not for &B12<S> {
     }
 }
 
-impl<S: Square> BitOr<&S> for &B12<S> {
-    type Output = B12<S>;
+impl BitOr<&Square12> for &B12<Square12> {
+    type Output = B12<Square12>;
 
     #[inline(always)]
-    fn bitor(self, rhs: &S) -> B12<S> {
+    fn bitor(self, rhs: &Square12) -> B12<Square12> {
         // let b = &square_bb::<Square12, B12<Square12>>(rhs);
-        self | &square_bb::<S, B12<S>>(rhs)
+        self | &square_bb(rhs)
     }
 }
 
-impl<S: Square> BitAnd<&S> for &B12<S> {
-    type Output = B12<S>;
+impl BitAnd<&Square12> for &B12<Square12> {
+    type Output = B12<Square12>;
 
     #[inline(always)]
-    fn bitand(self, rhs: &S) -> B12<S> {
-        self & &square_bb::<S, B12<S>>(rhs)
+    fn bitand(self, rhs: &Square12) -> B12<Square12> {
+        self & &square_bb(rhs)
     }
 }
 
-impl<S: Square> BitAndAssign<&B12<S>> for B12<S> {
+impl BitAndAssign<&B12<Square12>> for B12<Square12> {
     #[inline(always)]
 
-    fn bitand_assign(&mut self, rhs: &B12<S>) {
+    fn bitand_assign(&mut self, rhs: &B12<Square12>) {
         self.0[0] &= rhs.0[0];
         self.0[1] &= rhs.0[1];
         self.0[2] &= rhs.0[2];
@@ -128,10 +128,10 @@ impl<S: Square> BitAndAssign<&B12<S>> for B12<S> {
     }
 }
 
-impl<S: Square> BitOrAssign<&B12<S>> for B12<S> {
+impl BitOrAssign<&B12<Square12>> for B12<Square12> {
     #[inline(always)]
 
-    fn bitor_assign(&mut self, rhs: &B12<S>) {
+    fn bitor_assign(&mut self, rhs: &B12<Square12>) {
         self.0[0] |= rhs.0[0];
         self.0[1] |= rhs.0[1];
         self.0[2] |= rhs.0[2];
@@ -144,24 +144,9 @@ impl<S: Square> BitOrAssign<&B12<S>> for B12<S> {
     }
 }
 
-impl<S: Square> BitOrAssign<&S> for B12<S> {
+impl BitXorAssign<&B12<Square12>> for B12<Square12> {
     #[inline(always)]
-    fn bitor_assign(&mut self, rhs: &S) {
-        *self |= &square_bb(rhs);
-    }
-}
-
-impl<S: Square> Iterator for B12<S> {
-    type Item = S;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        todo!()
-    }
-}
-
-impl<S: Square> BitXorAssign<&B12<S>> for B12<S> {
-    #[inline(always)]
-    fn bitxor_assign(&mut self, rhs: &B12<S>) {
+    fn bitxor_assign(&mut self, rhs: &B12<Square12>) {
         self.0[0] ^= rhs.0[0];
         self.0[1] ^= rhs.0[1];
         self.0[2] ^= rhs.0[2];
@@ -174,7 +159,22 @@ impl<S: Square> BitXorAssign<&B12<S>> for B12<S> {
     }
 }
 
-impl<S: Square> BitBoard<S> for B12<S> {
+impl Iterator for B12<Square12> {
+    type Item = Square12;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+
+impl BitOrAssign<&Square12> for B12<Square12> {
+    #[inline(always)]
+    fn bitor_assign(&mut self, rhs: &Square12) {
+        *self |= &square_bb(rhs);
+    }
+}
+
+impl BitBoard<Square12> for B12<Square12> {
     fn empty() -> Self {
         todo!()
     }
@@ -203,11 +203,11 @@ impl<S: Square> BitBoard<S> for B12<S> {
         todo!()
     }
 
-    fn pop(&mut self) -> Option<S> {
+    fn pop(&mut self) -> Option<Square12> {
         todo!()
     }
 
-    fn pop_reverse(&mut self) -> Option<S> {
+    fn pop_reverse(&mut self) -> Option<Square12> {
         todo!()
     }
 
@@ -215,7 +215,7 @@ impl<S: Square> BitBoard<S> for B12<S> {
         todo!()
     }
 
-    fn from_square(sq: &S) -> Self {
+    fn from_square(sq: &Square12) -> Self {
         todo!()
     }
 
@@ -371,21 +371,6 @@ pub const SQUARE_BB: [B12<Square12>; 144] = [
     B12::new([0, 0, 0, 0, 0, 0, 0, 0, 1 << 15]),
 ];
 
-// pub fn square_bb<S: Square>(sq: S) -> B12<Square12> {
-//     SQUARE_BB[sq.index()]
-// }
-
-pub fn square_bb<S: Square, B: BitBoard<S>>(sq: &S) -> B
-where
-    for<'a> &'a B: BitOr<&'a B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitOrAssign<&'a S>,
-{
-    let b = SQUARE_BB[sq.index()];
-    // b.into()
-    B::empty()
-    // SQUARE_BB[sq.index()]
+pub fn square_bb(sq: &Square12) -> B12<Square12> {
+    SQUARE_BB[sq.index()]
 }
