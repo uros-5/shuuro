@@ -28,13 +28,11 @@ where
     fn empty() -> Self;
     fn is_any(&self) -> bool;
     fn is_empty(&self) -> bool;
-    fn clear_at(&mut self);
+    fn clear_at(&mut self, sq: S);
     fn clear_all(&mut self);
     fn count(&self) -> u32;
     fn set_all(&mut self);
     fn pop(&mut self) -> Option<S>;
     fn pop_reverse(&mut self) -> Option<S>;
-    fn merged(&self) -> u16;
     fn from_square(sq: &S) -> Self;
-    fn toggle(&mut self);
 }

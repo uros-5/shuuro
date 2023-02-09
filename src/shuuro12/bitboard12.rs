@@ -2,6 +2,7 @@ use crate::bitboard::BitBoard;
 use crate::Square;
 
 use super::square12::Square12;
+use core::fmt;
 use std::marker::PhantomData;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
@@ -176,51 +177,100 @@ impl BitOrAssign<&Square12> for B12<Square12> {
 
 impl BitBoard<Square12> for B12<Square12> {
     fn empty() -> Self {
-        todo!()
+        B12::new([0, 0, 0, 0, 0, 0, 0, 0, 0])
     }
 
     fn is_any(&self) -> bool {
-        todo!()
+        (self.0[0]
+            | self.0[1]
+            | self.0[2]
+            | self.0[3]
+            | self.0[4]
+            | self.0[5]
+            | self.0[6]
+            | self.0[7]
+            | self.0[8])
+            != 0
     }
 
     fn is_empty(&self) -> bool {
-        todo!()
+        (self.0[0]
+            | self.0[1]
+            | self.0[2]
+            | self.0[3]
+            | self.0[4]
+            | self.0[5]
+            | self.0[6]
+            | self.0[7]
+            | self.0[8])
+            == 0
     }
 
-    fn clear_at(&mut self) {
-        todo!()
+    fn clear_at(&mut self, sq: Square12) {
+        *self &= &!&square_bb(&sq)
     }
 
     fn clear_all(&mut self) {
-        todo!()
+        for i in 0..9 {
+            self.0[i] = 0;
+        }
     }
 
     fn count(&self) -> u32 {
-        todo!()
+        let mut counting = 0;
+        for i in 0..9 {
+            counting += self.0[i].count_ones();
+        }
+        counting
     }
 
     fn set_all(&mut self) {
-        todo!()
+        for i in 0..9 {
+            self.0[i] = 1;
+        }
     }
 
     fn pop(&mut self) -> Option<Square12> {
-        todo!()
+        for i in 0..9 {
+            if self.0[i] != 0 {
+                let sq = Square::from_index(self.0[i].trailing_zeros() as u8 + (i as u8 * 16));
+                self.0[i] &= self.0[i] - 1;
+                return sq;
+            }
+        }
+        None
     }
 
     fn pop_reverse(&mut self) -> Option<Square12> {
-        todo!()
-    }
-
-    fn merged(&self) -> u16 {
-        todo!()
+        for i in 0..9 {
+            if self.0[i] != 0 {
+                let sq = Square::from_index(self.0[i].trailing_zeros() as u8 + (i as u8 * 16));
+                self.0[i] &= self.0[i] - 1;
+                return sq;
+            }
+        }
+        None
     }
 
     fn from_square(sq: &Square12) -> Self {
-        todo!()
+        square_bb(sq)
     }
+}
 
-    fn toggle(&mut self) {
-        todo!()
+impl fmt::Display for B12<Square12> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "+---+---+---+---+---+---+---+---+---+---+---+---+")?;
+        for rank in (0..12).rev() {
+            write!(f, "|")?;
+            for file in 0..12 {
+                let sq = Square12::new(file, rank).unwrap();
+                write!(f, " {} |", if (self & &sq).is_empty() { " " } else { "X" })?;
+            }
+            //writeln!(f, " {}", (b'a' + rank) as char)?;
+            writeln!(f, "\n+---+---+---+---+---+---+---+---+---+---+---+---+")?;
+        }
+        writeln!(f, "a   b   c   d   e   f   g   h   i   j   k   l")?;
+        Ok(())
     }
 }
 
