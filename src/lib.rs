@@ -47,5 +47,6 @@
 ////! ```
 
 #![recursion_limit = "144"]
+pub mod shuuro12;
 pub mod shuuro_rules;
 pub use shuuro_rules::*;

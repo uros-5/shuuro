@@ -12,21 +12,18 @@ pub trait BitBoard<S: Square>:
     + Debug
     + Not
     + Default
-    + for<'b> BitOr<&'b Self, Output = Self>
-    + for<'a> BitAnd<&'a Self, Output = Self>
     + for<'a> BitAndAssign<&'a Self>
     + for<'a> BitOrAssign<&'a Self>
     + for<'a> BitXor<&'a Self, Output = Self>
     + for<'a> BitXorAssign<&'a Self>
-    + BitAndAssign<S>
-    + BitOr<S>
-    + BitOrAssign<S>
-    + BitXor<S>
-    + BitXorAssign<S>
     + Iterator<Item = S>
-// where
-//     for<'a> &'a Self: BitOr<&'a Self, Output = Self>,
-//     for<'a> &'a Self: Not<Output = Self>,
+where
+    for<'a> &'a Self: BitOr<&'a Self, Output = Self>,
+    for<'a> &'a Self: BitAnd<&'a Self, Output = Self>,
+    for<'a> &'a Self: Not<Output = Self>,
+    for<'a> &'a Self: BitOr<&'a S, Output = Self>,
+    for<'a> &'a Self: BitAnd<&'a S, Output = Self>,
+    for<'a> Self: BitOrAssign<&'a S>,
 {
     fn empty() -> Self;
     fn is_any(&self) -> bool;

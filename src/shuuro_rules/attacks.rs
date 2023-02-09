@@ -1,5 +1,5 @@
 use crate::shuuro_rules::{bitboard::BitBoard, Color, PieceType, Square};
-use std::ops::BitOr;
+use std::ops::{BitAnd, BitOr, Not};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Ray {
@@ -18,6 +18,10 @@ where
     S: Square,
     B: BitBoard<S>,
     for<'b> &'b B: BitOr<&'b B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
 {
     fn init_pawn_moves();
     fn init_pawn_attacks();

@@ -2,7 +2,7 @@ use std::{
     cmp::Ordering,
     collections::HashMap,
     hash::Hash,
-    ops::{BitAnd, BitOr, Not},
+    ops::{BitAnd, BitOr, BitOrAssign, Not},
 };
 
 use itertools::Itertools;
@@ -18,12 +18,12 @@ where
     B: BitBoard<S>,
     Self: Sized,
     A: Attacks<S, B>,
-    for<'b> &'b B: BitOr<&'b B, Output = B>,
-    for<'b> &'b B: BitAnd<&'b B, Output = B>,
+    for<'a> &'a B: BitOr<&'a B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
     for<'a> &'a B: Not<Output = B>,
     for<'a> &'a B: BitOr<&'a S, Output = B>,
     for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    B: Not,
+    for<'a> B: BitOrAssign<&'a S>,
 {
     /// Creates a new instance of `Position` with an empty board.
     fn new() -> Self;
@@ -408,7 +408,7 @@ where
         let plinths = self.player_bb(Color::NoColor);
         let mut all = |num: usize| -> B {
             for file in files {
-                bb |= S::from_sfen(&format!("{file}{num}")[..]).unwrap();
+                bb |= &S::from_sfen(&format!("{file}{num}")[..]).unwrap();
             }
             bb &= &!&plinths;
             bb
@@ -570,7 +570,7 @@ where
         }
     }
     /// Returns `Pin` struct, who has unpin `BitBoard`(if pin exists).
-    fn pinned_moves(&self, color: Color) -> HashMap<S, Pin<S, B>> {
+    fn pinned_moves(&self, color: Color) -> HashMap<S, B> {
         let mut pins = HashMap::new();
         if color == Color::NoColor {
             return pins;
@@ -606,8 +606,7 @@ where
                 if pinned.count() == 1 && my_piece.is_any() {
                     let fix = &(&A::between(psq, ksq) & &!&pinned) | &enemy_bb;
                     let my_square = pinned.pop_reverse();
-                    let pin = Pin::new(my_square.unwrap(), fix);
-                    pins.insert(my_square.unwrap(), pin);
+                    pins.insert(my_square.unwrap(), fix);
                 }
             }
         }
@@ -619,7 +618,7 @@ where
         let pinned = self.pinned_moves(c);
         for sq in self.player_bb(c) {
             if let Some(_p) = pinned.get(&sq) {
-                bb |= sq;
+                bb |= &sq;
             }
         }
         bb
@@ -656,7 +655,7 @@ where
             let bb = &(&self.type_bb(s) & &self.player_bb(color.flip())) & &move_candidates;
             for psq in bb {
                 let fix = A::between(ksq, psq);
-                all.push(fix | &bb);
+                all.push(&fix | &bb);
             }
         }
         all
@@ -697,16 +696,16 @@ where
         }
     }
     /// Returns  `BitBoard` of all moves after fixing pin.
-    fn fix_pin(&self, sq: &S, pins: &HashMap<S, Pin<S, B>>, checks: &Vec<B>, my_moves: B) -> B {
+    fn fix_pin(&self, sq: &S, pins: &HashMap<S, B>, checks: &Vec<B>, my_moves: B) -> B {
         let piece = self.piece_at(*sq).unwrap();
         if let Some(pin) = pins.get(sq) {
             match (1).cmp(&checks.len()) {
                 Ordering::Equal => {
                     let checks = checks.get(0).unwrap();
-                    &(checks & &pin.fix()) & &my_moves
+                    &(checks & pin) & &my_moves
                 }
                 Ordering::Greater => B::empty(),
-                Ordering::Less => &pin.fix() & &my_moves,
+                Ordering::Less => pin & &my_moves,
             }
         } else {
             let mut my_moves = my_moves;
@@ -753,52 +752,6 @@ where
             bb.pop_reverse()
         } else {
             None
-        }
-    }
-}
-
-pub struct Pin<S, B>
-where
-    S: Square,
-    B: BitBoard<S>,
-{
-    pub square: Option<S>,
-    pub bb: B,
-}
-
-impl<S, B> Pin<S, B>
-where
-    S: Square,
-    B: BitBoard<S>,
-{
-    pub fn new(square: S, bb: B) -> Self {
-        Pin {
-            square: Some(square),
-            bb,
-        }
-    }
-
-    pub fn new_square(&mut self, square: Option<S>) {
-        self.square = square;
-    }
-
-    pub fn new_fix(&mut self, bb: B) {
-        self.bb = bb;
-    }
-
-    pub fn square(&self) -> Option<S> {
-        self.square
-    }
-    pub fn fix(&self) -> B {
-        self.bb
-    }
-}
-
-impl<S: Square, B: BitBoard<S>> Default for Pin<S, B> {
-    fn default() -> Self {
-        Pin {
-            square: None,
-            bb: B::empty(),
         }
     }
 }
@@ -895,8 +848,9 @@ where
                     let mut without_plinth =
                         &(without_main_color) & &!&position.player_bb(Color::NoColor);
                     if p.piece_type == PieceType::Pawn {
-                        without_plinth |= self.get_pawn_square(sq, &p.color);
-                        without_plinth &= &!&position.player_bb(p.color.flip());
+                        let up_sq = &!&position.player_bb(p.color.flip())
+                            & &self.get_pawn_square(sq, &p.color);
+                        without_plinth |= &up_sq;
                         without_plinth
                     } else {
                         without_plinth

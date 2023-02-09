@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Debug};
 
 use crate::shuuro_rules::Color;
 
@@ -33,9 +33,11 @@ macro_rules! temp_moves {
     };
 }
 
-pub trait Square: Sized + Eq + fmt::Display + PartialEq + Clone + Copy {
+pub trait Square: Sized + Eq + fmt::Display + Default + PartialEq + Clone + Copy
+where
+    Self: Debug,
+{
     fn new(file: u8, rank: u8) -> Option<Self>;
-    fn make_square(rank: Option<Self>, file: u8) -> Option<Self>;
     fn from_sfen(s: &str) -> Option<Self>;
     fn from_index(index: u8) -> Option<Self>;
     fn left(&self) -> Option<Self> {
