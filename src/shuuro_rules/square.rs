@@ -122,8 +122,8 @@ where
     fn se(&self) -> Option<Self> {
         temp_moves!(down, right, self, 1)
     }
-    fn knight(&self) -> Vec<Self> {
-        let mut all = vec![];
+    fn knight(&self) -> [Option<Self>; 8] {
+        let mut all: [Option<Self>; 8] = [None; 8];
         let temp = [
             self.left_up(),
             self.up_left(),
@@ -134,14 +134,8 @@ where
             self.down_right(),
             self.right_down(),
         ];
-        for i in temp {
-            #[allow(clippy::single_match)]
-            match i {
-                Some(square) => {
-                    all.push(square);
-                }
-                _ => (),
-            }
+        for (i, square) in temp.into_iter().flatten().enumerate() {
+            all[i] = Some(square);
         }
         all
     }

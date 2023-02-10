@@ -74,11 +74,37 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
     }
 
     fn init_knight_attacks() {
-        todo!()
+        for sq in Square12::iter() {
+            let mut bb = B12::empty();
+            for attack in sq.knight().into_iter().flatten() {
+                bb |= &attack;
+            }
+            unsafe {
+                NON_SLIDING_ATTACKS[0][PieceType::Knight.index()][sq.index()] |= &bb;
+                NON_SLIDING_ATTACKS[1][PieceType::Knight.index()][sq.index()] |= &bb;
+            }
+        }
     }
 
     fn init_king_attacks() {
-        todo!()
+        for sq in Square12::iter() {
+            let mut bb = B12::empty();
+            for x in [sq.x(&Color::White), sq.x(&Color::Black)] {
+                for attack in x.into_iter().flatten() {
+                    bb |= &attack;
+                }
+            }
+            for attack in [sq.left(), sq.right(), sq.up(), sq.down()]
+                .into_iter()
+                .flatten()
+            {
+                bb |= &attack;
+            }
+            unsafe {
+                NON_SLIDING_ATTACKS[0][PieceType::Knight.index()][sq.index()] |= &bb;
+                NON_SLIDING_ATTACKS[1][PieceType::Knight.index()][sq.index()] |= &bb;
+            }
+        }
     }
 
     fn init_north_ray() {
@@ -225,6 +251,57 @@ mod tests {
                     assert!((&attacks & &attack).is_any());
                 }
                 assert_eq!(attacks.count(), case.2);
+            }
+        }
+    }
+
+    #[test]
+    fn knight_attacks() {
+        Attacks12::init_knight_attacks();
+        let knight_cases = [
+            (A1, vec![B3, C2], Color::White),
+            (E4, vec![D2, F2, C3, G3, C5, G5, D6, F6], Color::White),
+            (B11, vec![D12, D10, C9, A9], Color::Black),
+            (L8, vec![K10, J9, J7, K6], Color::Black),
+        ];
+        for case in knight_cases {
+            let knight = PieceType::Knight as usize;
+            let sq = case.0.index();
+            let color = case.2 as usize;
+            unsafe {
+                let attacks = NON_SLIDING_ATTACKS[color][knight][sq];
+                let capacity = case.1.len();
+                for sq in case.1 {
+                    assert!((&attacks & &sq).is_any());
+                }
+                assert_eq!(attacks.count(), capacity);
+            }
+        }
+    }
+
+    #[test]
+    fn king_attacks() {
+        Attacks12::init_king_attacks();
+        let king_cases = [
+            (L1, vec![K1, K2, L2], Color::White),
+            (L12, vec![K12, K11, L11], Color::White),
+            (
+                D11,
+                vec![D12, C12, E12, E11, C11, C10, D10, E10],
+                Color::Black,
+            ),
+            (A5, vec![A6, B6, B5, B4, A4], Color::Black),
+        ];
+
+        for case in king_cases {
+            let knight = PieceType::Knight as usize;
+            let color = case.2.index();
+            let sq = case.0.index();
+            unsafe {
+                let attacks = NON_SLIDING_ATTACKS[color][knight][sq];
+                for attack in case.1 {
+                    assert!((&attacks & &attack).is_any());
+                }
             }
         }
     }
