@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{cmp::Ordering, fmt::Display};
 
 use crate::{Color, Square};
 
@@ -10,6 +10,18 @@ const ASCII_LOWER_L: u8 = b'l';
 #[derive(Debug, Default, Eq, PartialEq, Clone, Copy, Hash)]
 pub struct Square12 {
     inner: u8,
+}
+
+impl Iterator for Square12 {
+    type Item = Square12;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.inner;
+        match 144.cmp(&current) {
+            Ordering::Less => Some(Square12 { inner: current + 1 }),
+            _ => None,
+        }
+    }
 }
 
 impl Display for Square12 {

@@ -23,12 +23,12 @@ macro_rules! temp_moves {
     ($f1: ident, $f2: ident, $self: ident, $a: expr) => {
         if let Some(sq) = $self.$f1() {
             if let Some(sq2) = sq.$f1() {
-                return Some([sq, sq2]);
+                return [Some(sq), Some(sq2)];
             } else {
-                return None;
+                return [Some(sq), None];
             }
         } else {
-            return None;
+            return [None, None];
         }
     };
 }
@@ -110,16 +110,16 @@ where
     fn right_down(&self) -> Option<[Self; 3]> {
         temp_moves!(right, down, self)
     }
-    fn nw(&self) -> Option<[Self; 2]> {
+    fn nw(&self) -> [Option<Self>; 2] {
         temp_moves!(up, left, self, 1)
     }
-    fn ne(&self) -> Option<[Self; 2]> {
+    fn ne(&self) -> [Option<Self>; 2] {
         temp_moves!(up, right, self, 1)
     }
-    fn sw(&self) -> Option<[Self; 2]> {
+    fn sw(&self) -> [Option<Self>; 2] {
         temp_moves!(down, left, self, 1)
     }
-    fn se(&self) -> Option<[Self; 2]> {
+    fn se(&self) -> [Option<Self>; 2] {
         temp_moves!(down, right, self, 1)
     }
     fn knight(&self) -> Vec<Self> {
