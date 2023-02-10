@@ -8,7 +8,7 @@ macro_rules! temp_moves {
         if let Some(sq) = $self.$f1() {
             if let Some(sq2) = sq.$f1() {
                 if let Some(sq3) = sq2.$f2() {
-                    return Some([sq, sq2, sq3]);
+                    return Some(sq3);
                 } else {
                     return None;
                 }
@@ -86,28 +86,28 @@ where
             Color::NoColor => None,
         }
     }
-    fn left_up(&self) -> Option<[Self; 3]> {
+    fn left_up(&self) -> Option<Self> {
         temp_moves!(left, up, self)
     }
-    fn up_left(&self) -> Option<[Self; 3]> {
+    fn up_left(&self) -> Option<Self> {
         temp_moves!(up, left, self)
     }
-    fn up_right(&self) -> Option<[Self; 3]> {
+    fn up_right(&self) -> Option<Self> {
         temp_moves!(up, right, self)
     }
-    fn right_up(&self) -> Option<[Self; 3]> {
+    fn right_up(&self) -> Option<Self> {
         temp_moves!(right, up, self)
     }
-    fn left_down(&self) -> Option<[Self; 3]> {
+    fn left_down(&self) -> Option<Self> {
         temp_moves!(left, down, self)
     }
-    fn down_left(&self) -> Option<[Self; 3]> {
+    fn down_left(&self) -> Option<Self> {
         temp_moves!(down, left, self)
     }
-    fn down_right(&self) -> Option<[Self; 3]> {
+    fn down_right(&self) -> Option<Self> {
         temp_moves!(down, right, self)
     }
-    fn right_down(&self) -> Option<[Self; 3]> {
+    fn right_down(&self) -> Option<Self> {
         temp_moves!(right, down, self)
     }
     fn nw(&self) -> [Option<Self>; 2] {
@@ -135,10 +135,12 @@ where
             self.right_down(),
         ];
         for i in temp {
-            if let Some(squares) = i {
-                for j in squares {
-                    all.push(j);
+            #[allow(clippy::single_match)]
+            match i {
+                Some(square) => {
+                    all.push(square);
                 }
+                _ => (),
             }
         }
         all
