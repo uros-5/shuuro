@@ -22,13 +22,13 @@ macro_rules! temp_moves {
 
     ($f1: ident, $f2: ident, $self: ident, $a: expr) => {
         if let Some(sq) = $self.$f1() {
-            if let Some(sq2) = sq.$f1() {
-                return [Some(sq), Some(sq2)];
+            if let Some(sq2) = sq.$f2() {
+                return Some(sq2);
             } else {
-                return [Some(sq), None];
+                return None;
             }
         } else {
-            return [None, None];
+            return None;
         }
     };
 }
@@ -45,7 +45,7 @@ where
         if file == 0 {
             None
         } else {
-            Self::new(self.rank(), file - 1)
+            Self::new(file - 1, self.rank())
         }
     }
     fn right(&self) -> Option<Self> {
@@ -53,7 +53,7 @@ where
         if file == self.right_edge() {
             None
         } else {
-            Self::new(self.rank(), file + 1)
+            Self::new(file + 1, self.rank())
         }
     }
     fn up(&self) -> Option<Self> {
@@ -61,7 +61,7 @@ where
         if rank == self.up_edge() {
             None
         } else {
-            Self::new(rank, self.file())
+            Self::new(self.file(), rank + 1)
         }
     }
     fn down(&self) -> Option<Self> {
@@ -69,7 +69,7 @@ where
         if rank == 0 {
             None
         } else {
-            Self::new(rank - 1, self.file())
+            Self::new(self.file(), rank - 1)
         }
     }
     fn upward(&self, c: &Color) -> Option<Self> {
@@ -110,16 +110,16 @@ where
     fn right_down(&self) -> Option<Self> {
         temp_moves!(right, down, self)
     }
-    fn nw(&self) -> [Option<Self>; 2] {
+    fn nw(&self) -> Option<Self> {
         temp_moves!(up, left, self, 1)
     }
-    fn ne(&self) -> [Option<Self>; 2] {
+    fn nea(&self) -> Option<Self> {
         temp_moves!(up, right, self, 1)
     }
-    fn sw(&self) -> [Option<Self>; 2] {
+    fn sw(&self) -> Option<Self> {
         temp_moves!(down, left, self, 1)
     }
-    fn se(&self) -> [Option<Self>; 2] {
+    fn se(&self) -> Option<Self> {
         temp_moves!(down, right, self, 1)
     }
     fn knight(&self) -> Vec<Self> {
@@ -144,6 +144,13 @@ where
             }
         }
         all
+    }
+    fn x(&self, c: &Color) -> [Option<Self>; 2] {
+        match c {
+            Color::White => [self.nw(), self.nea()],
+            Color::Black => [self.sw(), self.se()],
+            _ => [None, None],
+        }
     }
     fn right_edge(&self) -> u8;
     fn up_edge(&self) -> u8;

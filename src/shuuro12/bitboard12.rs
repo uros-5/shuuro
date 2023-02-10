@@ -164,7 +164,11 @@ impl Iterator for B12<Square12> {
     type Item = Square12;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        if self.is_any() {
+            self.pop_reverse()
+        } else {
+            None
+        }
     }
 }
 
