@@ -59,7 +59,7 @@ where
     /// Set new stm
     fn update_side_to_move(&mut self, c: Color);
     /// Returns current status of the game.
-    fn outcome(&self) -> Outcome;
+    fn outcome(&self) -> &Outcome;
     /// Set new outcome
     fn update_outcome(&mut self, outcome: Outcome);
     /// Returns current variant.
@@ -430,6 +430,7 @@ where
     }
     fn king_files<const K: usize>(&self) -> [&str; K];
     fn file_bb(&self, file: usize) -> B;
+
     fn empty_squares(&self, p: Piece) -> B {
         let test = |p: Piece, list: [usize; 3]| -> B {
             for file in list {
@@ -444,7 +445,7 @@ where
                         return bb;
                     }
                     PieceType::King => {
-                        return self.king_squares(&p.color);
+                        return self.king_squares::<6>(&p.color);
                     }
                     PieceType::Pawn => {
                         bb &= &!&plinths;
@@ -491,6 +492,8 @@ where
         }
         false
     }
+
+    /// Returns BitBoard for all safe squares for selected side.    
     fn checks(&self, attacked_color: &Color) -> B {
         let king = &self.type_bb(&PieceType::King) & &self.player_bb(*attacked_color);
         if king.is_empty() {
@@ -514,11 +517,11 @@ where
                 if (&all & &king).is_any() {
                     match *attacked_color {
                         Color::White => {
-                            let files = self.white_files();
+                            let files = self.white_placement_ranks();
                             return &(&files & &all) & &!&king;
                         }
                         Color::Black => {
-                            let files = self.black_files();
+                            let files = self.black_placement_ranks();
                             return &(&files & &all) & &!&king;
                         }
                         Color::NoColor => {
@@ -530,12 +533,25 @@ where
         }
         B::empty()
     }
-    fn white_files(&self) -> B;
-    fn black_files(&self) -> B;
+    fn white_placement_ranks(&self) -> B;
+    fn black_placement_ranks(&self) -> B;
     fn can_pawn_move(&self, p: Piece) -> bool {
         self.is_hand_empty(p.color, PieceType::Pawn)
     }
-    fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool;
+    fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool {
+        for pt in PieceType::iter() {
+            if pt != excluded {
+                let counter = self.get_hand_piece(Piece {
+                    piece_type: pt,
+                    color: c,
+                });
+                if counter != 0 {
+                    return false;
+                }
+            }
+        }
+        true
+    }
     fn decrement_hand(&mut self, p: Piece);
     fn place(&mut self, p: Piece, sq: S) -> Option<String> {
         if self.get_hand_piece(p) > 0 && (&self.empty_squares(p) & &sq).is_any() {
@@ -572,7 +588,6 @@ where
         None
     }
     fn update_bb(&mut self, p: Piece, sq: S);
-    fn halfmoves(&self) -> B;
     fn dimensions(&self) -> u8;
     fn us(&self) -> B;
     fn them(&self) -> B;

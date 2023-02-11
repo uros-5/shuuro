@@ -25,7 +25,7 @@ impl PlinthGen<Square12, BB12<Square12>> for PlinthGen12<Square12, BB12<Square12
         Attacks12::get_non_sliding_attacks(crate::PieceType::King, &sq, crate::Color::White)
     }
 
-    fn plinths_count(&self, count: usize) -> bool {
+    fn plinths_count(&self, _count: usize) -> bool {
         false
         // matches!((8).cmp(&count), std::cmp::Ordering::Equal)
     }

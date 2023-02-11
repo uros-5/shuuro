@@ -11,7 +11,10 @@ use crate::{
 };
 
 use super::{
-    attacks12::Attacks12, bitboard12::BB12, board_defs::FILE_BB, plinths_set12::PlinthGen12,
+    attacks12::Attacks12,
+    bitboard12::BB12,
+    board_defs::{FILE_BB, RANK_BB},
+    plinths_set12::PlinthGen12,
     square12::Square12,
 };
 
@@ -114,8 +117,8 @@ impl Position<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         self.side_to_move = c;
     }
 
-    fn outcome(&self) -> Outcome {
-        self.game_status.clone()
+    fn outcome(&self) -> &Outcome {
+        &self.game_status
     }
 
     fn update_outcome(&mut self, outcome: Outcome) {
@@ -123,7 +126,7 @@ impl Position<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
     }
 
     fn variant(&self) -> Variant {
-        self.variant.clone()
+        self.variant
     }
 
     fn update_variant(&mut self, variant: Variant) {
@@ -131,7 +134,109 @@ impl Position<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
     }
 
     fn make_move(&mut self, m: Move<Square12>) -> Result<Outcome, MoveError> {
-        todo!()
+        let mut promoted = false;
+        let stm = self.side_to_move();
+        let opponent = stm.flip();
+        let (from, to) = m.info();
+        let moved = self
+            .piece_at(from)
+            .ok_or(MoveError::Inconsistent("No piece found"))?;
+        let captured = *self.piece_at(to);
+        let outcome = Outcome::Checkmate { color: opponent };
+        let legal_moves = self.legal_moves(&stm);
+
+        if moved.color != stm {
+            return Err(MoveError::Inconsistent(
+                "The piece is not for the side to move",
+            ));
+        } else if self.game_status == outcome {
+            return Err(MoveError::Inconsistent("Match is over."));
+        }
+
+        match captured {
+            Some(_i) => {
+                if moved.piece_type == PieceType::Pawn && to.in_promotion_zone(moved.color) {
+                    promoted = true;
+                }
+            }
+            None => {
+                if moved.piece_type == PieceType::Pawn && to.in_promotion_zone(moved.color) {
+                    promoted = true;
+                }
+            }
+        }
+
+        if let Some(attacks) = legal_moves.get(&from) {
+            if (attacks & &to).is_empty() {
+                return Err(MoveError::Inconsistent("The piece cannot move to there"));
+            }
+        } else {
+            return Err(MoveError::Inconsistent("The piece cannot move to there"));
+        }
+
+        let placed = if promoted {
+            match moved.promote() {
+                Some(promoted) => promoted,
+                None => {
+                    return Err(MoveError::Inconsistent("This type of piece cannot promote"));
+                }
+            }
+        } else {
+            moved
+        };
+
+        self.set_piece(from, None);
+        self.set_piece(to, Some(placed));
+        self.occupied_bb ^= &from;
+        self.occupied_bb ^= &to;
+        self.type_bb[moved.piece_type.index()] ^= &from;
+        self.type_bb[placed.piece_type.index()] ^= &to;
+        self.color_bb[moved.color.index()] ^= &from;
+        self.color_bb[placed.color.index()] ^= &to;
+
+        if let Some(ref cap) = captured {
+            self.occupied_bb ^= &to;
+            self.type_bb[cap.piece_type.index()] ^= &to;
+            self.color_bb[cap.color.index()] ^= &to;
+            //self.hand.increment(pc);
+        }
+
+        self.side_to_move = opponent;
+        self.ply += 1;
+
+        let move_record = MoveRecord::Normal {
+            from,
+            to,
+            placed,
+            captured,
+            promoted,
+        };
+
+        self.move_history.push(move_record);
+
+        self.log_position();
+        self.detect_repetition()?;
+        self.detect_insufficient_material()?;
+
+        if self.is_checkmate(&self.side_to_move) {
+            return Ok(Outcome::Checkmate {
+                color: self.side_to_move.flip(),
+            });
+        } else if self.in_check(self.side_to_move) {
+            return Ok(Outcome::Check {
+                color: self.side_to_move,
+            });
+        } else if (&self.color_bb[self.side_to_move.flip().index()]
+            & &self.type_bb[PieceType::King.index()])
+            .count()
+            == 0
+        {
+            return Ok(Outcome::Checkmate {
+                color: self.side_to_move.flip(),
+            });
+        }
+        self.is_stalemate(&self.side_to_move)?;
+        Ok(Outcome::MoveOk)
     }
 
     fn insert_sfen(&mut self, sfen: &str) {
@@ -202,7 +307,7 @@ impl Position<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
     }
 
     fn set_hand(&mut self, s: &str) {
-        self.hand.set_hand(&s);
+        self.hand.set_hand(s);
     }
 
     fn get_hand(&self, c: Color) -> String {
@@ -238,28 +343,22 @@ impl Position<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         FILE_BB[file]
     }
 
-    fn white_files(&self) -> BB12<Square12> {
-        todo!()
+    fn white_placement_ranks(&self) -> BB12<Square12> {
+        &RANK_BB[1] | &RANK_BB[2]
     }
-
-    fn black_files(&self) -> BB12<Square12> {
-        todo!()
-    }
-
-    fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool {
-        todo!()
+    fn black_placement_ranks(&self) -> BB12<Square12> {
+        &RANK_BB[9] | &RANK_BB[10]
     }
 
     fn decrement_hand(&mut self, p: Piece) {
-        todo!()
+        self.hand.decrement(p);
     }
 
     fn update_bb(&mut self, p: Piece, sq: Square12) {
-        todo!()
-    }
-
-    fn halfmoves(&self) -> BB12<Square12> {
-        todo!()
+        self.set_piece(sq, Some(p));
+        self.occupied_bb |= &sq;
+        self.color_bb[p.color.index()] |= &sq;
+        self.type_bb[p.piece_type.index()] |= &sq;
     }
 
     fn dimensions(&self) -> u8 {
@@ -275,7 +374,42 @@ impl Position<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
     }
 
     fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError> {
-        todo!()
+        let from_: Square12;
+        let to_: Square12;
+        match Square12::from_sfen(from) {
+            Some(i) => from_ = i,
+            None => {
+                return Err(SfenError::IllegalPieceFound);
+            }
+        };
+        match Square12::from_sfen(to) {
+            Some(i) => to_ = i,
+            None => {
+                return Err(SfenError::IllegalPieceFound);
+            }
+        };
+        let m = Move::Normal {
+            from: from_,
+            to: to_,
+            promote: false,
+        };
+        let outcome = self.make_move(m);
+        match outcome {
+            Ok(i) => {
+                self.game_status = i;
+            }
+            Err(error) => match error {
+                MoveError::RepetitionDraw => self.game_status = Outcome::DrawByRepetition,
+                MoveError::Draw => self.game_status = Outcome::Draw,
+                MoveError::DrawByInsufficientMaterial => self.game_status = Outcome::DrawByMaterial,
+                MoveError::DrawByStalemate => self.game_status = Outcome::Stalemate,
+                _ => {
+                    return Err(SfenError::IllegalMove);
+                }
+            },
+        }
+
+        return Ok(self.outcome());
     }
 
     fn update_player(&mut self, piece: Piece, sq: &Square12) {
