@@ -7,21 +7,21 @@ pub use crate::attacks::Attacks;
 use crate::{attacks::Ray, bitboard::BitBoard, Color, PieceType, Square};
 
 use super::{
-    bitboard12::{square_bb, B12, SQUARE_BB},
+    bitboard12::{square_bb, BB12, SQUARE_BB},
     board_defs::{FILE_BB, RANK_BB},
     square12::Square12,
 };
 
-static mut NON_SLIDING_ATTACKS: [[[B12<Square12>; 144]; 6]; 2] =
-    [[[B12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 6]; 2];
+static mut NON_SLIDING_ATTACKS: [[[BB12<Square12>; 144]; 6]; 2] =
+    [[[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 6]; 2];
 
-static mut PAWN_MOVES: [[B12<Square12>; 144]; 2] =
-    [[B12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 2];
+static mut PAWN_MOVES: [[BB12<Square12>; 144]; 2] =
+    [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 2];
 
-static mut RAYS: [[B12<Square12>; 144]; 8] = [[B12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 8];
+static mut RAYS: [[BB12<Square12>; 144]; 8] = [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 8];
 
-static mut BETWEEN_BB: [[B12<Square12>; 144]; 144] =
-    [[B12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 144];
+static mut BETWEEN_BB: [[BB12<Square12>; 144]; 144] =
+    [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 144];
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Attacks12<S, B>
@@ -38,7 +38,7 @@ where
     _s: PhantomData<S>,
 }
 
-impl Attacks12<Square12, B12<Square12>> {
+impl Attacks12<Square12, BB12<Square12>> {
     pub fn new() -> Self {
         Self {
             _a: PhantomData,
@@ -47,7 +47,7 @@ impl Attacks12<Square12, B12<Square12>> {
     }
 }
 
-impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
+impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     fn init_pawn_moves() {
         let add = |current: Square12, next: Square12, color: &Color| unsafe {
             PAWN_MOVES[color.index()][current.index()] |= &square_bb(&next);
@@ -79,7 +79,7 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
 
     fn init_knight_attacks() {
         for sq in Square12::iter() {
-            let mut bb = B12::empty();
+            let mut bb = BB12::empty();
             for attack in sq.knight().into_iter().flatten() {
                 bb |= &attack;
             }
@@ -92,7 +92,7 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
 
     fn init_king_attacks() {
         for sq in Square12::iter() {
-            let mut bb = B12::empty();
+            let mut bb = BB12::empty();
             for x in [sq.x(&Color::White), sq.x(&Color::Black)] {
                 for attack in x.into_iter().flatten() {
                     bb |= &attack;
@@ -177,7 +177,7 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
 
     fn init_north_east_ray() {
         for sq in Square12::iter() {
-            let mut bb = B12::empty();
+            let mut bb = BB12::empty();
             let mut sq_east = sq;
             while let Some(ne) = sq_east.nea() {
                 bb |= &ne;
@@ -191,7 +191,7 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
 
     fn init_north_west_ray() {
         for sq in Square12::iter() {
-            let mut bb = B12::empty();
+            let mut bb = BB12::empty();
             let mut sq_west = sq;
             while let Some(w) = sq_west.nw() {
                 bb |= &w;
@@ -205,7 +205,7 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
 
     fn init_south_east_ray() {
         for sq in Square12::iter() {
-            let mut bb = B12::empty();
+            let mut bb = BB12::empty();
             let mut sq_west = sq;
             while let Some(w) = sq_west.se() {
                 bb |= &w;
@@ -219,7 +219,7 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
 
     fn init_south_west_ray() {
         for sq in Square12::iter() {
-            let mut bb = B12::empty();
+            let mut bb = BB12::empty();
             let mut sq_west = sq;
             while let Some(w) = sq_west.sw() {
                 bb |= &w;
@@ -270,15 +270,15 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
         piece_type: crate::PieceType,
         square: &Square12,
         color: crate::Color,
-    ) -> B12<Square12> {
+    ) -> BB12<Square12> {
         unsafe { NON_SLIDING_ATTACKS[color as usize][piece_type as usize][square.index()] }
     }
 
     fn get_sliding_attacks(
         piece_type: crate::PieceType,
         square: &Square12,
-        blockers: B12<Square12>,
-    ) -> B12<Square12> {
+        blockers: BB12<Square12>,
+    ) -> BB12<Square12> {
         match piece_type {
             PieceType::Bishop | PieceType::ArchBishop => {
                 Attacks12::get_bishop_attacks(square.index(), blockers)
@@ -290,15 +290,15 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
                 &Attacks12::get_bishop_attacks(square.index(), blockers)
                     | &Attacks12::get_rook_attacks(square.index(), blockers)
             }
-            _ => B12::empty(),
+            _ => BB12::empty(),
         }
     }
 
     fn get_positive_ray_attacks(
         dir: crate::attacks::Ray,
         square: usize,
-        blockers: B12<Square12>,
-    ) -> B12<Square12> {
+        blockers: BB12<Square12>,
+    ) -> BB12<Square12> {
         unsafe {
             let attacks = RAYS[dir as usize][square];
             let mut blocked = &attacks & &blockers;
@@ -314,8 +314,8 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
     fn get_negative_ray_attacks(
         dir: crate::attacks::Ray,
         square: usize,
-        blockers: B12<Square12>,
-    ) -> B12<Square12> {
+        blockers: BB12<Square12>,
+    ) -> BB12<Square12> {
         unsafe {
             let attacks = RAYS[dir as usize][square];
             let mut blocked = &attacks & &blockers;
@@ -327,7 +327,7 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
         }
     }
 
-    fn between(square1: Square12, square2: Square12) -> B12<Square12> {
+    fn between(square1: Square12, square2: Square12) -> BB12<Square12> {
         unsafe { BETWEEN_BB[square1.index()][square2.index()] }
     }
 }
@@ -335,12 +335,13 @@ impl Attacks<Square12, B12<Square12>> for Attacks12<Square12, B12<Square12>> {
 #[cfg(test)]
 mod tests {
     use crate::{
+        attacks::Ray,
         bitboard::BitBoard,
         shuuro12::{bitboard12::square_bb, board_defs::EMPTY_BB, square12::consts::*},
         Color, PieceType, Square,
     };
 
-    use super::{Attacks, Attacks12, NON_SLIDING_ATTACKS, PAWN_MOVES};
+    use super::{Attacks, Attacks12, NON_SLIDING_ATTACKS, PAWN_MOVES, RAYS};
 
     #[test]
     fn pawn_moves() {
@@ -440,6 +441,35 @@ mod tests {
                 for attack in case.1 {
                     assert!((&attacks & &attack).is_any());
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn rays() {
+        Attacks12::init();
+        let ok_cases = [
+            (A1, A12, 10, Ray::North),
+            (D6, D12, 5, Ray::North),
+            (L11, L12, 0, Ray::North),
+            (E3, A3, 3, Ray::West),
+            (G6, B6, 4, Ray::West),
+            (L12, A12, 10, Ray::West),
+            (H1, L1, 3, Ray::East),
+            (C11, K11, 7, Ray::East),
+            (F5, G5, 0, Ray::East),
+            (E12, E3, 8, Ray::South),
+            (K12, K10, 1, Ray::South),
+            (F9, F4, 4, Ray::South),
+        ];
+
+        for case in ok_cases {
+            unsafe {
+                let ray = &RAYS[case.3 as usize][case.0.index()];
+                let between = Attacks12::between(case.0, case.1);
+                let calc = ray & &between;
+                println!("{}", case.0);
+                assert_eq!(calc.count(), case.2);
             }
         }
     }

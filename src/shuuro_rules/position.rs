@@ -25,6 +25,7 @@ where
     for<'a> &'a B: BitAnd<&'a S, Output = B>,
     for<'a> B: BitOrAssign<&'a S>,
 {
+    const ID: usize = 6;
     /// Creates a new instance of `Position` with an empty board.
     fn new() -> Self;
     /// Sets a piece at the given square.
@@ -48,7 +49,7 @@ where
     /// All BitBoards are empty.
     fn empty_all_bb(&mut self);
     /// Generate BitBoards from sfen
-    fn sfen_to_bb(&mut self, piece: Piece, j: u8, i: usize);
+    fn sfen_to_bb(&mut self, piece: Piece, sq: &S);
     /// Returns a history of all moves made since the beginning of the game.
     fn ply(&self) -> u16;
     /// Increment ply
@@ -144,14 +145,14 @@ where
     /// Clear sfen_history
     fn clear_sfen_history(&mut self);
     /// Set sfen history.
-    fn set_sfen_history(&mut self, history: Vec<(String, u16)>);
+    fn set_sfen_history(&mut self, history: Vec<String>);
     /// Set history of previous moves.
     fn set_move_history(&mut self, history: Vec<MoveRecord<S>>);
     /// Returns history of all moves in `MoveRecord` format.
     fn move_history(&self) -> &[MoveRecord<S>];
     fn get_move_history(&self) -> &Vec<MoveRecord<S>>;
     /// Returns history of all moves in `Vec` format.
-    fn get_sfen_history(&self) -> &Vec<(String, u16)>;
+    fn get_sfen_history(&self) -> &Vec<String>;
     /// Check if last move leads to stalemate.
     fn is_stalemate(&self, color: &Color) -> Result<(), MoveError> {
         let moves = self.legal_moves(color);
@@ -172,11 +173,11 @@ where
             return self.generate_sfen();
         }
         if move_history.is_empty() {
-            format!("{} {}", sfen_history.first().unwrap().0, ply);
+            format!("{} {}", sfen_history.first().unwrap(), ply);
         }
         format!(
             "{} {}",
-            &sfen_history.first().unwrap().0,
+            &sfen_history.first().unwrap(),
             ply - move_history.len() as u16
         )
     }
@@ -276,7 +277,12 @@ where
                                 }
                             }
 
-                            self.sfen_to_bb(piece, j, i);
+                            let sq = Square::new(j, i as u8).unwrap();
+                            if piece.piece_type == PieceType::Plinth {
+                                self.update_player(piece, &sq);
+                                continue;
+                            }
+                            self.sfen_to_bb(piece, &sq);
                             j += 1;
                             is_promoted = false;
                         }
@@ -288,6 +294,9 @@ where
 
         Ok(())
     }
+
+    fn update_player(&mut self, piece: Piece, sq: &S);
+
     fn generate_sfen(&self) -> String {
         fn add_num_space(num_spaces: i32, mut s: String) -> String {
             if num_spaces == 10 {
@@ -420,7 +429,61 @@ where
         }
     }
     fn king_files<const K: usize>(&self) -> [&str; K];
-    fn empty_squares(&self, p: Piece) -> B;
+    fn file_bb(&self, file: usize) -> B;
+    fn empty_squares(&self, p: Piece) -> B {
+        let test = |p: Piece, list: [usize; 3]| -> B {
+            for file in list {
+                let mut bb = self.file_bb(file);
+                bb &= &!&self.player_bb(p.color);
+                let plinths = self.player_bb(Color::NoColor);
+                if bb.is_empty() {
+                    continue;
+                }
+                match p.piece_type {
+                    PieceType::Knight | PieceType::Chancellor | PieceType::ArchBishop => {
+                        return bb;
+                    }
+                    PieceType::King => {
+                        return self.king_squares(&p.color);
+                    }
+                    PieceType::Pawn => {
+                        bb &= &!&plinths;
+                        if bb.is_empty() {
+                            continue;
+                        } else if self.can_pawn_move(p) {
+                            if file == 0 || file == 11 {
+                                continue;
+                            }
+                            return bb;
+                        } else {
+                            return B::empty();
+                        }
+                    }
+                    _ => {
+                        bb &= &!&plinths;
+                        if bb.is_empty() {
+                            continue;
+                        }
+                        return bb;
+                    }
+                }
+            }
+            B::empty()
+        };
+        let checks = self.checks(&p.color);
+        if checks.is_any() {
+            return checks;
+        } else if !self.is_king_placed(p.color) && p.piece_type != PieceType::King {
+            return B::empty();
+        }
+        match p.color {
+            Color::White => test(p, [0, 1, 2]),
+            Color::Black => test(p, self.black_ranks()),
+            Color::NoColor => B::empty(),
+        }
+    }
+
+    fn black_ranks(&self) -> [usize; 3];
     fn is_king_placed(&self, c: Color) -> bool {
         let king = &self.player_bb(c) & &self.type_bb(&PieceType::King);
         if king.count() == 1 {

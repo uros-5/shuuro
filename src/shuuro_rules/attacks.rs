@@ -60,5 +60,21 @@ where
                 | &Self::get_negative_ray_attacks(Ray::West, square, blockers))
     }
 
+    fn init() {
+        Self::init_pawn_attacks();
+        Self::init_knight_attacks();
+        Self::init_king_attacks();
+
+        Self::init_north_ray();
+        Self::init_south_ray();
+        Self::init_east_ray();
+        Self::init_west_ray();
+        Self::init_north_east_ray();
+        Self::init_north_west_ray();
+        Self::init_south_east_ray();
+        Self::init_south_west_ray();
+        Self::init_between();
+    }
+
     fn between(sq1: S, sq2: S) -> B;
 }

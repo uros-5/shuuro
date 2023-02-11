@@ -175,3 +175,76 @@ pub mod consts {
     A12 B12 C12 D12 E12 F12 G12 H12 I12 J12 K12 L12
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        for file in 0..12 {
+            for rank in 0..12 {
+                let sq = Square12::new(file, rank).unwrap();
+                assert_eq!(file, sq.file());
+                assert_eq!(rank, sq.rank());
+            }
+        }
+
+        assert_eq!(None, Square12::new(12, 0));
+        assert_eq!(None, Square12::new(0, 12));
+        assert_eq!(None, Square12::new(13, 12));
+    }
+
+    #[test]
+    fn from_sfen() {
+        let ok_cases = [
+            ("a9", 0, 8),
+            ("a11", 0, 10),
+            ("a1", 0, 0),
+            ("e5", 4, 4),
+            ("i9", 8, 8),
+            ("i1", 8, 0),
+        ];
+        let ng_cases = ["", "s9", "_a", "a14", "9 ", " a", "9", "foo"];
+
+        for case in ok_cases.iter() {
+            let sq = Square12::from_sfen(case.0);
+            assert!(sq.is_some());
+            assert_eq!(case.1, sq.unwrap().file());
+            assert_eq!(case.2, sq.unwrap().rank());
+        }
+
+        for case in ng_cases.iter() {
+            assert!(
+                Square12::from_sfen(case).is_none(),
+                "{} should cause an error",
+                case
+            );
+        }
+    }
+
+    #[test]
+    fn from_index() {
+        for i in 0..144 {
+            assert!(Square12::from_index(i).is_some());
+        }
+
+        assert!(Square12::from_index(145).is_none());
+    }
+
+    #[test]
+    fn to_sfen() {
+        let cases = [
+            ("a9", 0, 8),
+            ("a1", 0, 0),
+            ("e5", 4, 4),
+            ("i9", 8, 8),
+            ("i1", 8, 0),
+        ];
+
+        for case in cases.iter() {
+            let sq = Square12::new(case.1, case.2).unwrap();
+            assert_eq!(case.0, sq.to_string());
+        }
+    }
+}
