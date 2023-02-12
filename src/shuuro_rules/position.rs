@@ -75,7 +75,12 @@ where
     fn insert_move(&mut self, m: MoveRecord<S>);
     /// Detecting ininsufficient material for both sides.
     fn detect_insufficient_material(&self) -> Result<(), MoveError> {
-        let major = [PieceType::Rook, PieceType::Queen];
+        let major = [
+            PieceType::Rook,
+            PieceType::Queen,
+            PieceType::Chancellor,
+            PieceType::ArchBishop,
+        ];
         let minor = [PieceType::Knight, PieceType::Bishop];
         if self.occupied_bb().count() == 2 {
             return Err(MoveError::DrawByInsufficientMaterial);
