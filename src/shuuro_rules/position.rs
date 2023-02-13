@@ -12,7 +12,52 @@ use crate::{
     SfenError, Square, Variant,
 };
 
+/// Outcome stores information about outcome after move.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Outcome {
+    Check { color: Color },
+    Checkmate { color: Color },
+    Draw,
+    Nothing,
+    DrawByRepetition,
+    DrawByMaterial,
+    Stalemate,
+    MoveNotOk,
+    MoveOk,
+}
+
+impl ToString for Outcome {
+    fn to_string(&self) -> String {
+        match &self {
+            Outcome::Check { color } => format!("Check_{}", color.to_string()),
+            Outcome::Checkmate { color } => format!("Checkmate_{}", color.to_string()),
+            Outcome::Draw => "Draw".to_string(),
+            Outcome::Nothing => "Live".to_string(),
+            Outcome::DrawByRepetition => "RepetitionDraw".to_string(),
+            Outcome::DrawByMaterial => "MaterialDraw".to_string(),
+            Outcome::Stalemate => "Stalemate".to_string(),
+            Outcome::MoveOk => "Live".to_string(),
+            Outcome::MoveNotOk => "Illegal move".to_string(),
+        }
+    }
+}
+
 pub trait Position<S, B, A>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    A: Attacks<S, B>,
+    Self: Sized + Board<S, B, A> + Sfen<S, B, A> + Placement<S, B, A> + Play<S, B, A>,
+    for<'a> &'a B: BitOr<&'a B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    for<'a> B: BitOrAssign<&'a S>,
+{
+}
+
+pub trait Board<S, B, A>
 where
     S: Square + Hash,
     B: BitBoard<S>,
@@ -25,7 +70,8 @@ where
     for<'a> &'a B: BitAnd<&'a S, Output = B>,
     for<'a> B: BitOrAssign<&'a S>,
 {
-    const ID: usize = 6;
+    //
+
     /// Creates a new instance of `Position` with an empty board.
     fn new() -> Self;
     /// Sets a piece at the given square.
@@ -69,84 +115,12 @@ where
     /// Make move from `Move`. It can be of three types.
     /// It's useful for all three stages of the game.
     fn make_move(&mut self, m: Move<S>) -> Result<Outcome, MoveError>;
+    /// Create move from `&str`.
+    fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError>;
     /// Insert new sfen to sfen history.
     fn insert_sfen(&mut self, sfen: &str);
     /// Insert new MoveRecord to move_history.
     fn insert_move(&mut self, m: MoveRecord<S>);
-    /// Detecting ininsufficient material for both sides.
-    fn detect_insufficient_material(&self) -> Result<(), MoveError> {
-        let major = [
-            PieceType::Rook,
-            PieceType::Queen,
-            PieceType::Chancellor,
-            PieceType::ArchBishop,
-        ];
-        let minor = [PieceType::Knight, PieceType::Bishop];
-        if self.occupied_bb().count() == 2 {
-            return Err(MoveError::DrawByInsufficientMaterial);
-        }
-        for c in Color::iter() {
-            let mut bb = B::empty();
-            for i in major {
-                bb |= &(&self.player_bb(c) & &self.type_bb(&i));
-            }
-            if bb.is_any() {
-                return Ok(());
-            }
-            for i in minor {
-                bb |= &(&self.player_bb(c) & &self.type_bb(&i));
-            }
-            if bb.count() == 1 && bb.count() == 0 {
-                continue;
-            }
-
-            return Ok(());
-        }
-        Err(MoveError::DrawByInsufficientMaterial)
-    }
-    /// If last position has appeared three times then it's draw.
-    fn detect_repetition(&self) -> Result<(), MoveError>;
-    /// Saves position in sfen_history.
-    fn log_position(&mut self) {
-        let mut sfen = self.generate_sfen().split(' ').take(3).join(" ");
-        let move_history = self.get_move_history();
-        if !move_history.is_empty() {
-            sfen.push_str(format!(" {} ", self.ply()).as_str());
-            sfen.push_str(&move_history.last().unwrap().to_sfen());
-        }
-        self.insert_sfen(&sfen);
-    }
-    /// Set `Position` from `&str`.
-    fn set_sfen(&mut self, sfen_str: &str) -> Result<Outcome, SfenError> {
-        let mut parts = sfen_str.split_whitespace();
-        parts
-            .next()
-            .ok_or(SfenError::MissingDataFields)
-            .and_then(|s| self.parse_sfen_board(s))?;
-        parts
-            .next()
-            .ok_or(SfenError::MissingDataFields)
-            .and_then(|s| self.parse_sfen_stm(s))?;
-        parts
-            .next()
-            .ok_or(SfenError::MissingDataFields)
-            .and_then(|s| self.parse_sfen_hand(s))?;
-        parts
-            .next()
-            .ok_or(SfenError::MissingDataFields)
-            .and_then(|s| self.parse_sfen_ply(s))?;
-        self.clear_sfen_history();
-        self.log_position();
-        if self.in_check(self.side_to_move().flip()) {
-            let checkmate = Outcome::Checkmate {
-                color: self.side_to_move(),
-            };
-            self.update_outcome(checkmate.clone());
-            return Ok(checkmate);
-        }
-        Ok(Outcome::Nothing)
-    }
-
     /// Clear sfen_history
     fn clear_sfen_history(&mut self);
     /// Set sfen history.
@@ -158,16 +132,40 @@ where
     fn get_move_history(&self) -> &Vec<MoveRecord<S>>;
     /// Returns history of all moves in `Vec` format.
     fn get_sfen_history(&self) -> &Vec<String>;
-    /// Check if last move leads to stalemate.
-    fn is_stalemate(&self, color: &Color) -> Result<(), MoveError> {
-        let moves = self.legal_moves(color);
-        for m in moves {
-            if m.1.count() > 0 {
-                return Ok(());
-            }
+    /// Get hand count for Piece.
+    fn hand(&self, p: Piece) -> u8;
+    /// Get hand in form of String
+    fn get_hand(&self, c: Color) -> String;
+    /// Set hand from str.
+    fn set_hand(&mut self, s: &str);
+    /// Decrement player hand.
+    fn decrement_hand(&mut self, p: Piece);
+    /// Dimensions of board.
+    fn dimensions(&self) -> u8;
+    /// Returns `Square` if King is available.
+    fn find_king(&self, c: &Color) -> Option<S> {
+        let mut bb = &self.type_bb(&PieceType::King) & &self.player_bb(*c);
+        if bb.is_any() {
+            bb.pop_reverse()
+        } else {
+            None
         }
-        Err(MoveError::DrawByStalemate)
     }
+}
+
+pub trait Sfen<S, B, A>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    A: Attacks<S, B>,
+    Self: Sized + Board<S, B, A>,
+    for<'a> &'a B: BitOr<&'a B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    for<'a> B: BitOrAssign<&'a S>,
+{
     // SFEN PART
     /// Convert current position to sfen.
     fn to_sfen(&self) -> String {
@@ -187,121 +185,7 @@ where
         )
     }
 
-    fn parse_sfen_hand(&mut self, s: &str) -> Result<(), SfenError> {
-        if s == "-" {
-            self.clear_hand();
-            return Ok(());
-        }
-
-        let mut num_pieces: u8 = 0;
-        for c in s.chars() {
-            match c {
-                n if n.is_numeric() => {
-                    if let Some(n) = n.to_digit(9) {
-                        if num_pieces != 0 {
-                            let num2 = format!("{}{}", num_pieces, n as u8).parse::<u8>().unwrap();
-                            num_pieces = num2;
-                            continue;
-                        }
-                        num_pieces = n as u8;
-                    }
-                }
-                s => {
-                    match Piece::from_sfen(s) {
-                        Some(p) => {
-                            self.insert_in_hand(p, if num_pieces == 0 { 1 } else { num_pieces })
-                        }
-                        None => return Err(SfenError::IllegalPieceType),
-                    };
-                    num_pieces = 0;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn parse_sfen_ply(&mut self, s: &str) -> Result<(), SfenError>;
-    fn parse_sfen_stm(&mut self, s: &str) -> Result<(), SfenError> {
-        let stm = match s {
-            "b" => Color::Black,
-            "w" => Color::White,
-            _ => return Err(SfenError::IllegalSideToMove),
-        };
-        self.update_side_to_move(stm);
-        Ok(())
-    }
-    fn parse_sfen_board(&mut self, s: &str) -> Result<(), SfenError> {
-        let rows = s.split('/');
-        let dimension = self.dimensions();
-        self.empty_all_bb();
-        for (i, row) in rows.enumerate() {
-            if i >= dimension as usize {
-                return Err(SfenError::IllegalBoardState);
-            }
-
-            let mut j = 0;
-
-            let mut is_promoted = false;
-            for c in row.chars() {
-                match c {
-                    '+' => {
-                        is_promoted = true;
-                    }
-                    '0' => {
-                        let sq = Square::new(j, i as u8).unwrap();
-                        self.set_piece(sq, None);
-                        j += 1;
-                    }
-                    n if n.is_numeric() => {
-                        if let Some(n) = n.to_digit(11) {
-                            for _ in 0..n {
-                                if j >= dimension {
-                                    return Err(SfenError::IllegalBoardState);
-                                }
-
-                                let sq = Square::new(j, i as u8).unwrap();
-
-                                self.set_piece(sq, None);
-
-                                j += 1;
-                            }
-                        }
-                    }
-                    s => match Piece::from_sfen(s) {
-                        Some(mut piece) => {
-                            if j >= dimension {
-                                return Err(SfenError::IllegalBoardState);
-                            }
-
-                            if is_promoted {
-                                if let Some(promoted) = piece.piece_type.promote() {
-                                    piece.piece_type = promoted;
-                                } else {
-                                    return Err(SfenError::IllegalPieceType);
-                                }
-                            }
-
-                            let sq = Square::new(j, i as u8).unwrap();
-                            if piece.piece_type == PieceType::Plinth {
-                                self.update_player(piece, &sq);
-                                continue;
-                            }
-                            self.sfen_to_bb(piece, &sq);
-                            j += 1;
-                            is_promoted = false;
-                        }
-                        None => return Err(SfenError::IllegalPieceType),
-                    },
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn update_player(&mut self, piece: Piece, sq: &S);
-
+    /// Generate sfen.
     fn generate_sfen(&self) -> String {
         fn add_num_space(num_spaces: i32, mut s: String) -> String {
             if num_spaces == 10 {
@@ -336,7 +220,6 @@ where
                                 s = _s;
                                 num_spaces = 0;
                             }
-
                             if (&self.player_bb(Color::NoColor) & &sq).is_any() {
                                 if knights.contains(&pc.piece_type) {
                                     s.push('L');
@@ -387,7 +270,7 @@ where
                             piece_type: pt,
                             color: *c,
                         };
-                        let n = self.get_hand_piece(pc);
+                        let n = self.hand(pc);
 
                         if n == 0 {
                             "".to_string()
@@ -407,15 +290,201 @@ where
 
         format!("{} {} {} {}", board, color, hand, self.ply())
     }
-    // PLACEMENT PART
-    fn generate_plinths(&mut self);
-    fn insert_in_hand(&mut self, p: Piece, num: u8);
-    fn set_hand(&mut self, s: &str);
-    fn get_hand(&self, c: Color) -> String;
-    fn get_hand_piece(&self, p: Piece) -> u8;
     fn clear_hand(&mut self);
-    /// Returns the number of the given piece in hand.
-    fn hand(&self, p: Piece) -> u8;
+
+    fn insert_in_hand(&mut self, p: Piece, num: u8);
+
+    fn parse_sfen_ply(&mut self, s: &str) -> Result<(), SfenError>;
+
+    fn update_player(&mut self, piece: Piece, sq: &S);
+
+    fn parse_sfen_stm(&mut self, s: &str) -> Result<(), SfenError> {
+        let stm = match s {
+            "b" => Color::Black,
+            "w" => Color::White,
+            _ => return Err(SfenError::IllegalSideToMove),
+        };
+        self.update_side_to_move(stm);
+        Ok(())
+    }
+
+    fn parse_sfen_board(&mut self, s: &str) -> Result<(), SfenError> {
+        let ranks = s.split('/');
+        let dimension = self.dimensions();
+        self.empty_all_bb();
+        for (rank, row) in ranks.enumerate() {
+            if rank >= dimension as usize {
+                return Err(SfenError::IllegalBoardState);
+            }
+
+            let mut file = 0;
+
+            let mut is_promoted = false;
+            for ch in row.chars() {
+                match ch {
+                    '+' => {
+                        is_promoted = true;
+                    }
+                    '0' => {
+                        let sq = Square::new(file, rank as u8).unwrap();
+                        self.set_piece(sq, None);
+                        file += 1;
+                    }
+                    n if n.is_numeric() => {
+                        if let Some(n) = n.to_digit(11) {
+                            for _ in 0..n {
+                                if file >= dimension {
+                                    return Err(SfenError::IllegalBoardState);
+                                }
+
+                                let sq = Square::new(file, rank as u8).unwrap();
+
+                                self.set_piece(sq, None);
+
+                                file += 1;
+                            }
+                        }
+                    }
+                    s => match Piece::from_sfen(s) {
+                        Some(mut piece) => {
+                            if file >= dimension {
+                                return Err(SfenError::IllegalBoardState);
+                            }
+
+                            if is_promoted {
+                                if let Some(promoted) = piece.piece_type.promote() {
+                                    piece.piece_type = promoted;
+                                } else {
+                                    return Err(SfenError::IllegalPieceType);
+                                }
+                            }
+
+                            let sq = Square::new(file, rank as u8).unwrap();
+                            match piece.piece_type {
+                                PieceType::Plinth => {
+                                    self.update_player(piece, &sq);
+                                    continue;
+                                }
+                                _ => {
+                                    self.sfen_to_bb(piece, &sq);
+                                    file += 1;
+                                    is_promoted = false;
+                                }
+                            }
+                        }
+                        None => return Err(SfenError::IllegalPieceType),
+                    },
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn parse_sfen_hand(&mut self, s: &str) -> Result<(), SfenError> {
+        if s == "-" {
+            self.clear_hand();
+            return Ok(());
+        }
+
+        let mut num_pieces: u8 = 0;
+        for c in s.chars() {
+            match c {
+                n if n.is_numeric() => {
+                    if let Some(n) = n.to_digit(9) {
+                        if num_pieces != 0 {
+                            let num2 = format!("{}{}", num_pieces, n as u8).parse::<u8>().unwrap();
+                            num_pieces = num2;
+                            continue;
+                        }
+                        num_pieces = n as u8;
+                    }
+                }
+                s => {
+                    match Piece::from_sfen(s) {
+                        Some(p) => {
+                            self.insert_in_hand(p, if num_pieces == 0 { 1 } else { num_pieces })
+                        }
+                        None => return Err(SfenError::IllegalPieceType),
+                    };
+                    num_pieces = 0;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Saves position in sfen_history.
+    fn log_position(&mut self) {
+        let mut sfen = self.generate_sfen().split(' ').take(3).join(" ");
+        let move_history = self.get_move_history();
+        if !move_history.is_empty() {
+            sfen.push_str(format!(" {} ", self.ply()).as_str());
+            sfen.push_str(&move_history.last().unwrap().to_sfen());
+        }
+        self.insert_sfen(&sfen);
+    }
+
+    fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool {
+        for pt in PieceType::iter() {
+            if pt != excluded {
+                let counter = self.hand(Piece {
+                    piece_type: pt,
+                    color: c,
+                });
+                if counter != 0 {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+}
+
+pub trait Placement<S, B, A>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    A: Attacks<S, B>,
+    Self: Sized + Board<S, B, A> + Sfen<S, B, A>,
+    for<'a> &'a B: BitOr<&'a B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    for<'a> B: BitOrAssign<&'a S>,
+{
+    // PLACEMENT PART
+
+    /// Generate random plinths and return BitBoard.
+    fn generate_plinths(&mut self) -> B;
+
+    /// BitBoard with all available squares for white.
+    fn white_placement_ranks(&self) -> B;
+
+    /// BitBoard with all available squares for black.
+    fn black_placement_ranks(&self) -> B;
+
+    /// All ranks for black. White rank is 0,1,2.
+    fn black_ranks(&self) -> [usize; 3];
+
+    /// Returns array of files where king can be placed.
+    fn king_files<const K: usize>(&self) -> [&str; K];
+
+    /// Returns BitBoard with file. Panics if file is bigger than expected.
+    fn file_bb(&self, file: usize) -> B;
+
+    /// Check if king is placed.
+    fn is_king_placed(&self, c: Color) -> bool {
+        let king = &self.player_bb(c) & &self.type_bb(&PieceType::King);
+        if king.count() == 1 {
+            return true;
+        }
+        false
+    }
+
+    /// Returns BitBoard with all empty squares.
     fn king_squares<const K: usize>(&self, c: &Color) -> B {
         let files: [&str; K] = self.king_files();
         let mut bb = B::empty();
@@ -433,8 +502,10 @@ where
             Color::NoColor => B::empty(),
         }
     }
-    fn king_files<const K: usize>(&self) -> [&str; K];
-    fn file_bb(&self, file: usize) -> B;
+
+    fn can_pawn_move(&self, p: Piece) -> bool {
+        self.is_hand_empty(p.color, PieceType::Pawn)
+    }
 
     fn empty_squares(&self, p: Piece) -> B {
         let test = |p: Piece, list: [usize; 3]| -> B {
@@ -489,16 +560,6 @@ where
         }
     }
 
-    fn black_ranks(&self) -> [usize; 3];
-    fn is_king_placed(&self, c: Color) -> bool {
-        let king = &self.player_bb(c) & &self.type_bb(&PieceType::King);
-        if king.count() == 1 {
-            return true;
-        }
-        false
-    }
-
-    /// Returns BitBoard for all safe squares for selected side.    
     fn checks(&self, attacked_color: &Color) -> B {
         let king = &self.type_bb(&PieceType::King) & &self.player_bb(*attacked_color);
         if king.is_empty() {
@@ -538,28 +599,11 @@ where
         }
         B::empty()
     }
-    fn white_placement_ranks(&self) -> B;
-    fn black_placement_ranks(&self) -> B;
-    fn can_pawn_move(&self, p: Piece) -> bool {
-        self.is_hand_empty(p.color, PieceType::Pawn)
-    }
-    fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool {
-        for pt in PieceType::iter() {
-            if pt != excluded {
-                let counter = self.get_hand_piece(Piece {
-                    piece_type: pt,
-                    color: c,
-                });
-                if counter != 0 {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-    fn decrement_hand(&mut self, p: Piece);
+
+    fn update_bb(&mut self, p: Piece, sq: S);
+
     fn place(&mut self, p: Piece, sq: S) -> Option<String> {
-        if self.get_hand_piece(p) > 0 && (&self.empty_squares(p) & &sq).is_any() {
+        if self.hand(p) > 0 && (&self.empty_squares(p) & &sq).is_any() {
             self.update_bb(p, sq);
             self.decrement_hand(p);
             let move_record = MoveRecord::Put { to: sq, piece: p };
@@ -592,35 +636,58 @@ where
         }
         None
     }
-    fn update_bb(&mut self, p: Piece, sq: S);
-    fn dimensions(&self) -> u8;
-    fn us(&self) -> B;
-    fn them(&self) -> B;
-    /// Create move from `&str`.
-    fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError>;
-    /// Returns a `BitBoard` where the given piece at the given square can move.
-    fn move_candidates(&self, sq: &S, p: Piece, move_type: MoveType<S>) -> B {
-        let blockers = move_type.blockers(self, &p.color);
+}
 
-        let bb = match p.piece_type {
-            PieceType::Rook => A::get_sliding_attacks(PieceType::Rook, sq, blockers),
-            PieceType::Bishop => A::get_sliding_attacks(PieceType::Bishop, sq, blockers),
-            PieceType::Queen => A::get_sliding_attacks(PieceType::Queen, sq, blockers),
-            PieceType::Knight => A::get_non_sliding_attacks(PieceType::Knight, sq, p.color),
-            PieceType::Pawn => A::get_non_sliding_attacks(PieceType::Pawn, sq, p.color),
-            PieceType::King => A::get_non_sliding_attacks(PieceType::King, sq, p.color),
-            PieceType::Chancellor => {
-                &A::get_non_sliding_attacks(PieceType::Knight, sq, p.color)
-                    | &A::get_sliding_attacks(PieceType::Rook, sq, blockers)
+pub trait Play<S, B, A>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    A: Attacks<S, B>,
+    Self: Sized + Board<S, B, A> + Sfen<S, B, A>,
+    for<'a> &'a B: BitOr<&'a B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    for<'a> B: BitOrAssign<&'a S>,
+{
+    // Play part.
+
+    /// If last position has appeared three times then it's draw.
+    fn detect_repetition(&self) -> Result<(), MoveError>;
+
+    /// Check if one of the players don't have enough pieces.
+    fn detect_insufficient_material(&self) -> Result<(), MoveError> {
+        let major = [
+            PieceType::Rook,
+            PieceType::Queen,
+            PieceType::Chancellor,
+            PieceType::ArchBishop,
+        ];
+        let minor = [PieceType::Knight, PieceType::Bishop];
+        if self.occupied_bb().count() == 2 {
+            return Err(MoveError::DrawByInsufficientMaterial);
+        }
+        for c in Color::iter() {
+            let mut bb = B::empty();
+            for i in major {
+                bb |= &(&self.player_bb(c) & &self.type_bb(&i));
             }
-            PieceType::ArchBishop => {
-                &A::get_non_sliding_attacks(PieceType::Knight, sq, p.color)
-                    | &A::get_sliding_attacks(PieceType::Bishop, sq, blockers)
+            if bb.is_any() {
+                return Ok(());
             }
-            _ => B::empty(),
-        };
-        move_type.moves(self, &bb, p, *sq)
+            for i in minor {
+                bb |= &(&self.player_bb(c) & &self.type_bb(&i));
+            }
+            if bb.count() == 1 && bb.count() == 0 {
+                continue;
+            }
+
+            return Ok(());
+        }
+        Err(MoveError::DrawByInsufficientMaterial)
     }
+
     /// Returns all legal moves where piece can be moved.
     fn legal_moves(&self, color: &Color) -> HashMap<S, B> {
         let mut map = HashMap::new();
@@ -644,6 +711,59 @@ where
         }
         map
     }
+
+    /// Returns `BitBoard` of all moves by `Color`.
+    fn color_moves(&self, c: &Color) -> B {
+        let mut all = B::empty();
+        for sq in self.player_bb(*c) {
+            let piece = self.piece_at(sq);
+            let moves = self.move_candidates(
+                &sq,
+                piece.unwrap(),
+                MoveType::NoKing {
+                    king: self.find_king(&c.flip()).unwrap(),
+                },
+            );
+            all |= &moves;
+        }
+        all
+    }
+
+    /// Returns  `BitBoard` of all moves after fixing pin.
+    fn fix_pin(&self, sq: &S, pins: &HashMap<S, B>, checks: &Vec<B>, my_moves: B) -> B {
+        let piece = self.piece_at(*sq).unwrap();
+        if let Some(pin) = pins.get(sq) {
+            match (1).cmp(&checks.len()) {
+                Ordering::Equal => {
+                    let checks = checks.get(0).unwrap();
+                    &(checks & pin) & &my_moves
+                }
+                Ordering::Greater => B::empty(),
+                Ordering::Less => pin & &my_moves,
+            }
+        } else {
+            let mut my_moves = my_moves;
+            let enemy_moves = self.enemy_moves(&piece.color);
+            if piece.piece_type == PieceType::King {
+                my_moves = &my_moves & &!&enemy_moves;
+                return my_moves;
+            } else if checks.len() > 1 {
+                return B::empty();
+            }
+            for bb in checks.iter() {
+                my_moves &= bb;
+            }
+            my_moves
+        }
+    }
+
+    /// Returns `BitBoard` of all moves by opponent.
+    fn enemy_moves(&self, color: &Color) -> B {
+        match color {
+            Color::Black | Color::White => self.color_moves(&color.flip()),
+            Color::NoColor => B::empty(),
+        }
+    }
     /// Returns all non-legal moves.
     fn non_legal_moves(&self, square: &S) -> B {
         let piece = self.piece_at(*square);
@@ -652,6 +772,7 @@ where
             None => B::empty(),
         }
     }
+
     /// Returns `Pin` struct, who has unpin `BitBoard`(if pin exists).
     fn pinned_moves(&self, color: Color) -> HashMap<S, B> {
         let mut pins = HashMap::new();
@@ -695,6 +816,7 @@ where
         }
         pins
     }
+
     /// Returns a `BitBoard` of all squares at which a piece of the given color is pinned.
     fn pinned_bb(&self, c: Color) -> B {
         let mut bb = B::empty();
@@ -706,6 +828,73 @@ where
         }
         bb
     }
+
+    fn set_sfen(&mut self, sfen_str: &str) -> Result<Outcome, SfenError> {
+        let mut parts = sfen_str.split_whitespace();
+        parts
+            .next()
+            .ok_or(SfenError::MissingDataFields)
+            .and_then(|s| self.parse_sfen_board(s))?;
+        parts
+            .next()
+            .ok_or(SfenError::MissingDataFields)
+            .and_then(|s| self.parse_sfen_stm(s))?;
+        parts
+            .next()
+            .ok_or(SfenError::MissingDataFields)
+            .and_then(|s| self.parse_sfen_hand(s))?;
+        parts
+            .next()
+            .ok_or(SfenError::MissingDataFields)
+            .and_then(|s| self.parse_sfen_ply(s))?;
+        self.clear_sfen_history();
+        self.log_position();
+        if self.in_check(self.side_to_move().flip()) {
+            let checkmate = Outcome::Checkmate {
+                color: self.side_to_move(),
+            };
+            self.update_outcome(checkmate.clone());
+            return Ok(checkmate);
+        }
+        Ok(Outcome::Nothing)
+    }
+
+    fn in_check(&self, c: Color) -> bool {
+        let king = &self.find_king(&c);
+        if let Some(_k) = king {
+            let check_moves = self.check_moves(&c);
+            return !check_moves.is_empty();
+        }
+        false
+    }
+
+    /// Checks if given color is in checkmate.
+    fn is_checkmate(&self, c: &Color) -> bool {
+        let king = self.find_king(c);
+        match king {
+            Some(k) => {
+                if !self.in_check(*c) {
+                    return false;
+                }
+                let all = self.legal_moves(c);
+                if let Some(king_moves) = all.get(&k) {
+                    if !king_moves.is_any() {
+                        let mut final_moves = B::empty();
+                        for mv in all {
+                            final_moves |= &mv.1;
+                        }
+                        if final_moves.is_any() {
+                            return false;
+                        }
+                        return true;
+                    }
+                }
+                false
+            }
+            None => false,
+        }
+    }
+
     /// Returns Vector of all checks.
     fn check_moves(&self, color: &Color) -> Vec<B> {
         let mut all = vec![];
@@ -743,129 +932,29 @@ where
         }
         all
     }
-    /// Checks if the king with the given color is in check.
-    fn in_check(&self, c: Color) -> bool {
-        let king = &self.find_king(&c);
-        if let Some(_k) = king {
-            let check_moves = self.check_moves(&c);
-            return !check_moves.is_empty();
-        }
-        false
-    }
-    /// Checks if given color is in checkmate.
-    fn is_checkmate(&self, c: &Color) -> bool {
-        let king = self.find_king(c);
-        match king {
-            Some(k) => {
-                if !self.in_check(*c) {
-                    return false;
-                }
-                let all = self.legal_moves(c);
-                if let Some(king_moves) = all.get(&k) {
-                    if !king_moves.is_any() {
-                        let mut final_moves = B::empty();
-                        for mv in all {
-                            final_moves |= &mv.1;
-                        }
-                        if final_moves.is_any() {
-                            return false;
-                        }
-                        return true;
-                    }
-                }
-                false
-            }
-            None => false,
-        }
-    }
-    /// Returns  `BitBoard` of all moves after fixing pin.
-    fn fix_pin(&self, sq: &S, pins: &HashMap<S, B>, checks: &Vec<B>, my_moves: B) -> B {
-        let piece = self.piece_at(*sq).unwrap();
-        if let Some(pin) = pins.get(sq) {
-            match (1).cmp(&checks.len()) {
-                Ordering::Equal => {
-                    let checks = checks.get(0).unwrap();
-                    &(checks & pin) & &my_moves
-                }
-                Ordering::Greater => B::empty(),
-                Ordering::Less => pin & &my_moves,
-            }
-        } else {
-            let mut my_moves = my_moves;
-            let enemy_moves = self.enemy_moves(&piece.color);
-            if piece.piece_type == PieceType::King {
-                my_moves = &my_moves & &!&enemy_moves;
-                return my_moves;
-            } else if checks.len() > 1 {
-                return B::empty();
-            }
-            for bb in checks.iter() {
-                my_moves &= bb;
-            }
-            my_moves
-        }
-    }
-    /// Returns `BitBoard` of all moves by `Color`.
-    fn color_moves(&self, c: &Color) -> B {
-        let mut all = B::empty();
-        for sq in self.player_bb(*c) {
-            let piece = self.piece_at(sq);
-            let moves = self.move_candidates(
-                &sq,
-                piece.unwrap(),
-                MoveType::NoKing {
-                    king: self.find_king(&c.flip()).unwrap(),
-                },
-            );
-            all |= &moves;
-        }
-        all
-    }
-    /// Returns `BitBoard` of all moves by opponent.
-    fn enemy_moves(&self, color: &Color) -> B {
-        match color {
-            Color::Black | Color::White => self.color_moves(&color.flip()),
-            Color::NoColor => B::empty(),
-        }
-    }
-    /// Returns `Square` if King is available.
-    fn find_king(&self, c: &Color) -> Option<S> {
-        let mut bb = &self.type_bb(&PieceType::King) & &self.player_bb(*c);
-        if bb.is_any() {
-            bb.pop_reverse()
-        } else {
-            None
-        }
-    }
-}
 
-/// Outcome stores information about outcome after move.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Outcome {
-    Check { color: Color },
-    Checkmate { color: Color },
-    Draw,
-    Nothing,
-    DrawByRepetition,
-    DrawByMaterial,
-    Stalemate,
-    MoveNotOk,
-    MoveOk,
-}
+    /// Returns a `BitBoard` where the given piece at the given square can move.
+    fn move_candidates(&self, sq: &S, p: Piece, move_type: MoveType<S>) -> B {
+        let blockers = move_type.blockers(self, &p.color);
 
-impl ToString for Outcome {
-    fn to_string(&self) -> String {
-        match &self {
-            Outcome::Check { color } => format!("Check_{}", color.to_string()),
-            Outcome::Checkmate { color } => format!("Checkmate_{}", color.to_string()),
-            Outcome::Draw => "Draw".to_string(),
-            Outcome::Nothing => "Live".to_string(),
-            Outcome::DrawByRepetition => "RepetitionDraw".to_string(),
-            Outcome::DrawByMaterial => "MaterialDraw".to_string(),
-            Outcome::Stalemate => "Stalemate".to_string(),
-            Outcome::MoveOk => "Live".to_string(),
-            Outcome::MoveNotOk => "Illegal move".to_string(),
-        }
+        let bb = match p.piece_type {
+            PieceType::Rook => A::get_sliding_attacks(PieceType::Rook, sq, blockers),
+            PieceType::Bishop => A::get_sliding_attacks(PieceType::Bishop, sq, blockers),
+            PieceType::Queen => A::get_sliding_attacks(PieceType::Queen, sq, blockers),
+            PieceType::Knight => A::get_non_sliding_attacks(PieceType::Knight, sq, p.color),
+            PieceType::Pawn => A::get_non_sliding_attacks(PieceType::Pawn, sq, p.color),
+            PieceType::King => A::get_non_sliding_attacks(PieceType::King, sq, p.color),
+            PieceType::Chancellor => {
+                &A::get_non_sliding_attacks(PieceType::Knight, sq, p.color)
+                    | &A::get_sliding_attacks(PieceType::Rook, sq, blockers)
+            }
+            PieceType::ArchBishop => {
+                &A::get_non_sliding_attacks(PieceType::Knight, sq, p.color)
+                    | &A::get_sliding_attacks(PieceType::Bishop, sq, blockers)
+            }
+            _ => B::empty(),
+        };
+        move_type.moves(self, &bb, p, *sq)
     }
 }
 
@@ -880,7 +969,7 @@ impl<S> MoveType<S>
 where
     S: Square + Hash,
 {
-    pub fn blockers<B: BitBoard<S>, A: Attacks<S, B>, P: Position<S, B, A>>(
+    pub fn blockers<B: BitBoard<S>, A: Attacks<S, B>, P: Play<S, B, A>>(
         &self,
         position: &P,
         c: &Color,
@@ -903,7 +992,7 @@ where
         }
     }
 
-    pub fn moves<B: BitBoard<S>, A: Attacks<S, B>, P: Position<S, B, A>>(
+    pub fn moves<B: BitBoard<S>, A: Attacks<S, B>, P: Play<S, B, A>>(
         &self,
         position: &P,
         bb: &B,
