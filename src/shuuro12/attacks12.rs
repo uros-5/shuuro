@@ -18,7 +18,8 @@ static mut NON_SLIDING_ATTACKS: [[[BB12<Square12>; 144]; 6]; 2] =
 static mut PAWN_MOVES: [[BB12<Square12>; 144]; 2] =
     [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 2];
 
-static mut RAYS: [[BB12<Square12>; 144]; 8] = [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 8];
+pub static mut RAYS: [[BB12<Square12>; 144]; 8] =
+    [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 8];
 
 static mut BETWEEN_BB: [[BB12<Square12>; 144]; 144] =
     [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 144];
@@ -114,10 +115,10 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     fn init_north_ray() {
         for sq in 0..144 {
             let file = &FILE_BB[sq % 12];
-            let rank = &RANK_BB[sq / 12];
-            let mut bb = file | rank;
+            let rank = sq / 12;
+            let mut bb = file | &BB12::empty();
             #[allow(clippy::needless_range_loop)]
-            for j in 0..sq / 12 {
+            for j in 0..rank {
                 bb &= &!&RANK_BB[j];
             }
             bb &= &!&SQUARE_BB[sq];
@@ -130,10 +131,10 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     fn init_south_ray() {
         for sq in 0..144 {
             let file = &FILE_BB[sq % 12];
-            let rank = &RANK_BB[sq / 12];
-            let mut bb = file | rank;
+            let rank = sq / 12;
+            let mut bb = file | &BB12::empty();
             #[allow(clippy::needless_range_loop)]
-            for j in sq / 12..12 {
+            for j in rank..12 {
                 bb &= &!&RANK_BB[j];
             }
             bb &= &!&SQUARE_BB[sq];
@@ -145,9 +146,8 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
 
     fn init_east_ray() {
         for sq in 0..144 {
-            let file = &FILE_BB[sq % 12];
             let rank = &RANK_BB[sq / 12];
-            let mut bb = file | rank;
+            let mut bb = rank | &BB12::empty();
             #[allow(clippy::needless_range_loop)]
             for j in 0..sq % 12 {
                 bb &= &!&FILE_BB[j];
@@ -161,9 +161,8 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
 
     fn init_west_ray() {
         for sq in 0..144 {
-            let file = &FILE_BB[sq % 12];
             let rank = &RANK_BB[sq / 12];
-            let mut bb = file | rank;
+            let mut bb = rank | &BB12::empty();
             #[allow(clippy::needless_range_loop)]
             for j in sq % 12..12 {
                 bb &= &!&FILE_BB[j];
@@ -267,15 +266,15 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn get_non_sliding_attacks(
-        piece_type: crate::PieceType,
+        piece_type: PieceType,
         square: &Square12,
-        color: crate::Color,
+        color: Color,
     ) -> BB12<Square12> {
         unsafe { NON_SLIDING_ATTACKS[color as usize][piece_type as usize][square.index()] }
     }
 
     fn get_sliding_attacks(
-        piece_type: crate::PieceType,
+        piece_type: PieceType,
         square: &Square12,
         blockers: BB12<Square12>,
     ) -> BB12<Square12> {
@@ -295,15 +294,14 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn get_positive_ray_attacks(
-        dir: crate::attacks::Ray,
+        dir: Ray,
         square: usize,
         blockers: BB12<Square12>,
     ) -> BB12<Square12> {
         unsafe {
             let attacks = RAYS[dir as usize][square];
             let mut blocked = &attacks & &blockers;
-            let block_square = { blocked.pop() };
-            //let block_square = blocked.pop();
+            let block_square = blocked.pop();
             match block_square {
                 Some(i) => &attacks & &!&RAYS[dir as usize][i.index()],
                 None => attacks,
@@ -312,7 +310,7 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn get_negative_ray_attacks(
-        dir: crate::attacks::Ray,
+        dir: Ray,
         square: usize,
         blockers: BB12<Square12>,
     ) -> BB12<Square12> {
@@ -329,6 +327,15 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
 
     fn between(square1: Square12, square2: Square12) -> BB12<Square12> {
         unsafe { BETWEEN_BB[square1.index()][square2.index()] }
+    }
+
+    fn get_pawn_moves(square: usize, color: Color) -> BB12<Square12> {
+        unsafe {
+            match color {
+                Color::White | Color::Black => PAWN_MOVES[color.index()][square],
+                Color::NoColor => BB12::empty(),
+            }
+        }
     }
 }
 
@@ -386,7 +393,6 @@ mod tests {
             let sq = case.0.index();
             unsafe {
                 let attacks = NON_SLIDING_ATTACKS[color][pawn][sq];
-                println!("{}", attacks);
                 for attack in case.1.into_iter().flatten() {
                     assert!((&attacks & &attack).is_any());
                 }
@@ -469,7 +475,6 @@ mod tests {
                 let ray = &RAYS[case.3 as usize][case.0.index()];
                 let between = Attacks12::between(case.0, case.1);
                 let calc = ray & &between;
-                println!("{}", case.0);
                 assert_eq!(calc.count(), case.2);
             }
         }

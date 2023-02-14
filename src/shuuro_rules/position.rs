@@ -484,7 +484,7 @@ where
     fn king_files<const K: usize>(&self) -> [&str; K];
 
     /// Returns BitBoard with file. Panics if file is bigger than expected.
-    fn file_bb(&self, file: usize) -> B;
+    fn rank_bb(&self, file: usize) -> B;
 
     /// Check if king is placed.
     fn is_king_placed(&self, c: Color) -> bool {
@@ -519,9 +519,9 @@ where
     }
 
     fn empty_squares(&self, p: Piece) -> B {
-        let test = |p: Piece, list: [usize; 3]| -> B {
+        let calc = |p: Piece, list: [usize; 3]| -> B {
             for file in list {
-                let mut bb = self.file_bb(file);
+                let mut bb = self.rank_bb(file);
                 bb &= &!&self.player_bb(p.color);
                 let plinths = self.player_bb(Color::NoColor);
                 if bb.is_empty() {
@@ -565,8 +565,8 @@ where
             return B::empty();
         }
         match p.color {
-            Color::White => test(p, [0, 1, 2]),
-            Color::Black => test(p, self.black_ranks()),
+            Color::White => calc(p, [0, 1, 2]),
+            Color::Black => calc(p, self.black_ranks()),
             Color::NoColor => B::empty(),
         }
     }
@@ -588,18 +588,18 @@ where
             if !self.variant().can_buy(&p) {
                 continue;
             }
-            let bb = &self.type_bb(&p) & &self.player_bb(attacked_color.flip());
-            for i in bb {
+            let them = &self.type_bb(&p) & &self.player_bb(attacked_color.flip());
+            for i in them {
                 all = A::get_sliding_attacks(p, &i, occupied_bb);
                 if (&all & &king).is_any() {
                     match *attacked_color {
                         Color::White => {
-                            let files = self.white_placement_attacked_ranks();
-                            return &(&files & &all) & &!&king;
+                            let ranks = self.white_placement_attacked_ranks();
+                            return &(&ranks & &all) & &!&king;
                         }
                         Color::Black => {
-                            let files = self.black_placement_attacked_ranks();
-                            return &(&files & &all) & &!&king;
+                            let ranks = self.black_placement_attacked_ranks();
+                            return &(&ranks & &all) & &!&king;
                         }
                         Color::NoColor => {
                             return B::empty();
@@ -808,8 +808,8 @@ where
                     let checks = checks.get(0).unwrap();
                     &(checks & pin) & &my_moves
                 }
-                Ordering::Greater => B::empty(),
-                Ordering::Less => pin & &my_moves,
+                Ordering::Greater => pin & &my_moves,
+                Ordering::Less => B::empty(),
             }
         } else {
             let mut my_moves = my_moves;
@@ -1105,9 +1105,11 @@ where
                     let mut without_plinth =
                         &(without_main_color) & &!&position.player_bb(Color::NoColor);
                     if p.piece_type == PieceType::Pawn {
+                        without_plinth &= &position.player_bb(p.color.flip());
                         let up_sq = &!&position.player_bb(p.color.flip())
-                            & &self.get_pawn_square(sq, &p.color);
+                            & &self.pawn_move::<B, A, P>(sq, &p.color);
                         without_plinth |= &up_sq;
+                        without_plinth &= &!&position.player_bb(Color::NoColor);
                         without_plinth
                     } else {
                         without_plinth
@@ -1119,8 +1121,7 @@ where
             MoveType::NoKing { king } => {
                 if !knights.contains(&p.piece_type) {
                     if p.piece_type == PieceType::Pawn {
-                        let up_sq = self.get_pawn_square(sq, &p.color);
-                        let up_sq = B::from_square(&up_sq);
+                        let up_sq = self.pawn_move::<B, A, P>(sq, &p.color);
                         return bb & &!&up_sq;
                     }
                     &((bb) & &!&position.player_bb(Color::NoColor))
@@ -1132,10 +1133,21 @@ where
         }
     }
 
-    pub fn get_pawn_square(&self, sq: S, color: &Color) -> S {
+    pub fn pawn_move<B: BitBoard<S>, A: Attacks<S, B>, P: Play<S, B, A>>(
+        &self,
+        sq: S,
+        color: &Color,
+    ) -> B
+    where
+        for<'b> &'b B: BitOr<&'b B, Output = B>,
+        for<'b> &'b B: BitAnd<&'b B, Output = B>,
+        for<'a> &'a B: Not<Output = B>,
+        for<'a> &'a B: BitOr<&'a S, Output = B>,
+        for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    {
         match color {
-            &Color::White | &Color::Black => S::from_index(sq.index() as u8).unwrap(),
-            _ => sq,
+            &Color::White | &Color::Black => A::get_pawn_moves(sq.index(), *color),
+            _ => B::empty(),
         }
     }
 }

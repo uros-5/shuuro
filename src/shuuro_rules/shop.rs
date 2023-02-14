@@ -41,13 +41,11 @@ impl<S: Square> Shop<S> {
     /// Buying piece with specific color.
     pub fn play(&mut self, mv: Move<S>) -> Option<[bool; 2]> {
         if let Move::Buy { piece } = mv {
-            if !self.variant.can_buy(&piece.piece_type) {
-                return None;
-            } else if piece.color == Color::NoColor {
+            if !self.variant.can_buy(&piece.piece_type) || piece.color == Color::NoColor {
                 return None;
             } else if !self.is_confirmed(piece.color) {
                 let (piece_price, piece_count) = self.pricing[piece.piece_type.index()];
-                if self.credit[piece.color.index()] >= piece_price as i32 {
+                if self.credit[piece.color.index()] >= piece_price {
                     if self.hand.get(piece) < piece_count {
                         self.hand.increment(piece);
                         self.credit[piece.color.index()] = self.credit(piece.color) - piece_price;
@@ -55,7 +53,7 @@ impl<S: Square> Shop<S> {
                         self.sfen_history
                             .lock()
                             .unwrap()
-                            .push((move_record.to_sfen().clone(), self.hand.get(piece)));
+                            .push((move_record.to_sfen(), self.hand.get(piece)));
                         self.move_history.lock().unwrap().push(move_record);
                     }
                     if self.credit[piece.color.index()] == 0 {

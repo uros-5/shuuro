@@ -1,7 +1,7 @@
 use crate::shuuro_rules::{bitboard::BitBoard, Color, PieceType, Square};
 use std::ops::{BitAnd, BitOr, Not};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Ray {
     North = 0,
     South,
@@ -60,8 +60,11 @@ where
                 | &Self::get_negative_ray_attacks(Ray::West, square, blockers))
     }
 
+    fn get_pawn_moves(square: usize, color: Color) -> B;
+
     fn init() {
         Self::init_pawn_attacks();
+        Self::init_pawn_moves();
         Self::init_knight_attacks();
         Self::init_king_attacks();
 
