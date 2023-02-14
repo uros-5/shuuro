@@ -42,6 +42,23 @@ impl ToString for Outcome {
     }
 }
 
+#[allow(clippy::from_over_into)]
+impl Into<i32> for Outcome {
+    fn into(self) -> i32 {
+        match self {
+            Outcome::MoveNotOk => -2,
+            Outcome::MoveOk => -1,
+            Outcome::Nothing => -1,
+            Outcome::Check { color: _ } => -1,
+            Outcome::Checkmate { color: _ } => 1,
+            Outcome::Stalemate => 3,
+            Outcome::DrawByRepetition => 4,
+            Outcome::Draw => 5,
+            Outcome::DrawByMaterial => 6,
+        }
+    }
+}
+
 pub trait Position<S, B, A>
 where
     S: Square + Hash,
@@ -112,11 +129,6 @@ where
     fn variant(&self) -> Variant;
     /// Changing to other variant.
     fn update_variant(&mut self, variant: Variant);
-    /// Make move from `Move`. It can be of three types.
-    /// It's useful for all three stages of the game.
-    fn make_move(&mut self, m: Move<S>) -> Result<Outcome, MoveError>;
-    /// Create move from `&str`.
-    fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError>;
     /// Insert new sfen to sfen history.
     fn insert_sfen(&mut self, sfen: &str);
     /// Insert new MoveRecord to move_history.
@@ -224,7 +236,6 @@ where
                                 if knights.contains(&pc.piece_type) {
                                     s.push('L');
                                 } else {
-
                                     //return Err(SfenError::IllegalPieceTypeOnPlinth);
                                 }
                             }
@@ -457,14 +468,14 @@ where
 {
     // PLACEMENT PART
 
-    /// Generate random plinths and return BitBoard.
-    fn generate_plinths(&mut self) -> B;
+    /// Generate random plinths.
+    fn generate_plinths(&mut self);
 
     /// BitBoard with all available squares for white.
-    fn white_placement_ranks(&self) -> B;
+    fn white_placement_attacked_ranks(&self) -> B;
 
     /// BitBoard with all available squares for black.
-    fn black_placement_ranks(&self) -> B;
+    fn black_placement_attacked_ranks(&self) -> B;
 
     /// All ranks for black. White rank is 0,1,2.
     fn black_ranks(&self) -> [usize; 3];
@@ -583,11 +594,11 @@ where
                 if (&all & &king).is_any() {
                     match *attacked_color {
                         Color::White => {
-                            let files = self.white_placement_ranks();
+                            let files = self.white_placement_attacked_ranks();
                             return &(&files & &all) & &!&king;
                         }
                         Color::Black => {
-                            let files = self.black_placement_ranks();
+                            let files = self.black_placement_attacked_ranks();
                             return &(&files & &all) & &!&king;
                         }
                         Color::NoColor => {
@@ -653,8 +664,67 @@ where
 {
     // Play part.
 
+    /// Create move from `&str`.
+    fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError> {
+        let from = match S::from_sfen(from) {
+            Some(i) => i,
+            None => {
+                return Err(SfenError::IllegalPieceFound);
+            }
+        };
+        let to = match S::from_sfen(to) {
+            Some(i) => i,
+            None => {
+                return Err(SfenError::IllegalPieceFound);
+            }
+        };
+        let m = Move::Normal {
+            from,
+            to,
+            promote: false,
+        };
+        let outcome = self.make_move(m);
+        match outcome {
+            Ok(i) => {
+                self.update_outcome(i);
+            }
+            Err(error) => match error {
+                MoveError::RepetitionDraw => self.update_outcome(Outcome::DrawByRepetition),
+                MoveError::Draw => self.update_outcome(Outcome::Draw),
+                MoveError::DrawByInsufficientMaterial => {
+                    self.update_outcome(Outcome::DrawByMaterial)
+                }
+                MoveError::DrawByStalemate => self.update_outcome(Outcome::Stalemate),
+                _ => {
+                    return Err(SfenError::IllegalMove);
+                }
+            },
+        }
+        return Ok(self.outcome());
+    }
+
     /// If last position has appeared three times then it's draw.
-    fn detect_repetition(&self) -> Result<(), MoveError>;
+    fn detect_repetition(&self) -> Result<(), MoveError> {
+        let sfen_history = self.get_sfen_history();
+
+        if sfen_history.len() < 9 {
+            return Ok(());
+        }
+        let cur = sfen_history.last().unwrap();
+        let lm = cur;
+        let lm_str = cur.split_whitespace().rev().last().unwrap();
+        let mut cnt = 0;
+        for (_i, entry) in sfen_history.iter().rev().enumerate() {
+            let s = entry.split_whitespace().rev().last().unwrap();
+            if lm == entry && s == lm_str {
+                cnt += 1;
+                if cnt == 3 {
+                    return Err(MoveError::RepetitionDraw);
+                }
+            }
+        }
+        Ok(())
+    }
 
     /// Check if one of the players don't have enough pieces.
     fn detect_insufficient_material(&self) -> Result<(), MoveError> {
@@ -895,6 +965,17 @@ where
         }
     }
 
+    /// Check if player is in stalemate.
+    fn is_stalemate(&self, color: &Color) -> Result<(), MoveError> {
+        let moves = self.legal_moves(color);
+        for m in moves {
+            if m.1.count() > 0 {
+                return Ok(());
+            }
+        }
+        Err(MoveError::DrawByStalemate)
+    }
+
     /// Returns Vector of all checks.
     fn check_moves(&self, color: &Color) -> Vec<B> {
         let mut all = vec![];
@@ -956,6 +1037,10 @@ where
         };
         move_type.moves(self, &bb, p, *sq)
     }
+
+    /// Make move from `Move`. It can be of three types.
+    /// It's useful for all three stages of the game.
+    fn make_move(&mut self, m: Move<S>) -> Result<Outcome, MoveError>;
 }
 
 #[derive(Debug)]
