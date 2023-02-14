@@ -386,6 +386,7 @@ mod tests {
             let sq = case.0.index();
             unsafe {
                 let attacks = NON_SLIDING_ATTACKS[color][pawn][sq];
+                println!("{}", attacks);
                 for attack in case.1.into_iter().flatten() {
                     assert!((&attacks & &attack).is_any());
                 }

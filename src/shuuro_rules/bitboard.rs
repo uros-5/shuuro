@@ -1,5 +1,5 @@
 use std::{
-    fmt::Debug,
+    fmt::{Debug, Display},
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not},
 };
 
@@ -12,6 +12,7 @@ pub trait BitBoard<S: Square>:
     + Debug
     + Not
     + Default
+    + Display
     + for<'a> BitAndAssign<&'a Self>
     + for<'a> BitOrAssign<&'a Self>
     + for<'a> BitXor<&'a Self, Output = Self>

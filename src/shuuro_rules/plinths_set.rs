@@ -31,11 +31,12 @@ where
         let attacks: B = self.king_moves(sq1);
         loop {
             let sq2: S = self.gen_square(&mut rang, ranks, files);
-            let sq2 = &(&B::empty() | &sq2) & &!&bb;
-            let check = &attacks & &sq2;
-            if check.is_empty() {
-                #[allow(clippy::op_ref)]
-                return &bb | &sq2;
+            let sq2 = &(&B::empty() | &sq2);
+            // & &!&bb
+            let check = &attacks & sq2;
+            let sum = &bb | sq2;
+            if check.is_empty() && sum.count() == 2 {
+                return sum;
             }
         }
     }
