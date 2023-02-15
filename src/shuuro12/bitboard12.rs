@@ -75,6 +75,7 @@ impl BitOr<&BB12<Square12>> for &BB12<Square12> {
 impl Not for BB12<Square12> {
     type Output = BB12<Square12>;
 
+    #[inline(always)]
     fn not(self) -> Self::Output {
         BB12::new([
             !self.0[0], !self.0[1], !self.0[2], !self.0[3], !self.0[4], !self.0[5], !self.0[6],
@@ -86,6 +87,7 @@ impl Not for BB12<Square12> {
 impl Not for &BB12<Square12> {
     type Output = BB12<Square12>;
 
+    #[inline(always)]
     fn not(self) -> Self::Output {
         BB12::new([
             !self.0[0], !self.0[1], !self.0[2], !self.0[3], !self.0[4], !self.0[5], !self.0[6],
@@ -115,7 +117,6 @@ impl BitAnd<&Square12> for &BB12<Square12> {
 
 impl BitAndAssign<&BB12<Square12>> for BB12<Square12> {
     #[inline(always)]
-
     fn bitand_assign(&mut self, rhs: &BB12<Square12>) {
         self.0[0] &= rhs.0[0];
         self.0[1] &= rhs.0[1];
@@ -131,7 +132,6 @@ impl BitAndAssign<&BB12<Square12>> for BB12<Square12> {
 
 impl BitOrAssign<&BB12<Square12>> for BB12<Square12> {
     #[inline(always)]
-
     fn bitor_assign(&mut self, rhs: &BB12<Square12>) {
         self.0[0] |= rhs.0[0];
         self.0[1] |= rhs.0[1];
@@ -179,6 +179,7 @@ impl BitXorAssign<&Square12> for BB12<Square12> {
 impl Iterator for BB12<Square12> {
     type Item = Square12;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_any() {
             self.pop_reverse()
@@ -196,10 +197,12 @@ impl BitOrAssign<&Square12> for BB12<Square12> {
 }
 
 impl BitBoard<Square12> for BB12<Square12> {
+    #[inline(always)]
     fn empty() -> Self {
         BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0])
     }
 
+    #[inline(always)]
     fn is_any(&self) -> bool {
         (self.0[0]
             | self.0[1]
@@ -213,6 +216,7 @@ impl BitBoard<Square12> for BB12<Square12> {
             != 0
     }
 
+    #[inline(always)]
     fn is_empty(&self) -> bool {
         (self.0[0]
             | self.0[1]
@@ -226,16 +230,19 @@ impl BitBoard<Square12> for BB12<Square12> {
             == 0
     }
 
+    #[inline(always)]
     fn clear_at(&mut self, sq: Square12) {
         *self &= &!&square_bb(&sq)
     }
 
+    #[inline(always)]
     fn clear_all(&mut self) {
         for i in 0..9 {
             self.0[i] = 0;
         }
     }
 
+    #[inline(always)]
     fn count(&self) -> u32 {
         let mut counting = 0;
         for i in 0..9 {
@@ -244,12 +251,14 @@ impl BitBoard<Square12> for BB12<Square12> {
         counting
     }
 
+    #[inline(always)]
     fn set_all(&mut self) {
         for i in 0..9 {
             self.0[i] = 1;
         }
     }
 
+    #[inline(always)]
     fn pop(&mut self) -> Option<Square12> {
         for i in 0..9 {
             if self.0[i] != 0 {
@@ -261,6 +270,7 @@ impl BitBoard<Square12> for BB12<Square12> {
         None
     }
 
+    #[inline(always)]
     fn pop_reverse(&mut self) -> Option<Square12> {
         for i in (0..9).rev() {
             if self.0[i] != 0 {
@@ -274,6 +284,7 @@ impl BitBoard<Square12> for BB12<Square12> {
         None
     }
 
+    #[inline(always)]
     fn from_square(sq: &Square12) -> Self {
         square_bb(sq)
     }
