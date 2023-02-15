@@ -14,7 +14,8 @@ impl From<&String> for Variant {
             "shuuro" => Self::Shuuro,
             "shuuroFairy" => Self::ShuuroFairy,
             "shuuroMini" => Self::ShuuroMini,
-            _ => Self::Standard,
+            "shuuroStandard" => Self::Standard,
+            _ => Self::Shuuro,
         }
     }
 }

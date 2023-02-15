@@ -13,8 +13,10 @@ repository = "https://github.com/uros-5/shuuro"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["variant"]
-variant = []
+default = []
+shuuro12 = []
+shuuro8 = []
+standard = []
 
 [dependencies]
 itertools = "0.10"
