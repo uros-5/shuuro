@@ -47,7 +47,7 @@
 ////! ```
 
 #![recursion_limit = "144"]
-#[cfg(feature = "variant")]
+#[cfg(feature = "shuuro12")]
 pub mod shuuro12;
 pub mod shuuro_rules;
 pub use shuuro_rules::*;
