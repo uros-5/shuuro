@@ -21,6 +21,7 @@ impl Position<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
 {
 }
 
+#[derive(Clone, Debug)]
 pub struct P12<S, B>
 where
     S: Square,

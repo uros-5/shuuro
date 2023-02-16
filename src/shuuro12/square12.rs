@@ -217,8 +217,7 @@ mod tests {
         for case in ng_cases.iter() {
             assert!(
                 Square12::from_sfen(case).is_none(),
-                "{} should cause an error",
-                case
+                "{case} should cause an error"
             );
         }
     }
