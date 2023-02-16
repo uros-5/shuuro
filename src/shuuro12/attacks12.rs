@@ -15,6 +15,9 @@ use super::{
 static mut NON_SLIDING_ATTACKS: [[[BB12<Square12>; 144]; 6]; 2] =
     [[[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 6]; 2];
 
+static mut GIRAFFE_ATTACKS: [BB12<Square12>; 144] =
+    [BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144];
+
 static mut PAWN_MOVES: [[BB12<Square12>; 144]; 2] =
     [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 2];
 
@@ -64,8 +67,8 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
 
     fn init_pawn_attacks() {
         let add = |current: Square12, next: Square12, color: &Color| unsafe {
-            NON_SLIDING_ATTACKS[color.index()][PieceType::Pawn.index()][current.index()] |=
-                &square_bb(&next);
+            NON_SLIDING_ATTACKS[color.index()][PieceType::Pawn.index()]
+                [current.index()] |= &square_bb(&next);
         };
         for color in Color::iter() {
             for sq in Square12::iter() {
@@ -85,8 +88,22 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
                 bb |= &attack;
             }
             unsafe {
-                NON_SLIDING_ATTACKS[0][PieceType::Knight.index()][sq.index()] |= &bb;
-                NON_SLIDING_ATTACKS[1][PieceType::Knight.index()][sq.index()] |= &bb;
+                NON_SLIDING_ATTACKS[0][PieceType::Knight.index()]
+                    [sq.index()] |= &bb;
+                NON_SLIDING_ATTACKS[1][PieceType::Knight.index()]
+                    [sq.index()] |= &bb;
+            }
+        }
+    }
+
+    fn init_girraffe_attacks() {
+        for sq in Square12::iter() {
+            let mut bb = BB12::empty();
+            for attack in sq.giraffe().into_iter().flatten() {
+                bb |= &attack;
+            }
+            unsafe {
+                GIRAFFE_ATTACKS[sq.index()] |= &bb;
             }
         }
     }
@@ -106,8 +123,10 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
                 bb |= &attack;
             }
             unsafe {
-                NON_SLIDING_ATTACKS[0][PieceType::King.index()][sq.index()] |= &bb;
-                NON_SLIDING_ATTACKS[1][PieceType::King.index()][sq.index()] |= &bb;
+                NON_SLIDING_ATTACKS[0][PieceType::King.index()][sq.index()] |=
+                    &bb;
+                NON_SLIDING_ATTACKS[1][PieceType::King.index()][sq.index()] |=
+                    &bb;
             }
         }
     }
@@ -240,25 +259,27 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
                 let dr = from.rank() as i8 - to.rank() as i8;
                 unsafe {
                     if df == 0 || dr == 0 {
-                        BETWEEN_BB[from.index()][to.index()] = &Attacks12::get_sliding_attacks(
-                            PieceType::Rook,
-                            &from,
-                            SQUARE_BB[to.index()],
-                        ) & &Attacks12::get_sliding_attacks(
-                            PieceType::Rook,
-                            &to,
-                            SQUARE_BB[from.index()],
-                        );
+                        BETWEEN_BB[from.index()][to.index()] =
+                            &Attacks12::get_sliding_attacks(
+                                PieceType::Rook,
+                                &from,
+                                SQUARE_BB[to.index()],
+                            ) & &Attacks12::get_sliding_attacks(
+                                PieceType::Rook,
+                                &to,
+                                SQUARE_BB[from.index()],
+                            );
                     } else if df.abs() == dr.abs() {
-                        BETWEEN_BB[from.index()][to.index()] = &Attacks12::get_sliding_attacks(
-                            PieceType::Bishop,
-                            &from,
-                            SQUARE_BB[to.index()],
-                        ) & &Attacks12::get_sliding_attacks(
-                            PieceType::Bishop,
-                            &to,
-                            SQUARE_BB[from.index()],
-                        );
+                        BETWEEN_BB[from.index()][to.index()] =
+                            &Attacks12::get_sliding_attacks(
+                                PieceType::Bishop,
+                                &from,
+                                SQUARE_BB[to.index()],
+                            ) & &Attacks12::get_sliding_attacks(
+                                PieceType::Bishop,
+                                &to,
+                                SQUARE_BB[from.index()],
+                            );
                     }
                 }
             }
@@ -270,7 +291,14 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
         square: &Square12,
         color: Color,
     ) -> BB12<Square12> {
-        unsafe { NON_SLIDING_ATTACKS[color as usize][piece_type as usize][square.index()] }
+        unsafe {
+            NON_SLIDING_ATTACKS[color as usize][piece_type as usize]
+                [square.index()]
+        }
+    }
+
+    fn get_girrafe_attacks(square: &Square12) -> BB12<Square12> {
+        unsafe { GIRAFFE_ATTACKS[square.index()] }
     }
 
     fn get_sliding_attacks(
@@ -332,7 +360,9 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     fn get_pawn_moves(square: usize, color: Color) -> BB12<Square12> {
         unsafe {
             match color {
-                Color::White | Color::Black => PAWN_MOVES[color.index()][square],
+                Color::White | Color::Black => {
+                    PAWN_MOVES[color.index()][square]
+                }
                 Color::NoColor => BB12::empty(),
             }
         }
@@ -344,7 +374,9 @@ mod tests {
     use crate::{
         attacks::Ray,
         bitboard::BitBoard,
-        shuuro12::{bitboard12::square_bb, board_defs::EMPTY_BB, square12::consts::*},
+        shuuro12::{
+            bitboard12::square_bb, board_defs::EMPTY_BB, square12::consts::*,
+        },
         Color, PieceType, Square,
     };
 

@@ -123,7 +123,7 @@ mod tests {
             ('Q', PieceType::Queen, Color::White),
             ('L', PieceType::Plinth, Color::NoColor),
         ];
-        let ng_cases = ['\0', ' ', '_', 'g', 'z', '+', 'G', 'Z'];
+        let ng_cases = ['\0', ' ', '_', 'j', 'z', '+', 'J', 'Z'];
 
         for case in ok_cases.iter() {
             let pc = Piece::from_sfen(case.0);

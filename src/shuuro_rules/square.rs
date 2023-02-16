@@ -3,14 +3,30 @@ use std::fmt::{self, Debug};
 use crate::shuuro_rules::Color;
 
 #[macro_export]
-macro_rules! temp_moves {
-    ($f1: ident, $f2: ident, $self: ident) => {
+macro_rules! l_moves {
+    ($f1: ident, $f2: ident, $self: ident, $c: expr) => {
         if let Some(sq) = $self.$f1() {
             if let Some(sq2) = sq.$f1() {
-                if let Some(sq3) = sq2.$f2() {
-                    return Some(sq3);
+                if $c == true {
+                    if let Some(sq3) = sq2.$f2() {
+                        return Some(sq3);
+                    } else {
+                        return None;
+                    }
                 } else {
-                    return None;
+                    if let Some(sq3) = sq2.$f1() {
+                        if let Some(sq4) = sq3.$f1() {
+                            if let Some(sq5) = sq4.$f2() {
+                                return Some(sq5);
+                            } else {
+                                return None;
+                            }
+                        } else {
+                            return None;
+                        }
+                    } else {
+                        return None;
+                    }
                 }
             } else {
                 None
@@ -19,7 +35,10 @@ macro_rules! temp_moves {
             None
         }
     };
+}
 
+#[macro_export]
+macro_rules! x {
     ($f1: ident, $f2: ident, $self: ident, $a: expr) => {
         if let Some(sq) = $self.$f1() {
             if let Some(sq2) = sq.$f2() {
@@ -33,7 +52,35 @@ macro_rules! temp_moves {
     };
 }
 
-pub trait Square: Sized + Eq + fmt::Display + Default + PartialEq + Clone + Copy
+#[macro_export]
+macro_rules! giraffe {
+    ($f1: ident, $f2: ident, $self: ident) => {
+        if let Some(sq) = $self.$f1() {
+            if let Some(sq2) = sq.$f1() {
+                if let Some(sq3) = sq2.$f1() {
+                    if let Some(sq4) = sq3.$f1() {
+                        if let Some(sq5) = sq4.$f2() {
+                            return Some(sq5);
+                        } else {
+                            return None;
+                        }
+                    } else {
+                        return None;
+                    }
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        } else {
+            return None;
+        }
+    };
+}
+
+pub trait Square:
+    Sized + Eq + fmt::Display + Default + PartialEq + Clone + Copy
 where
     Self: Debug,
 {
@@ -86,58 +133,64 @@ where
             Color::NoColor => None,
         }
     }
-    fn left_up(&self) -> Option<Self> {
-        temp_moves!(left, up, self)
+    fn left_up(&self, c: bool) -> Option<Self> {
+        l_moves!(left, up, self, c)
     }
-    fn up_left(&self) -> Option<Self> {
-        temp_moves!(up, left, self)
+    fn up_left(&self, c: bool) -> Option<Self> {
+        l_moves!(up, left, self, c)
     }
-    fn up_right(&self) -> Option<Self> {
-        temp_moves!(up, right, self)
+    fn up_right(&self, c: bool) -> Option<Self> {
+        l_moves!(up, right, self, c)
     }
-    fn right_up(&self) -> Option<Self> {
-        temp_moves!(right, up, self)
+    fn right_up(&self, c: bool) -> Option<Self> {
+        l_moves!(right, up, self, c)
     }
-    fn left_down(&self) -> Option<Self> {
-        temp_moves!(left, down, self)
+    fn left_down(&self, c: bool) -> Option<Self> {
+        l_moves!(left, down, self, c)
     }
-    fn down_left(&self) -> Option<Self> {
-        temp_moves!(down, left, self)
+    fn down_left(&self, c: bool) -> Option<Self> {
+        l_moves!(down, left, self, c)
     }
-    fn down_right(&self) -> Option<Self> {
-        temp_moves!(down, right, self)
+    fn down_right(&self, c: bool) -> Option<Self> {
+        l_moves!(down, right, self, c)
     }
-    fn right_down(&self) -> Option<Self> {
-        temp_moves!(right, down, self)
+    fn right_down(&self, c: bool) -> Option<Self> {
+        l_moves!(right, down, self, c)
     }
     fn nw(&self) -> Option<Self> {
-        temp_moves!(up, left, self, 1)
+        x!(up, left, self, 1)
     }
     fn nea(&self) -> Option<Self> {
-        temp_moves!(up, right, self, 1)
+        x!(up, right, self, 1)
     }
     fn sw(&self) -> Option<Self> {
-        temp_moves!(down, left, self, 1)
+        x!(down, left, self, 1)
     }
     fn se(&self) -> Option<Self> {
-        temp_moves!(down, right, self, 1)
+        x!(down, right, self, 1)
     }
-    fn knight(&self) -> [Option<Self>; 8] {
+    fn l_moves(&self, c: bool) -> [Option<Self>; 8] {
         let mut all: [Option<Self>; 8] = [None; 8];
         let temp = [
-            self.left_up(),
-            self.up_left(),
-            self.up_right(),
-            self.right_up(),
-            self.left_down(),
-            self.down_left(),
-            self.down_right(),
-            self.right_down(),
+            self.left_up(c),
+            self.up_left(c),
+            self.up_right(c),
+            self.right_up(c),
+            self.left_down(c),
+            self.down_left(c),
+            self.down_right(c),
+            self.right_down(c),
         ];
         for (i, square) in temp.into_iter().flatten().enumerate() {
             all[i] = Some(square);
         }
         all
+    }
+    fn knight(&self) -> [Option<Self>; 8] {
+        self.l_moves(true)
+    }
+    fn giraffe(&self) -> [Option<Self>; 8] {
+        self.l_moves(false)
     }
     fn x(&self, c: &Color) -> [Option<Self>; 2] {
         match c {

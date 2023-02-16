@@ -7,10 +7,10 @@ use std::{
 use crate::shuuro_rules::{variant::Variant, Color, Piece, PieceType};
 use crate::shuuro_rules::{Hand, Move, MoveRecord};
 
-fn get_pricing() -> [(i32, u8); 9] {
-    let prices = [0, 110, 70, 40, 40, 10, 130, 130, 0];
-    let count = [1, 3, 6, 9, 9, 18, 3, 3, 0];
-    let mut pricing: [(i32, u8); 9] = [(0, 0); 9];
+fn get_pricing() -> [(i32, u8); 10] {
+    let prices = [0, 110, 70, 40, 40, 10, 130, 130, 70, 0];
+    let count = [1, 3, 6, 9, 9, 18, 3, 3, 4, 0];
+    let mut pricing: [(i32, u8); 10] = [(0, 0); 10];
     let pt_iter = PieceType::iter();
     for pt in pt_iter {
         pricing[pt.index()] = (prices[pt.index()], count[pt.index()]);
@@ -24,7 +24,7 @@ pub struct Shop<S: Square> {
     credit: [i32; 2],
     hand: Hand,
     confirmed: [bool; 2],
-    pricing: [(i32, u8); 9],
+    pricing: [(i32, u8); 10],
     move_history: Arc<Mutex<Vec<MoveRecord<S>>>>,
     sfen_history: Arc<Mutex<Vec<(String, u8)>>>,
     variant: Variant,

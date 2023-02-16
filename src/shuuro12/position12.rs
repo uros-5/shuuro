@@ -7,12 +7,13 @@ use std::{
 use crate::{
     bitboard::BitBoard,
     position::{Board, Outcome, Placement, Play, Position, Sfen},
-    Color, Hand, Move, MoveError, MoveRecord, Piece, PieceType, SfenError, Square, Variant,
+    Color, Hand, Move, MoveError, MoveRecord, Piece, PieceType, SfenError,
+    Square, Variant,
 };
 
 use super::{
-    attacks12::Attacks12, bitboard12::BB12, board_defs::RANK_BB, plinths_set12::PlinthGen12,
-    square12::Square12,
+    attacks12::Attacks12, bitboard12::BB12, board_defs::RANK_BB,
+    plinths_set12::PlinthGen12, square12::Square12,
 };
 
 impl Position<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
@@ -41,7 +42,7 @@ where
     color_bb: [BB12<Square12>; 3],
     game_status: Outcome,
     variant: Variant,
-    pub type_bb: [BB12<Square12>; 15],
+    pub type_bb: [BB12<Square12>; 17],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
 }
@@ -276,12 +277,16 @@ impl Play<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
 
         match captured {
             Some(_i) => {
-                if moved.piece_type == PieceType::Pawn && to.in_promotion_zone(moved.color) {
+                if moved.piece_type == PieceType::Pawn
+                    && to.in_promotion_zone(moved.color)
+                {
                     promoted = true;
                 }
             }
             None => {
-                if moved.piece_type == PieceType::Pawn && to.in_promotion_zone(moved.color) {
+                if moved.piece_type == PieceType::Pawn
+                    && to.in_promotion_zone(moved.color)
+                {
                     promoted = true;
                 }
             }
@@ -289,17 +294,23 @@ impl Play<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
 
         if let Some(attacks) = legal_moves.get(&from) {
             if (attacks & &to).is_empty() {
-                return Err(MoveError::Inconsistent("The piece cannot move to there"));
+                return Err(MoveError::Inconsistent(
+                    "The piece cannot move to there",
+                ));
             }
         } else {
-            return Err(MoveError::Inconsistent("The piece cannot move to there"));
+            return Err(MoveError::Inconsistent(
+                "The piece cannot move to there",
+            ));
         }
 
         let placed = if promoted {
             match moved.promote() {
                 Some(promoted) => promoted,
                 None => {
-                    return Err(MoveError::Inconsistent("This type of piece cannot promote"));
+                    return Err(MoveError::Inconsistent(
+                        "This type of piece cannot promote",
+                    ));
                 }
             }
         } else {
@@ -418,18 +429,22 @@ impl fmt::Display for P12<Square12, BB12<Square12>> {
         for rank in (0..12).rev() {
             write!(f, "|")?;
             for file in 0..12 {
-                if let Some(ref piece) = *self.piece_at(Square12::new(file, rank).unwrap()) {
+                if let Some(ref piece) =
+                    *self.piece_at(Square12::new(file, rank).unwrap())
+                {
                     write!(f, "{}", piece.to_string())?;
-                    let plinth: BB12<Square12> =
-                        &self.player_bb(Color::NoColor) & &Square12::new(file, rank).unwrap();
+                    let plinth: BB12<Square12> = &self
+                        .player_bb(Color::NoColor)
+                        & &Square12::new(file, rank).unwrap();
                     if plinth.is_any() {
                         write!(f, " L|")?;
                     } else {
                         write!(f, "  |")?;
                     }
                 } else {
-                    let plinth: BB12<Square12> =
-                        &self.player_bb(Color::NoColor) & &Square12::new(file, rank).unwrap();
+                    let plinth: BB12<Square12> = &self
+                        .player_bb(Color::NoColor)
+                        & &Square12::new(file, rank).unwrap();
                     if plinth.is_any() {
                         write!(f, "{:>3}|", "L")?;
                     } else {
@@ -490,6 +505,7 @@ pub mod position_tests {
         position::{Board, MoveType, Outcome, Placement, Play, Position, Sfen},
         shuuro12::{
             attacks12::Attacks12,
+            bitboard12::BB12,
             position12::P12,
             square12::{consts::*, Square12},
         },
@@ -626,8 +642,10 @@ pub mod position_tests {
     fn pawn_check_king() {
         setup();
         let mut pos = P12::new();
-        pos.set_sfen("57/9K2/8L03/56L0/5Q6/L03L07/55L01/1L055/5P6/4k7/L056/7L04 b - 72")
-            .expect("failed to parse SFEN string");
+        pos.set_sfen(
+            "57/9K2/8L03/56L0/5Q6/L03L07/55L01/1L055/5P6/4k7/L056/7L04 b - 72",
+        )
+        .expect("failed to parse SFEN string");
         let in_check = pos.in_check(Color::Black);
         assert!(in_check);
     }
@@ -713,7 +731,8 @@ pub mod position_tests {
                         pc,
                         pos.move_candidates(&sq, pc, MoveType::Plinth).count(),
                     );
-                    sum += pos.move_candidates(&sq, pc, MoveType::Plinth).count();
+                    sum +=
+                        pos.move_candidates(&sq, pc, MoveType::Plinth).count();
                 }
             }
         }
@@ -833,7 +852,10 @@ pub mod position_tests {
         }
         let result = position.play("b11", "c12");
         assert!(result.is_ok());
-        assert_eq!(position.piece_at(C12).unwrap().piece_type, PieceType::Queen);
+        assert_eq!(
+            position.piece_at(C12).unwrap().piece_type,
+            PieceType::Queen
+        );
     }
 
     #[test]
@@ -866,7 +888,8 @@ pub mod position_tests {
     #[test]
     fn knight_jumps_move() {
         setup();
-        let sfen = "4K1Q4LN/4L07/2L09/57/57/55L01/6P5/9L02/5kL05/L01L09/5p6/57 w - 17";
+        let sfen =
+            "4K1Q4LN/4L07/2L09/57/57/55L01/6P5/9L02/5kL05/L01L09/5p6/57 w - 17";
         let mut position = P12::new();
         position
             .set_sfen(sfen)
@@ -979,7 +1002,8 @@ pub mod position_tests {
     fn make_move() {
         setup();
 
-        let base_sfen = "57/3KRRB5/5PP5/57/57/57/57/qbbn8/57/6k5/57/57 w K2RB2P 1";
+        let base_sfen =
+            "57/3KRRB5/5PP5/57/57/57/57/qbbn8/57/6k5/57/57 w K2RB2P 1";
         let test_cases = [
             (
                 D2,
@@ -1149,7 +1173,10 @@ pub mod position_tests {
         for case in empty_squares.iter() {
             let (row, file, len) = *case;
             for i in row..(row + len) {
-                assert_eq!(None, *pos.piece_at(Square12::new(file, i).unwrap()));
+                assert_eq!(
+                    None,
+                    *pos.piece_at(Square12::new(file, i).unwrap())
+                );
             }
         }
 
@@ -1288,7 +1315,9 @@ pub mod position_tests {
         setup();
         let mut position_set = P12::default();
         position_set
-            .parse_sfen_board("5KRRR3/4PPPP4/57/5L06/57/57/57/57/57/57/57/L04kqqLn3")
+            .parse_sfen_board(
+                "5KRRR3/4PPPP4/57/5L06/57/57/57/57/57/57/57/L04kqqLn3",
+            )
             .expect("error while parsing sfen");
         position_set.set_hand("NrNNbrn");
         let cases = [
@@ -1462,7 +1491,8 @@ pub mod position_tests {
     #[test]
     fn deploy_fairy_on_plinth() {
         setup();
-        let fen = "3KL0L0L0L0L0L0L0R/57/57/57/57/57/57/57/57/57/57/5k6 w 3C2P 4";
+        let fen =
+            "3KL0L0L0L0L0L0L0R/57/57/57/57/57/57/57/57/57/57/5k6 w 3C2P 4";
         let mut position = P12::default();
         position.update_variant(Variant::ShuuroFairy);
         position.set_sfen(fen).expect("error while parsing sfen");
@@ -1498,6 +1528,36 @@ pub mod position_tests {
                         color: Color::White
                     }
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn giraffe_moves() {
+        setup();
+        let cases = [
+            (
+                "G55K/57/57/57/57/57/57/57/57/57/57/1r1k8 w - 1",
+                &A1,
+                vec![&B5, &E2],
+            ),
+            (
+                "5L01L04/1K55/57/2L07L01/6g5/55L01/57/57/7L04/57/5k6/57 b - 1",
+                &G5,
+                vec![&F9, &H9, &C6, &K6, &C4, &K4, &F1, &H1],
+            ),
+        ];
+        for case in cases {
+            let mut position = P12::default();
+            position.update_variant(Variant::ShuuroFairy);
+            position.set_sfen(case.0).expect("error while parsing sfen");
+            let legal_moves = position.legal_moves(&position.side_to_move());
+            if let Some(b) = legal_moves.get(case.1) {
+                let len = case.2.len();
+                for sq in case.2 {
+                    assert!((b & sq).is_any());
+                }
+                assert_eq!(b.count(), len as u32);
             }
         }
     }

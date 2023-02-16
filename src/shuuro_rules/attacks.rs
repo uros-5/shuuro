@@ -26,6 +26,7 @@ where
     fn init_pawn_moves();
     fn init_pawn_attacks();
     fn init_knight_attacks();
+    fn init_girraffe_attacks();
     fn init_king_attacks();
 
     fn init_north_ray();
@@ -38,9 +39,16 @@ where
     fn init_south_west_ray();
     fn init_between();
 
-    fn get_non_sliding_attacks(piece_type: PieceType, square: &S, color: Color) -> B;
+    fn get_non_sliding_attacks(
+        piece_type: PieceType,
+        square: &S,
+        color: Color,
+    ) -> B;
 
-    fn get_sliding_attacks(piece_type: PieceType, square: &S, blockers: B) -> B;
+    fn get_girrafe_attacks(square: &S) -> B;
+
+    fn get_sliding_attacks(piece_type: PieceType, square: &S, blockers: B)
+        -> B;
 
     fn get_positive_ray_attacks(dir: Ray, square: usize, blockers: B) -> B;
 
@@ -49,8 +57,15 @@ where
     fn get_bishop_attacks(square: usize, blockers: B) -> B {
         &(&Self::get_positive_ray_attacks(Ray::NorthWest, square, blockers)
             | &Self::get_positive_ray_attacks(Ray::NorthEast, square, blockers))
-            | &(&Self::get_negative_ray_attacks(Ray::SouthWest, square, blockers)
-                | &Self::get_negative_ray_attacks(Ray::SouthEast, square, blockers))
+            | &(&Self::get_negative_ray_attacks(
+                Ray::SouthWest,
+                square,
+                blockers,
+            ) | &Self::get_negative_ray_attacks(
+                Ray::SouthEast,
+                square,
+                blockers,
+            ))
     }
 
     fn get_rook_attacks(square: usize, blockers: B) -> B {
@@ -66,6 +81,7 @@ where
         Self::init_pawn_attacks();
         Self::init_pawn_moves();
         Self::init_knight_attacks();
+        Self::init_girraffe_attacks();
         Self::init_king_attacks();
 
         Self::init_north_ray();

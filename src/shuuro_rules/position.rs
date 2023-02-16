@@ -8,8 +8,8 @@ use std::{
 use itertools::Itertools;
 
 use crate::{
-    attacks::Attacks, bitboard::BitBoard, Color, Move, MoveError, MoveRecord, Piece, PieceType,
-    SfenError, Square, Variant,
+    attacks::Attacks, bitboard::BitBoard, Color, Move, MoveError, MoveRecord,
+    Piece, PieceType, SfenError, Square, Variant,
 };
 
 /// Outcome stores information about outcome after move.
@@ -30,7 +30,9 @@ impl ToString for Outcome {
     fn to_string(&self) -> String {
         match &self {
             Outcome::Check { color } => format!("Check_{}", color.to_string()),
-            Outcome::Checkmate { color } => format!("Checkmate_{}", color.to_string()),
+            Outcome::Checkmate { color } => {
+                format!("Checkmate_{}", color.to_string())
+            }
             Outcome::Draw => "Draw".to_string(),
             Outcome::Nothing => "Live".to_string(),
             Outcome::DrawByRepetition => "RepetitionDraw".to_string(),
@@ -64,7 +66,11 @@ where
     S: Square + Hash,
     B: BitBoard<S>,
     A: Attacks<S, B>,
-    Self: Sized + Board<S, B, A> + Sfen<S, B, A> + Placement<S, B, A> + Play<S, B, A>,
+    Self: Sized
+        + Board<S, B, A>
+        + Sfen<S, B, A>
+        + Placement<S, B, A>
+        + Play<S, B, A>,
     for<'a> &'a B: BitOr<&'a B, Output = B>,
     for<'a> &'a B: BitAnd<&'a B, Output = B>,
     for<'a> &'a B: Not<Output = B>,
@@ -215,6 +221,7 @@ where
             PieceType::Knight,
             PieceType::Chancellor,
             PieceType::ArchBishop,
+            PieceType::Giraffe,
         ];
 
         let dimension = self.dimensions();
@@ -232,7 +239,8 @@ where
                                 s = _s;
                                 num_spaces = 0;
                             }
-                            if (&self.player_bb(Color::NoColor) & &sq).is_any() {
+                            if (&self.player_bb(Color::NoColor) & &sq).is_any()
+                            {
                                 if knights.contains(&pc.piece_type) {
                                     s.push('L');
                                 } else {
@@ -243,7 +251,8 @@ where
                             s.push_str(&pc.to_string());
                         }
                         None => {
-                            if (&self.player_bb(Color::NoColor) & &sq).is_any() {
+                            if (&self.player_bb(Color::NoColor) & &sq).is_any()
+                            {
                                 let mut _s = add_num_space(num_spaces, s);
                                 s = _s;
                                 num_spaces = 0;
@@ -363,7 +372,9 @@ where
                             }
 
                             if is_promoted {
-                                if let Some(promoted) = piece.piece_type.promote() {
+                                if let Some(promoted) =
+                                    piece.piece_type.promote()
+                                {
                                     piece.piece_type = promoted;
                                 } else {
                                     return Err(SfenError::IllegalPieceType);
@@ -404,7 +415,9 @@ where
                 n if n.is_numeric() => {
                     if let Some(n) = n.to_digit(9) {
                         if num_pieces != 0 {
-                            let num2 = format!("{}{}", num_pieces, n as u8).parse::<u8>().unwrap();
+                            let num2 = format!("{}{}", num_pieces, n as u8)
+                                .parse::<u8>()
+                                .unwrap();
                             num_pieces = num2;
                             continue;
                         }
@@ -413,9 +426,10 @@ where
                 }
                 s => {
                     match Piece::from_sfen(s) {
-                        Some(p) => {
-                            self.insert_in_hand(p, if num_pieces == 0 { 1 } else { num_pieces })
-                        }
+                        Some(p) => self.insert_in_hand(
+                            p,
+                            if num_pieces == 0 { 1 } else { num_pieces },
+                        ),
                         None => return Err(SfenError::IllegalPieceType),
                     };
                     num_pieces = 0;
@@ -528,7 +542,9 @@ where
                     continue;
                 }
                 match p.piece_type {
-                    PieceType::Knight | PieceType::Chancellor | PieceType::ArchBishop => {
+                    PieceType::Knight
+                    | PieceType::Chancellor
+                    | PieceType::ArchBishop => {
                         return bb;
                     }
                     PieceType::King => {
@@ -561,7 +577,9 @@ where
         let checks = self.checks(&p.color);
         if checks.is_any() {
             return checks;
-        } else if !self.is_king_placed(p.color) && p.piece_type != PieceType::King {
+        } else if !self.is_king_placed(p.color)
+            && p.piece_type != PieceType::King
+        {
             return B::empty();
         }
         match p.color {
@@ -572,7 +590,8 @@ where
     }
 
     fn checks(&self, attacked_color: &Color) -> B {
-        let king = &self.type_bb(&PieceType::King) & &self.player_bb(*attacked_color);
+        let king =
+            &self.type_bb(&PieceType::King) & &self.player_bb(*attacked_color);
         if king.is_empty() {
             return B::empty();
         }
@@ -588,7 +607,8 @@ where
             if !self.variant().can_buy(&p) {
                 continue;
             }
-            let them = &self.type_bb(&p) & &self.player_bb(attacked_color.flip());
+            let them =
+                &self.type_bb(&p) & &self.player_bb(attacked_color.flip());
             for i in them {
                 all = A::get_sliding_attacks(p, &i, occupied_bb);
                 if (&all & &king).is_any() {
@@ -618,9 +638,11 @@ where
             self.update_bb(p, sq);
             self.decrement_hand(p);
             let move_record = MoveRecord::Put { to: sq, piece: p };
-            let sfen = self.generate_sfen().split(' ').next().unwrap().to_string();
+            let sfen =
+                self.generate_sfen().split(' ').next().unwrap().to_string();
             let hand = {
-                let s = self.get_hand(Color::White) + &self.get_hand(Color::Black)[..];
+                let s = self.get_hand(Color::White)
+                    + &self.get_hand(Color::Black)[..];
                 if s.is_empty() {
                     String::from(" ")
                 } else {
@@ -689,12 +711,16 @@ where
                 self.update_outcome(i);
             }
             Err(error) => match error {
-                MoveError::RepetitionDraw => self.update_outcome(Outcome::DrawByRepetition),
+                MoveError::RepetitionDraw => {
+                    self.update_outcome(Outcome::DrawByRepetition)
+                }
                 MoveError::Draw => self.update_outcome(Outcome::Draw),
                 MoveError::DrawByInsufficientMaterial => {
                     self.update_outcome(Outcome::DrawByMaterial)
                 }
-                MoveError::DrawByStalemate => self.update_outcome(Outcome::Stalemate),
+                MoveError::DrawByStalemate => {
+                    self.update_outcome(Outcome::Stalemate)
+                }
                 _ => {
                     return Err(SfenError::IllegalMove);
                 }
@@ -771,11 +797,17 @@ where
                 if king == sq {
                     map.insert(king, &my_moves & &!&enemy_moves);
                 } else {
-                    let moves = self.fix_pin(&sq, &pinned_moves, &check_moves, my_moves);
+                    let moves = self.fix_pin(
+                        &sq,
+                        &pinned_moves,
+                        &check_moves,
+                        my_moves,
+                    );
                     map.insert(sq, moves);
                 }
             } else {
-                let moves = self.fix_pin(&sq, &pinned_moves, &check_moves, my_moves);
+                let moves =
+                    self.fix_pin(&sq, &pinned_moves, &check_moves, my_moves);
                 map.insert(sq, moves);
             }
         }
@@ -800,7 +832,13 @@ where
     }
 
     /// Returns  `BitBoard` of all moves after fixing pin.
-    fn fix_pin(&self, sq: &S, pins: &HashMap<S, B>, checks: &Vec<B>, my_moves: B) -> B {
+    fn fix_pin(
+        &self,
+        sq: &S,
+        pins: &HashMap<S, B>,
+        checks: &Vec<B>,
+        my_moves: B,
+    ) -> B {
         let piece = self.piece_at(*sq).unwrap();
         if let Some(pin) = pins.get(sq) {
             match (1).cmp(&checks.len()) {
@@ -870,7 +908,8 @@ where
             }
             let piece_attacks = A::get_sliding_attacks(*s, &ksq, plinths);
             // this is enemy
-            let enemy_bb = &(&self.type_bb(s) & &self.player_bb(color.flip())) & &piece_attacks;
+            let enemy_bb = &(&self.type_bb(s) & &self.player_bb(color.flip()))
+                & &piece_attacks;
             for psq in enemy_bb {
                 // this piece is pinned
                 let mut pinned = &(&A::between(ksq, psq) & &self.occupied_bb())
@@ -1003,9 +1042,11 @@ where
                 piece_type: *s,
                 color: *color,
             };
-            let move_candidates = self.move_candidates(&ksq, p, MoveType::Plinth);
+            let move_candidates =
+                self.move_candidates(&ksq, p, MoveType::Plinth);
             // this is enemy
-            let bb = &(&self.type_bb(s) & &self.player_bb(color.flip())) & &move_candidates;
+            let bb = &(&self.type_bb(s) & &self.player_bb(color.flip()))
+                & &move_candidates;
             for psq in bb {
                 let fix = A::between(ksq, psq);
                 all.push(&fix | &bb);
@@ -1019,12 +1060,24 @@ where
         let blockers = move_type.blockers(self, &p.color);
 
         let bb = match p.piece_type {
-            PieceType::Rook => A::get_sliding_attacks(PieceType::Rook, sq, blockers),
-            PieceType::Bishop => A::get_sliding_attacks(PieceType::Bishop, sq, blockers),
-            PieceType::Queen => A::get_sliding_attacks(PieceType::Queen, sq, blockers),
-            PieceType::Knight => A::get_non_sliding_attacks(PieceType::Knight, sq, p.color),
-            PieceType::Pawn => A::get_non_sliding_attacks(PieceType::Pawn, sq, p.color),
-            PieceType::King => A::get_non_sliding_attacks(PieceType::King, sq, p.color),
+            PieceType::Rook => {
+                A::get_sliding_attacks(PieceType::Rook, sq, blockers)
+            }
+            PieceType::Bishop => {
+                A::get_sliding_attacks(PieceType::Bishop, sq, blockers)
+            }
+            PieceType::Queen => {
+                A::get_sliding_attacks(PieceType::Queen, sq, blockers)
+            }
+            PieceType::Knight => {
+                A::get_non_sliding_attacks(PieceType::Knight, sq, p.color)
+            }
+            PieceType::Pawn => {
+                A::get_non_sliding_attacks(PieceType::Pawn, sq, p.color)
+            }
+            PieceType::King => {
+                A::get_non_sliding_attacks(PieceType::King, sq, p.color)
+            }
             PieceType::Chancellor => {
                 &A::get_non_sliding_attacks(PieceType::Knight, sq, p.color)
                     | &A::get_sliding_attacks(PieceType::Rook, sq, blockers)
@@ -1033,6 +1086,7 @@ where
                 &A::get_non_sliding_attacks(PieceType::Knight, sq, p.color)
                     | &A::get_sliding_attacks(PieceType::Bishop, sq, blockers)
             }
+            PieceType::Giraffe => A::get_girrafe_attacks(sq),
             _ => B::empty(),
         };
         move_type.moves(self, &bb, p, *sq)
@@ -1068,10 +1122,14 @@ where
     {
         match self {
             MoveType::Empty => B::empty(),
-            MoveType::Plinth => &position.occupied_bb() | &position.player_bb(Color::NoColor),
+            MoveType::Plinth => {
+                &position.occupied_bb() | &position.player_bb(Color::NoColor)
+            }
             MoveType::NoKing { king } => {
                 let king = B::from_square(king);
-                &(&(&position.occupied_bb() | &position.player_bb(Color::NoColor)) & &!&king)
+                &(&(&position.occupied_bb()
+                    | &position.player_bb(Color::NoColor))
+                    & &!&king)
                     | &position.player_bb(*c)
             }
         }
@@ -1097,13 +1155,14 @@ where
             PieceType::Knight,
             PieceType::ArchBishop,
             PieceType::Chancellor,
+            PieceType::Giraffe,
         ];
         match self {
             MoveType::Empty => B::empty(),
             MoveType::Plinth => {
                 if !knights.contains(&p.piece_type) {
-                    let mut without_plinth =
-                        &(without_main_color) & &!&position.player_bb(Color::NoColor);
+                    let mut without_plinth = &(without_main_color)
+                        & &!&position.player_bb(Color::NoColor);
                     if p.piece_type == PieceType::Pawn {
                         without_plinth &= &position.player_bb(p.color.flip());
                         let up_sq = &!&position.player_bb(p.color.flip())
@@ -1146,7 +1205,9 @@ where
         for<'a> &'a B: BitAnd<&'a S, Output = B>,
     {
         match color {
-            &Color::White | &Color::Black => A::get_pawn_moves(sq.index(), *color),
+            &Color::White | &Color::Black => {
+                A::get_pawn_moves(sq.index(), *color)
+            }
             _ => B::empty(),
         }
     }
