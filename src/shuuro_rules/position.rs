@@ -634,7 +634,9 @@ where
     fn update_bb(&mut self, p: Piece, sq: S);
 
     fn place(&mut self, p: Piece, sq: S) -> Option<String> {
-        if self.hand(p) > 0 && (&self.empty_squares(p) & &sq).is_any() {
+        if p.color != self.side_to_move() {
+            return None;
+        } else if self.hand(p) > 0 && (&self.empty_squares(p) & &sq).is_any() {
             self.update_bb(p, sq);
             self.decrement_hand(p);
             let move_record = MoveRecord::Put { to: sq, piece: p };
@@ -653,8 +655,8 @@ where
             let ply = self.ply();
 
             self.insert_move(move_record.clone());
-            if !self.is_hand_empty(p.color, PieceType::Plinth) {
-                self.flip_side_to_move();
+            if !self.is_hand_empty(p.color.flip(), PieceType::Plinth) {
+                self.update_side_to_move(p.color.flip());
             }
             let record = format!(
                 "{}_{}_{}_{}_{}",

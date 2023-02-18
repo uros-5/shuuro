@@ -1261,9 +1261,9 @@ pub mod position_tests {
         position_set
             .parse_sfen_board("6K5/57/57/57/57/57/57/57/57/57/57/7k4")
             .expect("error while parsing sfen");
-        position_set.set_hand("rrRqNNqq");
+        position_set.set_hand("rrRqNqq");
+        println!("{}", position_set.side_to_move().to_string());
         let cases = [
-            (PieceType::Knight, Color::White, A1),
             (PieceType::Queen, Color::Black, D12),
             (PieceType::Rook, Color::White, C1),
             (PieceType::Queen, Color::Black, I12),
@@ -1309,6 +1309,32 @@ pub mod position_tests {
         let mut position_set = P12::default();
         position_set.generate_plinths();
         assert_eq!(position_set.color_bb[Color::NoColor.index()].count(), 8);
+    }
+
+    #[test]
+    fn flip_empty_side() {
+        setup();
+        let mut position = P12::default();
+        position.set_sfen("6K5/57/57/L01L05L03/6L05/57/57/57/57/4L02L01L02/2L09/57 b krqpR2N3BQ 1").expect("sfen has wrong data");
+        let moves = [
+            (Color::Black, PieceType::King, H12),
+            (Color::White, PieceType::Queen, A1),
+            (Color::Black, PieceType::Queen, E12),
+            (Color::White, PieceType::Rook, D1),
+            (Color::Black, PieceType::Rook, C12),
+            (Color::White, PieceType::Bishop, B2),
+            (Color::Black, PieceType::Pawn, G11),
+        ];
+        for m in moves {
+            position.place(
+                Piece {
+                    piece_type: m.1,
+                    color: m.0,
+                },
+                m.2,
+            );
+        }
+        assert_eq!(position.side_to_move(), Color::White);
     }
 
     #[test]
