@@ -738,13 +738,16 @@ where
         if sfen_history.len() < 9 {
             return Ok(());
         }
+
+        let sfen_history: Vec<&String> =
+            sfen_history.iter().rev().take(15).collect();
+
         let cur = sfen_history.last().unwrap();
-        let lm = cur;
-        let lm_str = cur.split_whitespace().rev().last().unwrap();
+        let last_sfen = cur.split_whitespace().rev().last().unwrap();
         let mut cnt = 0;
         for (_i, entry) in sfen_history.iter().rev().enumerate() {
             let s = entry.split_whitespace().rev().last().unwrap();
-            if lm == entry && s == lm_str {
+            if s == last_sfen {
                 cnt += 1;
                 if cnt == 3 {
                     return Err(MoveError::RepetitionDraw);

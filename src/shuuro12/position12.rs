@@ -991,11 +991,11 @@ pub mod position_tests {
             assert!(pos.make_move(Move::new(D9, I9, false)).is_ok());
             assert!(pos.make_move(Move::new(H4, A4, false)).is_ok());
             assert!(pos.make_move(Move::new(I9, D9, false)).is_ok());
-            assert!(pos.make_move(Move::new(A4, H4, false)).is_ok());
             if i == 1 {
                 assert!(pos.make_move(Move::new(A4, H4, false)).is_err());
                 break;
             }
+            assert!(pos.make_move(Move::new(A4, H4, false)).is_ok());
         }
     }
 
@@ -1262,7 +1262,6 @@ pub mod position_tests {
             .parse_sfen_board("6K5/57/57/57/57/57/57/57/57/57/57/7k4")
             .expect("error while parsing sfen");
         position_set.set_hand("rrRqNqq");
-        println!("{}", position_set.side_to_move().to_string());
         let cases = [
             (PieceType::Queen, Color::Black, D12),
             (PieceType::Rook, Color::White, C1),
