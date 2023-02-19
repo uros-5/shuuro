@@ -1453,9 +1453,19 @@ pub mod position_tests {
     #[test]
     fn fairy_shop() {
         let cases = [
-            ("knnaaacqKCCCQQPPP", [3, 0], [1, 3], [230, 160]),
-            ("KCAAAAACCCRRRQQkccppaaaaa", [3, 3], [2, 3], [20, 200]),
-            ("KRRRRRNNNNBBBCAkcrrrrbn", [1, 0], [1, 0], [110, 380]),
+            ("knnaaacqGKCCCQQPPP", [3, 0, 1], [1, 3, 0], [160, 160]),
+            (
+                "KCAAAAACCCRRRQQkccppaaaaagg",
+                [3, 3, 0],
+                [2, 3, 2],
+                [20, 60],
+            ),
+            (
+                "KRRRRRNNNNBBBCAkcrrrrbnggggg",
+                [1, 0, 0],
+                [1, 0, 4],
+                [110, 100],
+            ),
         ];
         for case in cases {
             let mut shop = Shop::<Square12>::default();
@@ -1478,6 +1488,13 @@ pub mod position_tests {
             );
             assert_eq!(
                 shop.get(Piece {
+                    piece_type: PieceType::Giraffe,
+                    color: Color::White
+                }),
+                case.1[2]
+            );
+            assert_eq!(
+                shop.get(Piece {
                     piece_type: PieceType::Chancellor,
                     color: Color::Black
                 }),
@@ -1490,6 +1507,14 @@ pub mod position_tests {
                 }),
                 case.2[1]
             );
+            assert_eq!(
+                shop.get(Piece {
+                    piece_type: PieceType::Giraffe,
+                    color: Color::Black
+                }),
+                case.2[2]
+            );
+
             assert_eq!(shop.credit(Color::White), case.3[0]);
             assert_eq!(shop.credit(Color::Black), case.3[1]);
         }
