@@ -6,6 +6,7 @@ pub enum Variant {
     ShuuroFairy,
     ShuuroMini,
     Standard,
+    StandardFairy,
 }
 
 impl From<&String> for Variant {
@@ -14,7 +15,8 @@ impl From<&String> for Variant {
             "shuuro" => Self::Shuuro,
             "shuuroFairy" => Self::ShuuroFairy,
             "shuuroMini" => Self::ShuuroMini,
-            "shuuroStandard" => Self::Standard,
+            "standard" => Self::Standard,
+            "standardFairy" => Self::StandardFairy,
             _ => Self::Shuuro,
         }
     }
@@ -41,6 +43,7 @@ impl Variant {
             Self::ShuuroFairy => 870,
             Self::ShuuroMini => 200,
             Self::Standard => 0,
+            Self::StandardFairy => 0,
         }
     }
 }
@@ -51,7 +54,8 @@ impl ToString for Variant {
             Self::Shuuro => String::from("shuuro"),
             Self::ShuuroFairy => String::from("shuuroFairy"),
             Self::ShuuroMini => String::from("shuuroMini"),
-            Self::Standard => String::from("shuuroStandard"),
+            Self::Standard => String::from("standard"),
+            Self::StandardFairy => String::from("standardFairy"),
         }
     }
 }
