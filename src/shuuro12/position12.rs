@@ -1466,6 +1466,7 @@ pub mod position_tests {
                 [1, 0, 4],
                 [110, 100],
             ),
+            ("k", [0, 0, 0], [0, 0, 0], [870, 870]),
         ];
         for case in cases {
             let mut shop = Shop::<Square12>::default();
