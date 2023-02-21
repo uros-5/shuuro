@@ -38,7 +38,7 @@ impl Iterator for SquareIter {
         let current = self.current;
         self.current.incr();
         let index = current.index();
-        match 144.cmp(&index) {
+        match 64.cmp(&index) {
             Ordering::Greater => Some(Square8 { inner: index as u8 }),
             _ => None,
         }

@@ -191,7 +191,10 @@ impl BitBoard<Square8> for BB8<Square8> {
         if self.is_empty() {
             None
         } else {
-            Square8::create(self.0.trailing_zeros())
+            let calc = self.0.trailing_zeros() as u64;
+            let sq = Square8::from_index(calc as u8);
+            self.0 = calc;
+            sq
         }
     }
 
@@ -200,7 +203,10 @@ impl BitBoard<Square8> for BB8<Square8> {
         if self.is_empty() {
             None
         } else {
-            Square8::create(63 - self.0.leading_zeros())
+            let calc = 63 - self.0.leading_zeros() as u64;
+            let sq = Square8::from_index(calc as u8);
+            self.clear_at(sq.unwrap());
+            sq
         }
     }
 
@@ -210,7 +216,7 @@ impl BitBoard<Square8> for BB8<Square8> {
     }
 }
 
-fn square_bb(sq: &Square8) -> BB8<Square8> {
+pub fn square_bb(sq: &Square8) -> BB8<Square8> {
     SQUARE_BB[sq.index()]
 }
 
