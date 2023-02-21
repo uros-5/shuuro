@@ -422,3 +422,273 @@ impl Default for P8<Square8, BB8<Square8>> {
         }
     }
 }
+
+impl fmt::Display for P8<Square8, BB8<Square8>> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "+---+---+---+---+---+---+---+---+")?;
+
+        for rank in (0..8).rev() {
+            write!(f, "|")?;
+            for file in 0..8 {
+                if let Some(ref piece) =
+                    *self.piece_at(Square8::new(file, rank).unwrap())
+                {
+                    write!(f, "{piece}")?;
+                    let plinth: BB8<Square8> = &self.player_bb(Color::NoColor)
+                        & &Square8::new(file, rank).unwrap();
+                    if plinth.is_any() {
+                        write!(f, " L|")?;
+                    } else {
+                        write!(f, "  |")?;
+                    }
+                } else {
+                    let plinth: BB8<Square8> = &self.player_bb(Color::NoColor)
+                        & &Square8::new(file, rank).unwrap();
+                    if plinth.is_any() {
+                        write!(f, "{:>3}|", "L")?;
+                    } else {
+                        write!(f, "   |")?;
+                    }
+                }
+            }
+
+            //writeln!(f, " {}", (('a' as usize + row as usize) as u8) as char)?;
+            writeln!(f, "\n+---+---+---+---+---+---+---+---+")?;
+        }
+        writeln!(f, "a   b   c   d   e   f   g   h")?;
+        writeln!(
+            f,
+            "Side to move: {}",
+            if self.side_to_move == Color::Black {
+                "Black"
+            } else {
+                "White"
+            }
+        )?;
+
+        let fmt_hand = |color: Color, f: &mut fmt::Formatter| -> fmt::Result {
+            for pt in PieceType::iter().filter(|pt| pt.is_hand_piece()) {
+                let pc = Piece {
+                    piece_type: pt,
+                    color,
+                };
+                let n = self.hand.get(pc);
+
+                if n > 0 {
+                    write!(f, "{pc}{n} ")?;
+                }
+            }
+            Ok(())
+        };
+        write!(f, "Hand (Black): ")?;
+        fmt_hand(Color::Black, f)?;
+        writeln!(f)?;
+
+        write!(f, "Hand (White): ")?;
+        fmt_hand(Color::White, f)?;
+        writeln!(f)?;
+
+        write!(f, "Ply: {}", self.ply)?;
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+pub mod position_tests {
+
+    use crate::{
+        attacks::Attacks,
+        bitboard::BitBoard,
+        piece_type::PieceType,
+        position::{Board, MoveType, Outcome, Placement, Play, Sfen},
+        shuuro8::{
+            attacks8::Attacks8,
+            position8::P8,
+            square8::{consts::*, Square8},
+        },
+        square::Square,
+        Color, Move, Piece, Shop, Variant,
+    };
+
+    pub const START_POS: &str = "KR6/8/8/8/8/8/8/kr6 b - 1";
+
+    fn setup() {
+        Attacks8::init();
+    }
+
+    #[test]
+    fn piece_exist() {
+        setup();
+        let mut pos = P8::new();
+        pos.set_sfen(START_POS).unwrap();
+        let sq = Square8::from_index(56).unwrap();
+        let piece = Piece {
+            piece_type: PieceType::King,
+            color: Color::Black,
+        };
+        assert_eq!(Some(piece), *pos.piece_at(sq));
+    }
+
+    #[test]
+    fn player_bb() {
+        //
+        setup();
+        let cases: &[(&str, &[Square8], &[Square8], &[Square8])] = &[(
+            "RNBQKBNR/PPPPPPPP/3L03L0/8/5L02/2L05/pppppppp/rnbqkbnr w - 1",
+            &[A1, B1, C1, D1, E1, F1, G1, H1],
+            &[A8, B8, C8, D8, E8, F8, G8, H8],
+            &[D3, H3, F5, C6],
+        )];
+
+        let mut pos = P8::new();
+        for case in cases {
+            pos.set_sfen(case.0).expect("faled to parse SFEN string");
+            let black = pos.player_bb(Color::Black);
+            let white = pos.player_bb(Color::White);
+
+            assert_eq!(case.2.len(), black.count() - 8);
+            for sq in case.2 {
+                assert!((&black & sq).is_any());
+            }
+
+            assert_eq!(case.1.len(), white.count() - 8);
+            for sq in case.1 {
+                assert!((&white & sq).is_any());
+            }
+
+            let plinths = pos.player_bb(Color::NoColor);
+
+            for sq in case.3 {
+                assert!((&plinths & sq).is_any())
+            }
+        }
+    }
+
+    #[test]
+    fn pinned_bb() {
+        setup();
+
+        let cases: &[(&str, &[Square8], &[Square8])] = &[
+            ("4KR2/3B4/8/1b6/8/8/8/1k1r4 w - 1", &[D2], &[]),
+            ("6K1/5QR1/4B3/8/8/1b6/8/1k1r4 w - 1", &[], &[]),
+            (
+                "6K1/1p3QR1/4B3/4Q3/7B/1b6/4bb2/R2rkr1Q b - 1",
+                &[],
+                &[D8, F8, E7, F7],
+            ),
+        ];
+
+        let mut pos = P8::new();
+        for case in cases {
+            pos.set_sfen(case.0).expect("faled to parse SFEN string");
+            let white = pos.pinned_bb(Color::White);
+            let black = pos.pinned_bb(Color::Black);
+
+            assert_eq!(case.2.len(), black.count());
+            for sq in case.2 {
+                assert!((&black & sq).is_any());
+            }
+
+            assert_eq!(case.1.len(), white.count());
+            for sq in case.1 {
+                assert!((&white & sq).is_any());
+            }
+        }
+    }
+
+    #[test]
+    fn pawn_vs_knight() {
+        setup();
+        let sfen = "5K2/2N1LNR2/1B1p4/8/6Ln1/7q/2r5/2k1r3 b - 38";
+        let mut pos = P8::new();
+        pos.set_sfen(sfen).expect("failed to parse SFEN string");
+        let lm = pos.legal_moves(&Color::Black);
+        if let Some(b) = lm.get(&D3) {
+            assert!(b.count() == 2);
+        }
+    }
+
+    #[test]
+    fn pawn_not_pinned() {
+        setup();
+        let mut pos = P8::new();
+        pos.set_sfen("5K2/4PR2/1B1Q4/3N1N2/1B1p2n1/7q/2r5/2k1r3 w - 55")
+            .expect("failed to parse SFEN string");
+        let lm = pos.legal_moves(&Color::White);
+        if let Some(b) = lm.get(&E2) {
+            assert_eq!(b.count(), 1);
+        }
+    }
+
+    #[test]
+    fn pawn_check_king() {
+        setup();
+        let mut pos = P8::new();
+        pos.set_sfen("6K1/1p1pP1Rp/1B6/5N2/1B2Q1n1/7q/2r2N2/2k1r3 w - 1")
+            .expect("failed to parse SFEN string");
+        let in_check = pos.in_check(Color::White);
+        assert!(in_check);
+    }
+
+    #[test]
+    fn legal_moves_pawn() {
+        setup();
+        let cases = [("3Q2K1/4PL02/4pB2/8/8/3pp3/8/3kq3 b - 11", E3, 0)];
+        for case in cases {
+            let mut pos = P8::default();
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
+            let legal_moves = pos.legal_moves(&Color::White);
+            if let Some(b) = legal_moves.get(&case.1) {
+                assert_eq!(b.count(), case.2);
+            }
+        }
+    }
+
+    #[test]
+    fn check_while_pinned() {
+        setup();
+        let mut pos = P8::default();
+        pos.set_sfen("6K1/4P3/4pB2/8/3Q4/8/3r4/1Q1kq3 b - 50")
+            .expect("failed to parse sfen string");
+        let legal_moves = pos.legal_moves(&Color::Black);
+        if let Some(b) = legal_moves.get(&D7) {
+            assert_eq!(b.count(), 0);
+        }
+    }
+
+    #[test]
+    fn king_moves() {
+        setup();
+        let cases = [
+            ("1K1R1R2/8/8/8/8/8/8/4k3 b - 1", Color::Black, E8, 1),
+            ("1K1R4/8/8/8/8/8/8/4k2Q b - 1", Color::Black, E8, 2),
+            ("1K1R4/8/8/2Q5/8/1r6/1R6/1r2k3 w - 1", Color::White, B1, 4),
+            ("3R1K1r/6r1/8/2Q5/8/8/1R6/1r2k3 w - 1", Color::White, F1, 1),
+        ];
+        for case in cases {
+            let mut pos = P8::default();
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
+            let legal_moves = pos.legal_moves(&case.1);
+            if let Some(b) = legal_moves.get(&case.2) {
+                assert_eq!(b.count(), case.3);
+            }
+        }
+    }
+
+    #[test]
+    fn parse_sfen_hand() {
+        setup();
+        let cases = [
+            ("8/PPPPPPPP/8/8/8/8/pppppppp/8 b 2RAC2NQK2rac2nqk 1", 8),
+            ("8/PPPPPPPP/8/8/8/8/pppppppp/8 b 2R2BGAQK2r2bgaqk 1", 8),
+        ];
+        for case in cases {
+            let mut pos = P8::new();
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
+            pos.update_variant(Variant::StandardFairy);
+            assert_eq!(pos.get_hand(Color::Black).len(), case.1);
+            assert_eq!(pos.get_hand(Color::Black).len(), case.1);
+        }
+    }
+}

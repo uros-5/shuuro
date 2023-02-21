@@ -433,7 +433,7 @@ impl fmt::Display for P12<Square12, BB12<Square12>> {
                 if let Some(ref piece) =
                     *self.piece_at(Square12::new(file, rank).unwrap())
                 {
-                    write!(f, "{}", piece.to_string())?;
+                    write!(f, "{piece}")?;
                     let plinth: BB12<Square12> = &self
                         .player_bb(Color::NoColor)
                         & &Square12::new(file, rank).unwrap();
@@ -502,11 +502,10 @@ pub mod position_tests {
     use crate::{
         attacks::Attacks,
         bitboard::BitBoard,
-        piece_type::{PieceType, PieceTypeIter},
-        position::{Board, MoveType, Outcome, Placement, Play, Position, Sfen},
+        piece_type::PieceType,
+        position::{Board, MoveType, Outcome, Placement, Play, Sfen},
         shuuro12::{
             attacks12::Attacks12,
-            bitboard12::BB12,
             position12::P12,
             square12::{consts::*, Square12},
         },
@@ -559,12 +558,12 @@ pub mod position_tests {
             let blue = pos.player_bb(Color::Black);
             let red = pos.player_bb(Color::White);
 
-            assert_eq!(case.1.len(), blue.count() as usize);
+            assert_eq!(case.1.len(), { blue.count() });
             for sq in case.1 {
                 assert!((&blue & sq).is_any());
             }
 
-            assert_eq!(case.2.len(), red.count() as usize);
+            assert_eq!(case.2.len(), { red.count() });
             for sq in case.2 {
                 assert!((&red & sq).is_any());
             }
@@ -600,17 +599,17 @@ pub mod position_tests {
         let mut pos = P12::new();
         for case in cases {
             pos.set_sfen(case.0).expect("faled to parse SFEN string");
-            let blue = pos.pinned_bb(Color::Black);
-            let red = pos.pinned_bb(Color::White);
+            let black = pos.pinned_bb(Color::Black);
+            let white = pos.pinned_bb(Color::White);
 
-            assert_eq!(case.1.len(), blue.count());
+            assert_eq!(case.1.len(), black.count());
             for sq in case.1 {
-                assert!((&blue & sq).is_any());
+                assert!((&black & sq).is_any());
             }
 
-            assert_eq!(case.2.len(), red.count());
+            assert_eq!(case.2.len(), white.count());
             for sq in case.2 {
-                assert!((&red & sq).is_any());
+                assert!((&white & sq).is_any());
             }
         }
     }
@@ -675,6 +674,8 @@ pub mod position_tests {
         let mut pos = P12::default();
         pos.set_sfen("5K6/55PL0/3N8/2L09/5L06/8nL02/1L03Q4L01/7L04/57/57/L03pr6/5k1Q4 b - 50")
             .expect("failed to parse sfen string");
+        println!("{}", pos);
+        assert!(false);
         let legal_moves = pos.legal_moves(&Color::Black);
         if let Some(b) = legal_moves.get(&F11) {
             assert_eq!(b.count(), 0);
@@ -766,7 +767,7 @@ pub mod position_tests {
             if let Ok(result) = result {
                 assert_eq!(result.to_string(), case.5);
             } else {
-                assert_eq!(result.is_ok(), false);
+                assert!(result.is_err());
             }
         }
     }
@@ -1102,9 +1103,9 @@ pub mod position_tests {
             to: G4,
             promote: false,
         };
-        assert_eq!(true, pos.make_move(m).is_ok());
-        assert_eq!(true, pos.make_move(m2).is_ok());
-        assert_eq!(false, pos.make_move(m3).is_ok());
+        assert!(pos.make_move(m).is_ok());
+        assert!(pos.make_move(m2).is_ok());
+        assert!(pos.make_move(m3).is_err());
     }
 
     #[test]
@@ -1428,7 +1429,7 @@ pub mod position_tests {
             position.update_variant(Variant::ShuuroFairy);
             position.set_sfen(case.0).expect("error while parsing sfen");
             let check = position.in_check(case.1);
-            assert_eq!(check, true);
+            assert!(check);
         }
     }
 
