@@ -1,4 +1,6 @@
-use crate::{attacks::Attacks, bitboard::BitBoard, plinths_set::PlinthGen, Square};
+use crate::{
+    attacks::Attacks, bitboard::BitBoard, plinths_set::PlinthGen, Square,
+};
 
 use super::{attacks12::Attacks12, bitboard12::BB12, square12::Square12};
 use std::{
@@ -20,9 +22,15 @@ where
     _s: PhantomData<S>,
 }
 
-impl PlinthGen<Square12, BB12<Square12>> for PlinthGen12<Square12, BB12<Square12>> {
+impl PlinthGen<Square12, BB12<Square12>>
+    for PlinthGen12<Square12, BB12<Square12>>
+{
     fn king_moves(&self, sq: Square12) -> BB12<Square12> {
-        Attacks12::get_non_sliding_attacks(crate::PieceType::King, &sq, crate::Color::White)
+        Attacks12::get_non_sliding_attacks(
+            crate::PieceType::King,
+            &sq,
+            crate::Color::White,
+        )
     }
 
     fn plinths_count(&self, _count: usize) -> bool {
