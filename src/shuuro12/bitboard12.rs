@@ -4,7 +4,9 @@ use crate::Square;
 use super::square12::Square12;
 use core::fmt;
 use std::marker::PhantomData;
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
+use std::ops::{
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not,
+};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct BB12<S: Square>(pub [u16; 9], PhantomData<S>);
@@ -78,8 +80,8 @@ impl Not for BB12<Square12> {
     #[inline(always)]
     fn not(self) -> Self::Output {
         BB12::new([
-            !self.0[0], !self.0[1], !self.0[2], !self.0[3], !self.0[4], !self.0[5], !self.0[6],
-            !self.0[7], !self.0[8],
+            !self.0[0], !self.0[1], !self.0[2], !self.0[3], !self.0[4],
+            !self.0[5], !self.0[6], !self.0[7], !self.0[8],
         ])
     }
 }
@@ -90,8 +92,8 @@ impl Not for &BB12<Square12> {
     #[inline(always)]
     fn not(self) -> Self::Output {
         BB12::new([
-            !self.0[0], !self.0[1], !self.0[2], !self.0[3], !self.0[4], !self.0[5], !self.0[6],
-            !self.0[7], !self.0[8],
+            !self.0[0], !self.0[1], !self.0[2], !self.0[3], !self.0[4],
+            !self.0[5], !self.0[6], !self.0[7], !self.0[8],
         ])
     }
 }
@@ -262,7 +264,9 @@ impl BitBoard<Square12> for BB12<Square12> {
     fn pop(&mut self) -> Option<Square12> {
         for i in 0..9 {
             if self.0[i] != 0 {
-                let sq = Square12::from_index(self.0[i].trailing_zeros() as u8 + (i as u8 * 16));
+                let sq = Square12::from_index(
+                    self.0[i].trailing_zeros() as u8 + (i as u8 * 16),
+                );
                 self.0[i] &= self.0[i] - 1;
                 return sq;
             }
@@ -297,7 +301,11 @@ impl fmt::Display for BB12<Square12> {
             write!(f, "|")?;
             for file in 0..12 {
                 let sq = Square12::new(file, rank).unwrap();
-                write!(f, " {} |", if (self & &sq).is_empty() { " " } else { "X" })?;
+                write!(
+                    f,
+                    " {} |",
+                    if (self & &sq).is_empty() { " " } else { "X" }
+                )?;
             }
             //writeln!(f, " {}", (b'a' + rank) as char)?;
             writeln!(f, "\n+---+---+---+---+---+---+---+---+---+---+---+---+")?;

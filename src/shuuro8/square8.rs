@@ -25,6 +25,10 @@ impl Square8 {
     pub fn incr(&mut self) {
         self.inner += 1;
     }
+
+    pub const fn create(inner: u32) -> Option<Square8> {
+        Some(Square8 { inner: inner as u8 })
+    }
 }
 
 impl Iterator for SquareIter {
