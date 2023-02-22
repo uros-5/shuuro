@@ -12,8 +12,11 @@ use crate::{
 };
 
 use super::{
-    attacks8::Attacks8, bitboard8::BB8, board_defs::RANK_BB,
-    plinths_set8::PlinthGen8, square8::Square8,
+    attacks8::Attacks8,
+    bitboard8::BB8,
+    board_defs::{FILE_BB, RANK_BB},
+    plinths_set8::PlinthGen8,
+    square8::Square8,
 };
 
 impl Position<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
@@ -371,6 +374,10 @@ impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.is_stalemate(&self.side_to_move)?;
         Ok(Outcome::MoveOk)
     }
+
+    fn file_bb(&self, file: usize) -> BB8<Square8> {
+        FILE_BB[file]
+    }
 }
 
 #[derive(Clone)]
@@ -689,6 +696,149 @@ pub mod position_tests {
             pos.update_variant(Variant::StandardFairy);
             assert_eq!(pos.get_hand(Color::Black).len(), case.1);
             assert_eq!(pos.get_hand(Color::Black).len(), case.1);
+        }
+    }
+
+    #[test]
+    fn move_candidates() {
+        setup();
+
+        let cases = [("RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr b - 1", 12)];
+        for case in cases {
+            let mut pos = P8::new();
+            pos.set_sfen(case.0).expect("failed to parse SFEN string");
+
+            let mut sum = 0;
+            for sq in Square8::iter() {
+                let pc = pos.piece_at(sq);
+
+                if let Some(pc) = *pc {
+                    if pc.color == pos.side_to_move() {
+                        sum += pos
+                            .move_candidates(&sq, pc, MoveType::Plinth)
+                            .count();
+                    }
+                }
+            }
+
+            assert_eq!(12, case.1);
+        }
+    }
+
+    #[test]
+    fn check_while_knight_on_plinth() {
+        setup();
+        let sfen = "RNBQKB1R/PPPPPLNPP/5P2/7b/8/8/pppppppp/rnbqk1nr b - 11";
+        let mut pos = P8::new();
+        pos.set_sfen(sfen).expect("failed to parse SFEN string");
+        let legal_moves = pos.legal_moves(&Color::Black);
+        if let Some(b) = legal_moves.get(&F2) {
+            assert_eq!(b.count(), 4);
+        }
+    }
+
+    #[test]
+    fn pawn_captures_last_rank() {
+        setup();
+        let cases = [
+            ("8/1K6/8/8/8/8/4P3/1k3n2 w - 1", Color::White, E7, F8),
+            ("7R/1K4p1/8/8/8/8/8/1k6 b - 1", Color::Black, G2, H1),
+        ];
+        for case in cases {
+            let mut position = P8::new();
+            position
+                .set_sfen(case.0)
+                .expect("failed to parse sfen string");
+
+            let pawn_moves = position.legal_moves(&case.1);
+            if let Some(b) = pawn_moves.get(&case.2) {
+                assert_eq!(b.count(), 2);
+            }
+            let m = Move::Normal {
+                from: case.2,
+                to: case.3,
+                promote: false,
+            };
+            let result = position.make_move(m);
+            assert!(result.is_ok());
+            assert_eq!(
+                position.piece_at(case.3).unwrap().piece_type,
+                PieceType::Queen
+            );
+        }
+    }
+
+    #[test]
+    fn knight_jumps_move() {
+        setup();
+        let cases = [
+            ("1K6/3N4/8/1L06/2L05/n7/8/3k1r2 b - 17", "a6", "c5"),
+            ("1K6/8/3N4/1Ln6/8/8/8/k4r2 w - 17", "d3", "b4"),
+        ];
+        for case in cases {
+            let mut position = P8::new();
+            position
+                .set_sfen(case.0)
+                .expect("failed to parse sfen string");
+
+            let result = position.play(case.1, case.2);
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn in_check() {
+        setup();
+
+        let test_cases = [
+            ("8/5rK1/3n4/8/8/8/8/k7 w - 1", false, true),
+            ("8/5r2/3n4/2K5/8/8/8/k1Q5 b - 3", true, false),
+            (
+                "R1BQ1RK1/P3PPPP/2N2N2/B7/8/3p4/pp1L0pppp/rn1qkbnr w - 1",
+                false,
+                false,
+            ),
+            ("8/1Q4K1/5L0N1/8/8/2L05/1b5r/1k2q3 w - 4", false, false),
+        ];
+
+        let mut pos = P8::new();
+        for case in test_cases.iter() {
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
+            assert_eq!(case.1, pos.in_check(Color::Black));
+            assert_eq!(case.2, pos.in_check(Color::White));
+        }
+    }
+
+    #[test]
+    fn is_stalemate() {
+        setup();
+
+        let cases = [
+            ("8/8/8/8/8/1K6/8/k1Q5 b - 1", Color::Black),
+            ("8/8/8/4K3/8/4NN2/8/7k b - 1", Color::Black),
+            ("6K1/8/6k1/2b1b3/8/8/8/8 w - 1", Color::White),
+        ];
+
+        for case in cases {
+            let mut pos = P8::new();
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
+            if let Err(res) = pos.is_stalemate(&case.1) {
+                assert_eq!(res.to_string(), "stalemate detected");
+            }
+        }
+    }
+
+    #[test]
+    fn detect_insufficient_material() {
+        setup();
+        let cases = [
+            ("1L03L02/1p6/4K3/5P2/2k5/1L06/5L02/8 b - 1", true),
+            ("8/8/1p2K3/5L02/2k5/5P2/1L06/8 b - 1", false),
+        ];
+        for case in cases {
+            let mut pos = P8::new();
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
+            assert_eq!(pos.detect_insufficient_material().is_err(), case.1);
         }
     }
 }

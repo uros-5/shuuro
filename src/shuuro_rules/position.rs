@@ -770,6 +770,9 @@ where
             return Err(MoveError::DrawByInsufficientMaterial);
         }
         for c in Color::iter() {
+            if c == Color::NoColor {
+                continue;
+            }
             let mut bb = B::empty();
             for i in major {
                 bb |= &(&self.player_bb(c) & &self.type_bb(&i));
@@ -780,7 +783,36 @@ where
             for i in minor {
                 bb |= &(&self.player_bb(c) & &self.type_bb(&i));
             }
-            if bb.count() == 1 && bb.count() == 0 {
+            if bb.count() == 1 {
+                continue;
+            }
+            for pawn in &self.player_bb(c) & &self.type_bb(&PieceType::Pawn) {
+                let file = pawn.file();
+                let file = self.file_bb(file as usize);
+                let mut file_with_plinths =
+                    &file & &self.player_bb(Color::NoColor);
+                if file_with_plinths.is_empty() {
+                    return Ok(());
+                } else if c == Color::White {
+                    if let Some(sq) = file_with_plinths.pop_reverse() {
+                        if sq.index() <= pawn.index() {
+                            bb |= &pawn;
+                            // return Ok(());
+                        }
+                    }
+                    continue;
+                } else if c == Color::Black {
+                    if let Some(sq) = file_with_plinths.pop() {
+                        println!("{}, {}", sq.index(), pawn.index());
+                        if sq.index() >= pawn.index() {
+                            bb |= &pawn;
+                            // return Ok(());
+                        }
+                    }
+                    continue;
+                }
+            }
+            if bb.count() == 0 {
                 continue;
             }
 
@@ -1100,6 +1132,9 @@ where
     /// Make move from `Move`. It can be of three types.
     /// It's useful for all three stages of the game.
     fn make_move(&mut self, m: Move<S>) -> Result<Outcome, MoveError>;
+
+    /// Returns BitBoard with rank. Panics if file is bigger than expected.
+    fn file_bb(&self, rank: usize) -> B;
 }
 
 #[derive(Debug)]

@@ -12,8 +12,11 @@ use crate::{
 };
 
 use super::{
-    attacks12::Attacks12, bitboard12::BB12, board_defs::RANK_BB,
-    plinths_set12::PlinthGen12, square12::Square12,
+    attacks12::Attacks12,
+    bitboard12::BB12,
+    board_defs::{FILE_BB, RANK_BB},
+    plinths_set12::PlinthGen12,
+    square12::Square12,
 };
 
 impl Position<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
@@ -371,6 +374,10 @@ impl Play<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         self.is_stalemate(&self.side_to_move)?;
         Ok(Outcome::MoveOk)
     }
+
+    fn file_bb(&self, file: usize) -> BB12<Square12> {
+        FILE_BB[file]
+    }
 }
 
 #[derive(Clone)]
@@ -674,8 +681,6 @@ pub mod position_tests {
         let mut pos = P12::default();
         pos.set_sfen("5K6/55PL0/3N8/2L09/5L06/8nL02/1L03Q4L01/7L04/57/57/L03pr6/5k1Q4 b - 50")
             .expect("failed to parse sfen string");
-        println!("{}", pos);
-        assert!(false);
         let legal_moves = pos.legal_moves(&Color::Black);
         if let Some(b) = legal_moves.get(&F11) {
             assert_eq!(b.count(), 0);
@@ -728,11 +733,6 @@ pub mod position_tests {
 
             if let Some(pc) = *pc {
                 if pc.color == pos.side_to_move() {
-                    println!(
-                        "piece: {}, count: {}",
-                        pc,
-                        pos.move_candidates(&sq, pc, MoveType::Plinth).count(),
-                    );
                     sum +=
                         pos.move_candidates(&sq, pc, MoveType::Plinth).count();
                 }

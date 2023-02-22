@@ -12,7 +12,7 @@ use super::{
     square8::Square8,
 };
 
-static mut NON_SLIDING_ATTACKS: [[[BB8<Square8>; 64]; 6]; 2] =
+pub static mut NON_SLIDING_ATTACKS: [[[BB8<Square8>; 64]; 6]; 2] =
     [[[BB8::new(0); 64]; 6]; 2];
 
 static mut GIRAFFE_ATTACKS: [BB8<Square8>; 64] = [BB8::new(0); 64];
