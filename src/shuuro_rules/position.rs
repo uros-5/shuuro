@@ -1,4 +1,5 @@
 use std::{
+    clone::Clone,
     cmp::Ordering,
     collections::HashMap,
     hash::Hash,
@@ -67,6 +68,7 @@ where
     B: BitBoard<S>,
     A: Attacks<S, B>,
     Self: Sized
+        + Clone
         + Board<S, B, A>
         + Sfen<S, B, A>
         + Placement<S, B, A>
