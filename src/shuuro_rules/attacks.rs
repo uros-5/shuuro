@@ -13,7 +13,7 @@ pub enum Ray {
     SouthWest,
 }
 
-pub trait Attacks<S, B>
+pub trait Attacks<S, B>: Sized + Clone
 where
     S: Square,
     B: BitBoard<S>,

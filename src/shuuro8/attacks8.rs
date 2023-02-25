@@ -23,6 +23,7 @@ pub static mut RAYS: [[BB8<Square8>; 64]; 8] = [[BB8::new(0); 64]; 8];
 
 static mut BETWEEN_BB: [[BB8<Square8>; 64]; 64] = [[BB8::new(0); 64]; 64];
 
+#[derive(Clone)]
 pub struct Attacks8<S, B>
 where
     S: Square,
