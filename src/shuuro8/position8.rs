@@ -255,8 +255,8 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.type_bb[p.piece_type.index()] |= &sq;
     }
 
-    fn empty_placement_board(&self) -> &str {
-        "8/8/8/8/8/8/8/8 w"
+    fn empty_placement_board() -> String {
+        String::from("8/8/8/8/8/8/8/8 w")
     }
 }
 

@@ -672,7 +672,7 @@ where
         None
     }
 
-    fn empty_placement_board(&self) -> &str;
+    fn empty_placement_board() -> String;
 }
 
 pub trait Play<S, B, A>
