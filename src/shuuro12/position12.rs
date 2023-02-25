@@ -254,6 +254,10 @@ impl Placement<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         self.color_bb[p.color.index()] |= &sq;
         self.type_bb[p.piece_type.index()] |= &sq;
     }
+
+    fn empty_placement_board(&self) -> &str {
+        "57/57/57/57/57/57/57/57/57/57/57/57 w"
+    }
 }
 
 impl Play<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
@@ -1471,7 +1475,7 @@ pub mod position_tests {
         ];
         for case in cases {
             let mut shop = Shop::<Square12>::default();
-            shop.change_variant(&String::from("shuuroFairy"));
+            shop.update_variant(Variant::ShuuroFairy);
             shop.set_hand(case.0);
 
             assert_eq!(

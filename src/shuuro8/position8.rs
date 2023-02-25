@@ -254,6 +254,10 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.color_bb[p.color.index()] |= &sq;
         self.type_bb[p.piece_type.index()] |= &sq;
     }
+
+    fn empty_placement_board(&self) -> &str {
+        "8/8/8/8/8/8/8/8 w"
+    }
 }
 
 impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>

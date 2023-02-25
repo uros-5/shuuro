@@ -32,8 +32,8 @@ pub struct Shop<S: Square> {
 
 impl<S: Square> Shop<S> {
     /// Change variant
-    pub fn change_variant(&mut self, variant: &String) {
-        self.variant = self.variant.change_variant(variant);
+    pub fn update_variant(&mut self, variant: Variant) {
+        self.variant = variant;
         let credit = self.variant.start_credit();
         self.credit = [credit, credit];
     }
