@@ -42,7 +42,7 @@ impl Variant {
             Self::Shuuro => 800,
             Self::ShuuroFairy => 870,
             Self::ShuuroMini => 200,
-            Self::Standard => 0,
+            Self::Standard => 200,
             Self::StandardFairy => 0,
         }
     }

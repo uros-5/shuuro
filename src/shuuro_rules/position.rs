@@ -787,9 +787,7 @@ where
             for i in minor {
                 bb |= &(&self.player_bb(c) & &self.type_bb(&i));
             }
-            if bb.count() == 1 {
-                continue;
-            }
+            let minor_count = bb.count();
             for pawn in &self.player_bb(c) & &self.type_bb(&PieceType::Pawn) {
                 let file = pawn.file();
                 let file = self.file_bb(file as usize);
@@ -807,7 +805,6 @@ where
                     continue;
                 } else if c == Color::Black {
                     if let Some(sq) = file_with_plinths.pop() {
-                        println!("{}, {}", sq.index(), pawn.index());
                         if sq.index() >= pawn.index() {
                             bb |= &pawn;
                             // return Ok(());
@@ -816,7 +813,8 @@ where
                     continue;
                 }
             }
-            if bb.count() == 0 {
+            println!("doneee");
+            if bb.count() == 0 || minor_count == bb.count() {
                 continue;
             }
 
