@@ -577,6 +577,7 @@ where
             B::empty()
         };
         let checks = self.checks(&p.color);
+        println!("{checks}");
         if checks.is_any() {
             return checks;
         } else if !self.is_king_placed(p.color)
@@ -597,31 +598,36 @@ where
         if king.is_empty() {
             return B::empty();
         }
-        let mut all;
         let occupied_bb = &self.occupied_bb() | &self.player_bb(Color::NoColor);
-        for p in [
-            PieceType::Queen,
-            PieceType::Rook,
-            PieceType::Bishop,
-            PieceType::Chancellor,
-            PieceType::ArchBishop,
-        ] {
-            if !self.variant().can_buy(&p) {
-                continue;
-            }
-            let them =
-                &self.type_bb(&p) & &self.player_bb(attacked_color.flip());
-            for i in them {
-                all = A::get_sliding_attacks(p, &i, occupied_bb);
-                if (&all & &king).is_any() {
+        let king_sq = (&king | &B::empty()).pop().unwrap();
+
+        for kp in [PieceType::Rook, PieceType::Bishop] {
+            let king_attacks =
+                A::get_sliding_attacks(kp, &king_sq, occupied_bb);
+            for p in [
+                PieceType::Queen,
+                PieceType::Rook,
+                PieceType::Bishop,
+                PieceType::Chancellor,
+                PieceType::ArchBishop,
+            ] {
+                if !self.variant().can_buy(&p) {
+                    continue;
+                }
+                let them =
+                    &self.type_bb(&p) & &self.player_bb(attacked_color.flip());
+
+                if (&them & &king_attacks).is_any() {
                     match *attacked_color {
                         Color::White => {
                             let ranks = self.white_placement_attacked_ranks();
-                            return &(&ranks & &all) & &!&king;
+                            let attacks = &(&ranks & &king_attacks) & &!&king;
+                            return attacks;
                         }
                         Color::Black => {
                             let ranks = self.black_placement_attacked_ranks();
-                            return &(&ranks & &all) & &!&king;
+                            let attacks = &(&ranks & &king_attacks) & &!&king;
+                            return attacks;
                         }
                         Color::NoColor => {
                             return B::empty();
