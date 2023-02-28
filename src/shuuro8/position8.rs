@@ -228,7 +228,7 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     }
 
     fn black_placement_attacked_ranks(&self) -> BB8<Square8> {
-        &RANK_BB[6] | &RANK_BB[7]
+        &RANK_BB[5] | &RANK_BB[6]
     }
 
     fn black_ranks(&self) -> [usize; 3] {

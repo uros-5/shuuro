@@ -34,6 +34,10 @@ impl PlinthGen<Square8, BB8<Square8>> for PlinthGen8<Square8, BB8<Square8>> {
     fn plinths_count(&self, _count: usize) -> bool {
         _count == 4
     }
+
+    fn only_two_plinths(&self) -> bool {
+        true
+    }
 }
 
 impl PlinthGen8<Square8, BB8<Square8>> {

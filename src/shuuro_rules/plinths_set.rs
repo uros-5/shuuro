@@ -23,7 +23,11 @@ where
         S::from_sfen(&format!("{}{}", files[file], ranks[rank])[..]).unwrap()
     }
 
-    fn two_plinths<const R: usize, const F: usize>(&self, ranks: &[u8; R], files: &[char; F]) -> B {
+    fn two_plinths<const R: usize, const F: usize>(
+        &self,
+        ranks: &[u8; R],
+        files: &[char; F],
+    ) -> B {
         let mut rang = thread_rng();
         let sq1: S = self.gen_square(&mut rang, ranks, files);
         #[allow(clippy::op_ref)]
@@ -50,15 +54,28 @@ where
         right_files: &[char; F],
     ) -> B {
         let mut bb = B::empty();
+        let mut other_rank = true;
         for i in [left_files, right_files] {
             for j in [left_ranks, right_ranks] {
+                if !other_rank {
+                    other_rank = true;
+                    continue;
+                }
                 let new_bb = self.two_plinths(j, i);
                 bb |= &new_bb;
+                if self.only_two_plinths() {
+                    other_rank = false;
+                    break;
+                }
             }
             if self.plinths_count(bb.count()) {
                 break;
             }
         }
         bb
+    }
+
+    fn only_two_plinths(&self) -> bool {
+        false
     }
 }
