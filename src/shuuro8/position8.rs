@@ -863,4 +863,14 @@ pub mod position_tests {
         );
         assert!(true);
     }
+
+    #[test]
+    fn black_pawns_placement() {
+        setup();
+        let mut position = P8::default();
+        position
+            .set_sfen("3QKB2/8/2L05/L07/8/4L02L0/8/2q1k3 b PPPpppppp 1")
+            .ok();
+        assert!(position.place(Piece::from_sfen('p').unwrap(), C7).is_some());
+    }
 }

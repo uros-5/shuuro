@@ -536,8 +536,8 @@ where
 
     fn empty_squares(&self, p: Piece) -> B {
         let calc = |p: Piece, list: [usize; 3]| -> B {
-            for file in list {
-                let mut bb = self.rank_bb(file);
+            for rank in list {
+                let mut bb = self.rank_bb(rank);
                 bb &= &!&self.player_bb(p.color);
                 let plinths = self.player_bb(Color::NoColor);
                 if bb.is_empty() {
@@ -557,7 +557,7 @@ where
                         if bb.is_empty() {
                             continue;
                         } else if self.can_pawn_move(p) {
-                            if file == 0 || file == 11 {
+                            if rank == 0 || rank == self.black_ranks()[0] {
                                 continue;
                             }
                             return bb;
