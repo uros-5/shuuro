@@ -36,6 +36,7 @@ impl<S: Square> Shop<S> {
         self.variant = variant;
         let credit = self.variant.start_credit();
         self.credit = [credit, credit];
+        self.update_pricing();
     }
 
     /// Update pricing
