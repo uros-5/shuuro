@@ -236,7 +236,7 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     }
 
     fn king_files<const K: usize>(&self) -> [&str; K] {
-        let temp: [&str; 6] = ["c", "d", "e", "f", "g", "h"];
+        let temp: [&str; 6] = ["b", "c", "d", "e", "f", "g"];
         let mut files: [&str; K] = [""; K];
         for (i, v) in temp.iter().enumerate() {
             files[i] = v;
@@ -872,5 +872,17 @@ pub mod position_tests {
             .set_sfen("3QKB2/8/2L05/L07/8/4L02L0/8/2q1k3 b PPPpppppp 1")
             .ok();
         assert!(position.place(Piece::from_sfen('p').unwrap(), C7).is_some());
+    }
+
+    #[test]
+    fn check_in_placement() {
+        setup();
+        let mut position = P8::default();
+        position
+            .set_sfen("2KQ4/8/1L06/3L04/7L0/5L02/8/2q2k2 w 6p3P 4")
+            .ok();
+        println!("{position}");
+        assert!(position.place(Piece::from_sfen('P').unwrap(), C2).is_some());
+        // assert!(false);
     }
 }
