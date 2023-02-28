@@ -1,6 +1,6 @@
 use crate::shuuro_rules::PieceType;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum Variant {
     Shuuro,
     ShuuroFairy,

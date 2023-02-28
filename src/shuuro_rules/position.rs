@@ -577,7 +577,6 @@ where
             B::empty()
         };
         let checks = self.checks(&p.color);
-        println!("{checks}");
         if checks.is_any() {
             return checks;
         } else if !self.is_king_placed(p.color)

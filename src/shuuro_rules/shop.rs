@@ -38,6 +38,13 @@ impl<S: Square> Shop<S> {
         self.credit = [credit, credit];
     }
 
+    /// Update pricing
+    fn update_pricing(&mut self) {
+        if self.variant == Variant::Standard {
+            self.pricing[PieceType::Pawn.index()] = (10, 12);
+        }
+    }
+
     pub fn variant(&self) -> Variant {
         self.variant
     }
