@@ -236,7 +236,7 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     }
 
     fn king_files<const K: usize>(&self) -> [&str; K] {
-        let temp: [&str; 6] = ["d", "e", "f", "g", "h", "i"];
+        let temp: [&str; 6] = ["c", "d", "e", "f", "g", "h"];
         let mut files: [&str; K] = [""; K];
         for (i, v) in temp.iter().enumerate() {
             files[i] = v;
@@ -844,5 +844,23 @@ pub mod position_tests {
             pos.set_sfen(case.0).expect("failed to parse sfen string");
             assert_eq!(pos.detect_insufficient_material().is_err(), case.1);
         }
+    }
+
+    #[test]
+    fn king_place_moves() {
+        setup();
+        let mut position = P8::new();
+        position.update_variant(Variant::Standard);
+        position
+            .set_sfen("8/8/3L04/1L06/8/L01L05/8/8 w kqnKQR 0")
+            .ok();
+        position.place(
+            Piece {
+                piece_type: PieceType::King,
+                color: Color::White,
+            },
+            C1,
+        );
+        assert!(true);
     }
 }

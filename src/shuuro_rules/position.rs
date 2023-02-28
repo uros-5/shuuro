@@ -518,6 +518,7 @@ where
         let plinths = self.player_bb(Color::NoColor);
         let mut all = |num: usize| -> B {
             for file in files {
+                println!("{file}{num}");
                 bb |= &S::from_sfen(&format!("{file}{num}")[..]).unwrap();
             }
             bb &= &!&plinths;
