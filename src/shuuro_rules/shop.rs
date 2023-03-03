@@ -41,7 +41,9 @@ impl<S: Square> Shop<S> {
 
     /// Update pricing
     fn update_pricing(&mut self) {
-        if self.variant == Variant::Standard {
+        if self.variant == Variant::Standard
+            || self.variant == Variant::StandardFairy
+        {
             self.pricing[PieceType::Pawn.index()] = (10, 12);
         }
     }
