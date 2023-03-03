@@ -35,25 +35,12 @@ impl SubVariant {
         }
     }
 
-    pub fn parse(&self, variant: Variant, s: &str) -> Option<SubVariant> {
-        match variant {
-            Variant::Standard => {
-                if s == "standard" {
-                    return Some(SubVariant::Standard);
-                } else if s == "standardPlacement" {
-                    return Some(SubVariant::StandardPlacement);
-                }
-                None
-            }
-            Variant::StandardFairy => {
-                if s == "standardFairy1" {
-                    return Some(SubVariant::StandardFairy1);
-                } else if s == "standardFairy2" {
-                    return Some(SubVariant::StandardFairy2);
-                }
-                None
-            }
-            _ => None,
+    pub fn is_valid(&self, variant: Variant) -> bool {
+        match self {
+            SubVariant::Standard
+            | SubVariant::StandardFairy1
+            | SubVariant::StandardFairy2
+            | SubVariant::StandardPlacement => variant == Variant::Standard,
         }
     }
 
