@@ -6,6 +6,7 @@ pub enum SubVariant {
     StandardFairy1,
     StandardFairy2,
     StandardPlacement,
+    NoSubVariant,
 }
 
 impl SubVariant {
@@ -23,6 +24,7 @@ impl SubVariant {
             SubVariant::StandardPlacement => {
                 "8/PPPPPPPP/8/8/8/8/pppppppp/8 w 2R2BQK2r2bqk 1"
             }
+            _ => "",
         }
     }
 
@@ -32,6 +34,7 @@ impl SubVariant {
             SubVariant::StandardFairy1 => 2,
             SubVariant::StandardFairy2 => 2,
             SubVariant::StandardPlacement => 1,
+            _ => 0,
         }
     }
 
@@ -59,5 +62,21 @@ impl SubVariant {
 
     pub fn index(self) -> usize {
         self as usize
+    }
+
+    pub fn valid_index(index: u8) -> bool {
+        index < 4
+    }
+}
+
+impl From<u8> for SubVariant {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => SubVariant::Standard,
+            1 => SubVariant::StandardFairy1,
+            2 => SubVariant::StandardFairy2,
+            3 => SubVariant::StandardPlacement,
+            _ => SubVariant::NoSubVariant,
+        }
     }
 }
