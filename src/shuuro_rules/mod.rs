@@ -10,6 +10,7 @@ pub mod plinths_set;
 pub mod position;
 pub mod shop;
 pub mod square;
+pub mod subvariant;
 pub mod variant;
 
 pub use self::color::{Color, ColorIter};
@@ -20,4 +21,5 @@ pub use hand::Hand;
 pub use moves::*;
 pub use shop::Shop;
 pub use square::Square;
+pub use subvariant::SubVariant;
 pub use variant::Variant;
