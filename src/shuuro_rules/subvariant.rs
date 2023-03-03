@@ -6,7 +6,6 @@ pub enum SubVariant {
     StandardFairy1,
     StandardFairy2,
     StandardPlacement,
-    NoSubVariant,
 }
 
 impl SubVariant {
@@ -24,7 +23,6 @@ impl SubVariant {
             SubVariant::StandardPlacement => {
                 "8/PPPPPPPP/8/8/8/8/pppppppp/8 w 2R2BQK2r2bqk 1"
             }
-            _ => "",
         }
     }
 
@@ -34,7 +32,6 @@ impl SubVariant {
             SubVariant::StandardFairy1 => 2,
             SubVariant::StandardFairy2 => 2,
             SubVariant::StandardPlacement => 1,
-            _ => 0,
         }
     }
 
@@ -69,14 +66,16 @@ impl SubVariant {
     }
 }
 
-impl From<u8> for SubVariant {
-    fn from(value: u8) -> Self {
+impl TryFrom<u8> for SubVariant {
+    type Error = &'static str;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => SubVariant::Standard,
-            1 => SubVariant::StandardFairy1,
-            2 => SubVariant::StandardFairy2,
-            3 => SubVariant::StandardPlacement,
-            _ => SubVariant::NoSubVariant,
+            0 => Ok(SubVariant::Standard),
+            1 => Ok(SubVariant::StandardFairy1),
+            2 => Ok(SubVariant::StandardFairy2),
+            3 => Ok(SubVariant::StandardPlacement),
+            _ => Err("not subvariant"),
         }
     }
 }
