@@ -67,7 +67,7 @@ impl SubVariant {
 }
 
 impl TryFrom<u8> for SubVariant {
-    type Error = &'static str;
+    type Error = Option<u8>;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
@@ -75,7 +75,7 @@ impl TryFrom<u8> for SubVariant {
             1 => Ok(SubVariant::StandardFairy1),
             2 => Ok(SubVariant::StandardFairy2),
             3 => Ok(SubVariant::StandardPlacement),
-            _ => Err("not subvariant"),
+            _ => Err(None),
         }
     }
 }
