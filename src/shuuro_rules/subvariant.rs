@@ -37,10 +37,12 @@ impl SubVariant {
 
     pub fn is_valid(&self, variant: Variant) -> bool {
         match self {
-            SubVariant::Standard
-            | SubVariant::StandardFairy1
-            | SubVariant::StandardFairy2
-            | SubVariant::StandardPlacement => variant == Variant::Standard,
+            SubVariant::Standard | SubVariant::StandardPlacement => {
+                variant == Variant::Standard
+            }
+            SubVariant::StandardFairy1 | SubVariant::StandardFairy2 => {
+                variant == Variant::StandardFairy
+            }
         }
     }
 
