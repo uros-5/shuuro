@@ -1213,7 +1213,8 @@ where
                         without_plinth &= &position.player_bb(p.color.flip());
                         let up_sq = &!&position.player_bb(p.color.flip())
                             & &self.pawn_move::<B, A, P>(sq, &p.color);
-                        without_plinth |= &up_sq;
+                        without_plinth |=
+                            &(&up_sq & &!&position.player_bb(my_color));
                         without_plinth &= &!&position.player_bb(Color::NoColor);
                         without_plinth
                     } else {

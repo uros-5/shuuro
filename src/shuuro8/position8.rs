@@ -885,4 +885,16 @@ pub mod position_tests {
         assert!(position.place(Piece::from_sfen('P').unwrap(), C2).is_some());
         // assert!(false);
     }
+
+    #[test]
+    fn black_pawn_moves() {
+        setup();
+        let mut position = P8::default();
+        position
+            .set_sfen("NNNKN3/PPPPPP1P/PL0PL0N1P1/5P2/8/ppPbpL0pL0/ppppbp1p/1bb1k1b1 b - 48")
+            .ok();
+        println!("{}", position);
+        let lm = position.legal_moves(&Color::Black);
+        assert_eq!(1, lm.get(&B7).unwrap().count());
+    }
 }
