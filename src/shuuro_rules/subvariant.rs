@@ -12,13 +12,13 @@ impl SubVariant {
     pub fn starting_position(&self) -> &str {
         match self {
             SubVariant::Standard => {
-                "RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr w - 1"
+                "RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr w - 1"
             }
             SubVariant::StandardFairy1 => {
-                "RNA1KCNR/PPPPPPPP/8/8/8/8/pppppppp/rnck1anr w - 1"
+                "RNA1KCNR/PPPPPPPP/8/8/8/8/pppppppp/rna1kcnr w - 1"
             }
             SubVariant::StandardFairy2 => {
-                "RGB1KBAR/PPPPPPPP/8/8/8/8/pppppppp/rabk1bgr w - 1"
+                "RGB1KBAR/PPPPPPPP/8/8/8/8/pppppppp/rgb1kbar w - 1"
             }
             SubVariant::StandardPlacement => {
                 "8/PPPPPPPP/8/8/8/8/pppppppp/8 w 2R2B2NQK2r2b2nqk 1"
