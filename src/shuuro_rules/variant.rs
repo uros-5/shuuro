@@ -42,8 +42,8 @@ impl Variant {
             Self::Shuuro => 800,
             Self::ShuuroFairy => 870,
             Self::ShuuroMini => 200,
-            Self::Standard => 200,
-            Self::StandardFairy => 270,
+            Self::Standard => 350,
+            Self::StandardFairy => 400,
         }
     }
 }
