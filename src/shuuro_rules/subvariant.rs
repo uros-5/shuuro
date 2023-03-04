@@ -21,7 +21,7 @@ impl SubVariant {
                 "RGB1KBAR/PPPPPPPP/8/8/8/8/pppppppp/rabk1bgr w - 1"
             }
             SubVariant::StandardPlacement => {
-                "8/PPPPPPPP/8/8/8/8/pppppppp/8 w 2R2BQK2r2bqk 1"
+                "8/PPPPPPPP/8/8/8/8/pppppppp/8 w 2R2B2NQK2r2b2nqk 1"
             }
         }
     }
