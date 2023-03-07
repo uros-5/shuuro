@@ -1075,6 +1075,7 @@ where
             PieceType::Pawn,
             PieceType::Chancellor,
             PieceType::ArchBishop,
+            PieceType::Giraffe,
         ]
         .iter()
         {
