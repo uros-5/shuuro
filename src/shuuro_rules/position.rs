@@ -775,7 +775,7 @@ where
             PieceType::Chancellor,
             PieceType::ArchBishop,
         ];
-        let minor = [PieceType::Knight, PieceType::Bishop];
+        let minor = [PieceType::Knight, PieceType::Bishop, PieceType::Giraffe];
         if self.occupied_bb().count() == 2 {
             return Err(MoveError::DrawByInsufficientMaterial);
         }
