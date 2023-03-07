@@ -546,7 +546,8 @@ where
                 match p.piece_type {
                     PieceType::Knight
                     | PieceType::Chancellor
-                    | PieceType::ArchBishop => {
+                    | PieceType::ArchBishop
+                    | PieceType::Giraffe => {
                         return bb;
                     }
                     PieceType::King => {
