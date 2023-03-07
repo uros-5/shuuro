@@ -881,7 +881,6 @@ pub mod position_tests {
         position
             .set_sfen("2KQ4/8/1L06/3L04/7L0/5L02/8/2q2k2 w 6p3P 4")
             .ok();
-        println!("{position}");
         assert!(position.place(Piece::from_sfen('P').unwrap(), C2).is_some());
         // assert!(false);
     }
@@ -893,7 +892,6 @@ pub mod position_tests {
         position
             .set_sfen("NNNKN3/PPPPPP1P/PL0PL0N1P1/5P2/8/ppPbpL0pL0/ppppbp1p/1bb1k1b1 b - 48")
             .ok();
-        println!("{}", position);
         let lm = position.legal_moves(&Color::Black);
         assert_eq!(1, lm.get(&B7).unwrap().count());
     }

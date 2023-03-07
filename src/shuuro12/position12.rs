@@ -1622,8 +1622,13 @@ pub mod position_tests {
     #[test]
     fn detect_insufficient_material() {
         setup();
-        let mut position = P12::default();
-        position.set_sfen("57/57/2K9/4L0N6/7L04/3L07L0/9L02/7L04/57/57/5L0p5/Ln4k6 b - 34").ok();
-        assert!(position.detect_insufficient_material().is_ok());
+        let cases = [
+            "57/57/2K9/4L0N6/7L04/3L07L0/9L02/7L04/57/57/5L0p5/Ln4k6 b - 34",
+            "6GKGGG1/57/57/57/1L09L0/3L03L04/57/1L055/8L03/2L09/57/4ggLggk3 - b 1"];
+        for case in cases {
+            let mut position = P12::default();
+            position.set_sfen(case).ok();
+            assert!(position.detect_insufficient_material().is_ok());
+        }
     }
 }

@@ -794,6 +794,9 @@ where
                 bb |= &(&self.player_bb(c) & &self.type_bb(&i));
             }
             let minor_count = bb.count();
+            if minor_count >= 3 {
+                return Ok(());
+            }
             for pawn in &self.player_bb(c) & &self.type_bb(&PieceType::Pawn) {
                 let file = pawn.file();
                 let file = self.file_bb(file as usize);
