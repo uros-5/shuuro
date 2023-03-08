@@ -9,13 +9,16 @@ pub enum PieceType {
     Bishop = 3,
     Knight = 4,
     Pawn = 5,
-    Plinth = 6,
+    Chancellor = 6,
+    ArchBishop = 7,
+    Giraffe = 8,
+    Plinth = 9,
 }
 
 impl PieceType {
     /// Returns an iterator over all variants.
     pub fn iter() -> PieceTypeIter {
-        PieceTypeIter::new()
+        PieceTypeIter::default()
     }
 
     /// Creates a new instance of `PieceType` from SFEN formatted string.
@@ -27,6 +30,9 @@ impl PieceType {
             'b' | 'B' => PieceType::Bishop,
             'n' | 'N' => PieceType::Knight,
             'p' | 'P' => PieceType::Pawn,
+            'c' | 'C' => PieceType::Chancellor,
+            'a' | 'A' => PieceType::ArchBishop,
+            'g' | 'G' => PieceType::Giraffe,
             'L' => PieceType::Plinth,
             _ => return None,
         })
@@ -45,8 +51,8 @@ impl PieceType {
         use self::PieceType::*;
 
         match self {
-            Pawn => return Some(PieceType::Queen),
-            _ => return None,
+            Pawn => Some(PieceType::Queen),
+            _ => None,
         }
     }
 
@@ -64,8 +70,8 @@ impl PieceType {
         use self::PieceType::*;
 
         match self {
-            Queen => return Some(Pawn),
-            _ => return None,
+            Queen => Some(Pawn),
+            _ => None,
         }
     }
 
@@ -79,7 +85,14 @@ impl PieceType {
                 | PieceType::King
                 | PieceType::Knight
                 | PieceType::Pawn
+                | PieceType::ArchBishop
+                | PieceType::Chancellor
+                | PieceType::Giraffe
         )
+    }
+
+    pub fn is_fairy_piece(&self) -> bool {
+        matches!(self, Self::Chancellor | Self::ArchBishop | Self::Giraffe)
     }
 
     /// Converts the instance into the unique number for array indexing purpose.
@@ -101,6 +114,9 @@ impl fmt::Display for PieceType {
                 PieceType::Rook => "r",
                 PieceType::Queen => "q",
                 PieceType::Plinth => "L",
+                PieceType::Chancellor => "c",
+                PieceType::ArchBishop => "a",
+                PieceType::Giraffe => "g",
             }
         )
     }
@@ -110,8 +126,8 @@ pub struct PieceTypeIter {
     current: Option<PieceType>,
 }
 
-impl PieceTypeIter {
-    pub fn new() -> PieceTypeIter {
+impl Default for PieceTypeIter {
+    fn default() -> Self {
         PieceTypeIter {
             current: Some(PieceType::King),
         }
@@ -132,7 +148,10 @@ impl iter::Iterator for PieceTypeIter {
                 PieceType::Bishop => Some(PieceType::Knight),
                 PieceType::Knight => Some(PieceType::Pawn),
                 PieceType::Pawn => Some(PieceType::Plinth),
-                PieceType::Plinth => None,
+                PieceType::Plinth => Some(PieceType::ArchBishop),
+                PieceType::ArchBishop => Some(PieceType::Chancellor),
+                PieceType::Chancellor => Some(PieceType::Giraffe),
+                PieceType::Giraffe => None,
             };
         }
 
@@ -153,8 +172,9 @@ mod tests {
             ('n', PieceType::Knight),
             ('b', PieceType::Bishop),
             ('p', PieceType::Pawn),
+            ('g', PieceType::Giraffe),
         ];
-        let ng_cases = ['\0', ' ', '_', 'a', 'z', '+'];
+        let ng_cases = ['\0', ' ', '_', 'J', 'z', '+'];
         for case in ok_cases.iter() {
             assert_eq!(Some(case.1), PieceType::from_sfen(case.0));
             assert_eq!(
@@ -186,10 +206,12 @@ mod tests {
 
     #[test]
     fn promote() {
-        let iterator = PieceTypeIter::new();
+        let iterator = PieceTypeIter::default();
         for i in iterator {
             match i {
-                PieceType::Pawn => assert_eq!(Some(PieceType::Queen), i.promote()),
+                PieceType::Pawn => {
+                    assert_eq!(Some(PieceType::Queen), i.promote())
+                }
                 _ => assert!(i.promote().is_none()),
             }
         }
@@ -197,10 +219,12 @@ mod tests {
 
     #[test]
     fn unpromote() {
-        let iterator = PieceTypeIter::new();
+        let iterator = PieceTypeIter::default();
         for i in iterator {
             match i {
-                PieceType::Queen => assert_eq!(Some(PieceType::Pawn), i.unpromote()),
+                PieceType::Queen => {
+                    assert_eq!(Some(PieceType::Pawn), i.unpromote())
+                }
                 _ => {
                     assert!(i.unpromote().is_none())
                 }

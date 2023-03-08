@@ -11,7 +11,8 @@ A library for implementing Shuuro application.
 
 ```rust
 use shuuro::{Shop, PieceType, Piece, Color, Move};
-let mut shop = Shop::default();
+use shuuro::shuuro12::square12::Square12;
+let mut shop = Shop::<Square12>::default();
 for i in 0..5 {
     let piece = Piece{piece_type: PieceType::Queen, color: Color::Black};
     shop.play(Move::Buy { piece });
@@ -24,8 +25,9 @@ assert_eq!(shop.credit(Color::Blue), 800 - 110 * 3);
 
 ```rust
 use shuuro::{Position, PieceType, Color, consts::{D1, F12}, Piece, init};
-init();
-let mut pos = Position::default();
+use shuuro::shuuro12::{P12, Attack12};
+Attacks12::init();
+let mut pos = P12::default();
 pos.set_hand("KQQNNBkrrrqnnPPP");
  
 let white_king = (Piece{ piece_type: PieceType::King, color: Color::White }, D1);
@@ -39,8 +41,8 @@ assert_eq!(pos.generate_sfen(), "3K8/57/57/57/57/57/57/57/57/57/57/5k6 r q3r2n2Q
 ```rust
 use shuuro::*;
 use shuuro::consts::*;
-init();
-let mut pos = Position::default();
+Attacks12::init();
+let mut pos = P12::default();
 pos.set_sfen("1K2RR6/PPP9/57/57/57/57/57/57/L05L05/pppppp6/1k64/57 r - 1");
 let move_ = Move::Normal {from: B1, to: A1, promote: false};
 pos.make_move(move_);

@@ -1,4 +1,4 @@
-use crate::{Color, Piece, PieceType};
+use crate::shuuro_rules::{Color, Piece, PieceType};
 
 /// Manages the number of each pieces in each player's hand.
 ///
@@ -19,7 +19,7 @@ use crate::{Color, Piece, PieceType};
 
 #[derive(Debug, Clone, Default)]
 pub struct Hand {
-    inner: [u8; 12],
+    inner: [u8; 18],
 }
 
 impl Hand {
@@ -38,7 +38,7 @@ impl Hand {
     /// Increments a number of the given piece.
     pub fn increment(&mut self, p: Piece) {
         if let Some(i) = Hand::index(p) {
-            self.inner[i] += 1
+            self.inner[i] += 1;
         }
     }
 
@@ -78,9 +78,8 @@ impl Hand {
     /// Set hand with all pieces from str.
     pub fn set_hand(&mut self, s: &str) {
         for i in s.chars() {
-            match Piece::from_sfen(i) {
-                Some(i) => self.increment(i),
-                None => (),
+            if let Some(i) = Piece::from_sfen(i) {
+                self.increment(i)
             }
         }
     }
@@ -93,9 +92,12 @@ impl Hand {
             PieceType::Bishop => 3,
             PieceType::Knight => 4,
             PieceType::Pawn => 5,
+            PieceType::Chancellor => 6,
+            PieceType::ArchBishop => 7,
+            PieceType::Giraffe => 8,
             _ => return None,
         };
-        let offset = if p.color == Color::Black { 0 } else { 6 };
+        let offset = if p.color == Color::Black { 0 } else { 9 };
 
         Some(base + offset)
     }

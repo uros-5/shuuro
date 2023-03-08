@@ -22,19 +22,6 @@ pub enum Color {
 }
 
 impl Color {
-    pub fn iter() -> ColorIter {
-        ColorIter {
-            current: Some(Color::Black),
-        }
-    }
-    /// Returns an iterator of all variants.
-    pub fn from_char(ch: char) -> Option<Color> {
-        match ch {
-            'b' => Some(Color::Black),
-            'w' => Some(Color::White),
-            _ => Some(Color::NoColor),
-        }
-    }
     /// Returns the color of the opposite side.
     ///
     /// # Examples
@@ -44,6 +31,7 @@ impl Color {
     ///
     /// assert_eq!(Color::White, Color::Black.flip());
     /// assert_eq!(Color::Black, Color::White.flip());
+    /// ```
     pub fn flip(&self) -> Color {
         match self {
             Color::White => Color::Black,
@@ -52,11 +40,34 @@ impl Color {
         }
     }
 
+    /// Convert char to `Color`.
+    /// # Examples
+    ///
+    /// ```
+    /// use shuuro::Color;
+    /// assert_eq!(Color::White, Color::from_char('w').unwrap());
+    /// assert_eq!(Color::Black, Color::from_char('b').unwrap());
+    pub fn from_char(ch: char) -> Option<Color> {
+        match ch {
+            'b' => Some(Color::Black),
+            'w' => Some(Color::White),
+            _ => Some(Color::NoColor),
+        }
+    }
+
     pub fn index(self) -> usize {
         self as usize
     }
 
-    pub fn to_string(self) -> String {
+    pub fn iter() -> ColorIter {
+        ColorIter {
+            current: Some(Color::Black),
+        }
+    }
+}
+
+impl ToString for Color {
+    fn to_string(&self) -> String {
         match self {
             Color::White => String::from("w"),
             Color::Black => String::from("b"),
@@ -105,5 +116,20 @@ mod tests {
     fn flip() {
         assert_eq!(Color::White, Color::Black.flip());
         assert_eq!(Color::Black, Color::White.flip());
+    }
+
+    #[test]
+    fn from_char() {
+        assert_eq!(Some(Color::White), Color::from_char('w'));
+        assert_eq!(Some(Color::Black), Color::from_char('b'));
+        assert_eq!(Some(Color::NoColor), Color::from_char('l'));
+        assert_eq!(Some(Color::NoColor), Color::from_char('d'));
+    }
+
+    #[test]
+    fn from_index() {
+        assert_eq!(Color::Black.index(), 0);
+        assert_eq!(Color::White.index(), 1);
+        assert_eq!(Color::NoColor.index(), 2);
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Color, PieceType, Square};
+use crate::shuuro_rules::{Color, PieceType};
 use std::fmt;
 
 /// Represents a piece on the game board.
@@ -17,14 +17,11 @@ impl Piece {
             } else {
                 Color::White
             }
+        } else if c == 'l' {
+            Color::NoColor
         } else {
-            if c == 'l' {
-                Color::NoColor
-            } else {
-                Color::Black
-            }
+            Color::Black
         };
-
         PieceType::from_sfen(c).map(|piece_type| Piece { piece_type, color })
     }
     /// Returns an instance of `Piece` after promotion.
@@ -85,14 +82,14 @@ impl Piece {
             color: self.color.flip(),
         }
     }
-    /// Tests if it is legal to place this piece at the given square.
-    pub fn is_placeable_at(self, sq: Square) -> bool {
-        match self.piece_type {
-            PieceType::Pawn => sq.relative_file(self.color) > 0,
-            PieceType::Knight => sq.relative_file(self.color) > 1,
-            _ => true,
-        }
-    }
+    // Tests if it is legal to place this piece at the given square.
+    // pub fn is_placeable_at(self, sq: Square) -> bool {
+    //     match self.piece_type {
+    //         PieceType::Pawn => sq.relative_file(self.color) > 0,
+    //         PieceType::Knight => sq.relative_file(self.color) > 1,
+    //         _ => true,
+    //     }
+    // }
 }
 
 impl fmt::Display for Piece {
@@ -107,7 +104,7 @@ impl fmt::Display for Piece {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::piece_type::PieceTypeIter;
+    use crate::shuuro_rules::piece_type::PieceTypeIter;
 
     #[test]
     fn from_sfen() {
@@ -126,7 +123,7 @@ mod tests {
             ('Q', PieceType::Queen, Color::White),
             ('L', PieceType::Plinth, Color::NoColor),
         ];
-        let ng_cases = ['\0', ' ', '_', 'a', 'z', '+', 'A', 'Z'];
+        let ng_cases = ['\0', ' ', '_', 'j', 'z', '+', 'J', 'Z'];
 
         for case in ok_cases.iter() {
             let pc = Piece::from_sfen(case.0);
@@ -175,7 +172,7 @@ mod tests {
 
     #[test]
     fn promote() {
-        let iterator = PieceTypeIter::new();
+        let iterator = PieceTypeIter::default();
         for i in iterator {
             match i {
                 PieceType::Pawn => {
@@ -227,7 +224,7 @@ mod tests {
 
     #[test]
     fn unpromote() {
-        let iterator = PieceTypeIter::new();
+        let iterator = PieceTypeIter::default();
         for i in iterator {
             match i {
                 PieceType::Queen => {
