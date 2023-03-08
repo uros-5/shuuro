@@ -4,11 +4,13 @@
 ////!
 ////! # Examples
 ////!
+////! Generics in Shop have to implement `Square` trait.
+////!
 ////! Shuuro shop - buying pieces:
 ////! ```
 ////! use shuuro::{Shop, PieceType, Piece, Color, Move};
-////!
-////! let mut shop = Shop::default();
+////! use shuuro::shuuro12::Square12;
+////! let mut shop = Shop::<Square12>::default();
 ////! for i in 0..5 {
 ////!     let piece = Piece{piece_type: PieceType::Queen, color: Color::Black};
 ////!     shop.play(Move::Buy { piece });
@@ -19,10 +21,13 @@
 ////!
 ////! Shuuro deploy - placing pieces on board:
 ////!
+////! Here we place pieces for 12x12 board. This library support also 8x8 board.
+////!
 ////! ```
 ////! use shuuro::{Position, PieceType, Color, consts::{D1, F12}, Piece, init};
-////! init();
-////! let mut pos = Position::default();
+////! use shuuro::shuuro12::{P12, Attacks12};
+////! Attacks12::init();
+////! let mut pos = P12::default();
 ////! pos.set_hand("KQQNNBkrrrqnnPPP");
 ////!
 ////! let white_king = (Piece{ piece_type: PieceType::King, color: Color::White }, D1);
@@ -36,8 +41,8 @@
 ////! ```
 ////! use shuuro::*;
 ////! use shuuro::consts::*;
-////! init();
-////! let mut pos = Position::default();
+////! Attacks12::init();
+////! let mut pos = P12::default();
 ////! pos.set_sfen("1K2RR6/PPP9/57/57/57/57/57/57/L05L05/pppppp6/1k64/57 w - 0");
 ////! let move_ = Move::Normal {from: B1, to: A1, promote: false};
 ////! pos.make_move(move_);
