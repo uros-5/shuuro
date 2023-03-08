@@ -512,14 +512,14 @@ pub mod position_tests {
         attacks::Attacks,
         bitboard::BitBoard,
         piece_type::PieceType,
-        position::{Board, MoveType, Outcome, Placement, Play, Sfen},
+        position::{Board, MoveType, Placement, Play},
         shuuro8::{
             attacks8::Attacks8,
             position8::P8,
             square8::{consts::*, Square8},
         },
         square::Square,
-        Color, Move, Piece, Shop, Variant,
+        Color, Move, Piece, Variant,
     };
 
     pub const START_POS: &str = "KR6/8/8/8/8/8/8/kr6 b - 1";
@@ -725,7 +725,7 @@ pub mod position_tests {
                 }
             }
 
-            assert_eq!(12, case.1);
+            assert_eq!(sum, case.1);
         }
     }
 
@@ -854,14 +854,20 @@ pub mod position_tests {
         position
             .set_sfen("8/8/3L04/1L06/8/L01L05/8/8 w kqnKQR 0")
             .ok();
-        position.place(
-            Piece {
-                piece_type: PieceType::King,
-                color: Color::White,
-            },
-            C1,
-        );
-        assert!(true);
+        if position
+            .place(
+                Piece {
+                    piece_type: PieceType::King,
+                    color: Color::White,
+                },
+                C1,
+            )
+            .is_some()
+        {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
     }
 
     #[test]
