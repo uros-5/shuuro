@@ -415,8 +415,11 @@ where
         for c in s.chars() {
             match c {
                 n if n.is_numeric() => {
-                    if let Some(n) = n.to_digit(9) {
-                        if num_pieces != 0 {
+                    if let Some(n) = n.to_digit(19) {
+                        if n == 9 {
+                            num_pieces = n as u8;
+                            continue;
+                        } else if num_pieces != 0 {
                             let num2 = format!("{}{}", num_pieces, n as u8)
                                 .parse::<u8>()
                                 .unwrap();

@@ -721,6 +721,7 @@ pub mod position_tests {
         pos.set_sfen("6KL04/3L08/57/57/9L02/4L07/6L04L0/3L08/57/57/1L055/57 b kr12pQ9P 1")
             .expect("failed to parse sfen string");
         assert_eq!(pos.hand(Piece::from_sfen('p').unwrap()), 12);
+        assert_eq!(pos.hand(Piece::from_sfen('P').unwrap()), 9);
     }
 
     #[test]
