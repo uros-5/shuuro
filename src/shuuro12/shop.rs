@@ -43,7 +43,7 @@ mod tests5 {
             let mut shop = Shop::<Square12>::default();
             shop.set_hand(case.0);
             assert_eq!(shop.credit(case.1), 800 - case.2);
-            assert_eq!(shop.to_sfen(case.1), case.3);
+            assert_eq!(shop.to_sfen(case.1, true), case.3);
         }
     }
 }

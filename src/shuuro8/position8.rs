@@ -175,8 +175,8 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.hand.get(p)
     }
 
-    fn get_hand(&self, c: Color) -> String {
-        self.hand.to_sfen(c)
+    fn get_hand(&self, c: Color, long: bool) -> String {
+        self.hand.to_sfen(c, long)
     }
 
     fn set_hand(&mut self, s: &str) {
@@ -197,6 +197,10 @@ impl Sfen<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
 {
     fn clear_hand(&mut self) {
         self.hand.clear();
+    }
+
+    fn new_hand(&mut self, hand: Hand) {
+        self.hand = hand;
     }
 
     fn insert_in_hand(&mut self, p: Piece, num: u8) {
@@ -691,15 +695,27 @@ pub mod position_tests {
     fn parse_sfen_hand() {
         setup();
         let cases = [
-            ("8/PPPPPPPP/8/8/8/8/pppppppp/8 b 2RAC2NQK2rac2nqk 1", 8),
-            ("8/PPPPPPPP/8/8/8/8/pppppppp/8 b 2R2BGAQK2r2bgaqk 1", 8),
+            (
+                "8/PPPPPPPP/8/8/8/8/pppppppp/8 b 2RAC2NQK2rac2nqk 1",
+                8,
+                Variant::StandardFairy,
+            ),
+            (
+                "8/PPPPPPPP/8/8/8/8/pppppppp/8 b 2R2BGAQK2r2bgaqk 1",
+                8,
+                Variant::StandardFairy,
+            ),
+            // (
+            //     "4K3/8/8/1L01L04/4L03/6L01/8/8 b RBNNNPPPPPPPPPPPPkqrbbnnp 1",
+            //     8,
+            //     Variant::Standard,
+            // ),
         ];
         for case in cases {
             let mut pos = P8::new();
+            pos.update_variant(case.2);
             pos.set_sfen(case.0).expect("failed to parse sfen string");
-            pos.update_variant(Variant::StandardFairy);
-            assert_eq!(pos.get_hand(Color::Black).len(), case.1);
-            assert_eq!(pos.get_hand(Color::Black).len(), case.1);
+            assert_eq!(pos.get_hand(Color::Black, true).len(), case.1);
         }
     }
 

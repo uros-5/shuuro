@@ -30,8 +30,10 @@ impl Hand {
 
     /// Sets a number of the given piece.
     pub fn set(&mut self, p: Piece, num: u8) {
-        if let Some(i) = Hand::index(p) {
-            self.inner[i] = num;
+        if let Some(index) = Hand::index(p) {
+            for _ in 0..num {
+                self.inner[index] += 1;
+            }
         }
     }
 
@@ -57,7 +59,7 @@ impl Hand {
     }
 
     /// Converts hand to sfen.
-    pub fn to_sfen(&self, c: Color) -> String {
+    pub fn to_sfen(&self, c: Color, long: bool) -> String {
         let mut sum = String::from("");
         for pt in PieceType::iter() {
             if !pt.eq(&PieceType::Plinth) {
@@ -67,8 +69,12 @@ impl Hand {
                     color: c,
                 };
                 let counter = self.get(piece);
-                for _i in 0..counter {
-                    sum.push_str(&format!("{}", piece.to_string()));
+                if long {
+                    for _i in 0..counter {
+                        sum.push_str(&piece.to_string());
+                    }
+                } else {
+                    sum.push_str(&format!("{}{}", counter, &piece.to_string()));
                 }
             }
         }
@@ -102,3 +108,49 @@ impl Hand {
         Some(base + offset)
     }
 }
+
+impl From<&str> for Hand {
+    fn from(value: &str) -> Self {
+        let mut hand = Hand::default();
+
+        let mut num_pieces: u8 = 0;
+
+        for c in value.chars() {
+            match c {
+                n if n.is_numeric() => {
+                    if let Some(n) = n.to_digit(19) {
+                        if n == 9 {
+                            num_pieces = n as u8;
+                            continue;
+                        } else if num_pieces != 0 {
+                            let num2 = format!("{}{}", num_pieces, n as u8)
+                                .parse::<u8>()
+                                .unwrap();
+                            num_pieces = num2;
+                            continue;
+                        }
+                        num_pieces = n as u8;
+                    }
+                }
+                s => {
+                    match Piece::from_sfen(s) {
+                        Some(p) => hand.set(
+                            p,
+                            if num_pieces == 0 { 1 } else { num_pieces },
+                        ),
+                        None => return hand,
+                    };
+                    num_pieces = 0;
+                }
+            }
+        }
+
+        hand
+    }
+}
+
+// impl ToString for Hand {
+//     fn to_string(&self) -> String {
+//         todo!()
+//     }
+// }

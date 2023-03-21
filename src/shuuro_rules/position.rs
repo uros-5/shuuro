@@ -9,8 +9,8 @@ use std::{
 use itertools::Itertools;
 
 use crate::{
-    attacks::Attacks, bitboard::BitBoard, Color, Move, MoveError, MoveRecord,
-    Piece, PieceType, SfenError, Square, Variant,
+    attacks::Attacks, bitboard::BitBoard, Color, Hand, Move, MoveError,
+    MoveRecord, Piece, PieceType, SfenError, Square, Variant,
 };
 
 /// Outcome stores information about outcome after move.
@@ -155,7 +155,7 @@ where
     /// Get hand count for Piece.
     fn hand(&self, p: Piece) -> u8;
     /// Get hand in form of String
-    fn get_hand(&self, c: Color) -> String;
+    fn get_hand(&self, c: Color, long: bool) -> String;
     /// Set hand from str.
     fn set_hand(&mut self, s: &str);
     /// Decrement player hand.
@@ -312,7 +312,10 @@ where
 
         format!("{} {} {} {}", board, color, hand, self.ply())
     }
+
     fn clear_hand(&mut self);
+
+    fn new_hand(&mut self, hand: Hand);
 
     fn insert_in_hand(&mut self, p: Piece, num: u8);
 
@@ -411,36 +414,7 @@ where
             return Ok(());
         }
 
-        let mut num_pieces: u8 = 0;
-        for c in s.chars() {
-            match c {
-                n if n.is_numeric() => {
-                    if let Some(n) = n.to_digit(19) {
-                        if n == 9 {
-                            num_pieces = n as u8;
-                            continue;
-                        } else if num_pieces != 0 {
-                            let num2 = format!("{}{}", num_pieces, n as u8)
-                                .parse::<u8>()
-                                .unwrap();
-                            num_pieces = num2;
-                            continue;
-                        }
-                        num_pieces = n as u8;
-                    }
-                }
-                s => {
-                    match Piece::from_sfen(s) {
-                        Some(p) => self.insert_in_hand(
-                            p,
-                            if num_pieces == 0 { 1 } else { num_pieces },
-                        ),
-                        None => return Err(SfenError::IllegalPieceType),
-                    };
-                    num_pieces = 0;
-                }
-            }
-        }
+        self.new_hand(Hand::from(s));
 
         Ok(())
     }
@@ -654,8 +628,8 @@ where
             let sfen =
                 self.generate_sfen().split(' ').next().unwrap().to_string();
             let hand = {
-                let s = self.get_hand(Color::White)
-                    + &self.get_hand(Color::Black)[..];
+                let s = self.get_hand(Color::White, false)
+                    + &self.get_hand(Color::Black, false);
                 if s.is_empty() {
                     String::from(" ")
                 } else {

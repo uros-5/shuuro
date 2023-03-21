@@ -175,8 +175,8 @@ impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         self.hand.get(p)
     }
 
-    fn get_hand(&self, c: Color) -> String {
-        self.hand.to_sfen(c)
+    fn get_hand(&self, c: Color, long: bool) -> String {
+        self.hand.to_sfen(c, long)
     }
 
     fn set_hand(&mut self, s: &str) {
@@ -197,6 +197,10 @@ impl Sfen<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
 {
     fn clear_hand(&mut self) {
         self.hand.clear();
+    }
+
+    fn new_hand(&mut self, hand: Hand) {
+        self.hand = hand;
     }
 
     fn insert_in_hand(&mut self, p: Piece, num: u8) {
@@ -1363,7 +1367,7 @@ pub mod position_tests {
             });
             assert_eq!(file.count(), case.2);
         }
-        assert_eq!(position_set.get_hand(Color::Black), "rrbn");
+        assert_eq!(position_set.get_hand(Color::Black, true), "rrbn");
     }
 
     #[test]

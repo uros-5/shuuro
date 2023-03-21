@@ -99,8 +99,8 @@ impl<S: Square> Shop<S> {
         }
     }
     /// Converts entire hand by color to string.
-    pub fn to_sfen(&self, c: Color) -> String {
-        self.hand.to_sfen(c)
+    pub fn to_sfen(&self, c: Color, long: bool) -> String {
+        self.hand.to_sfen(c, long)
     }
 
     /// Get how much pieces are left in hand.
