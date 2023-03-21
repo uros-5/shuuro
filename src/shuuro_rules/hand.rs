@@ -83,11 +83,8 @@ impl Hand {
 
     /// Set hand with all pieces from str.
     pub fn set_hand(&mut self, s: &str) {
-        for i in s.chars() {
-            if let Some(i) = Piece::from_sfen(i) {
-                self.increment(i)
-            }
-        }
+        let hand = Hand::from(s);
+        self.inner = hand.inner;
     }
 
     fn index(p: Piece) -> Option<usize> {
