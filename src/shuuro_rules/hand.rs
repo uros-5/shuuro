@@ -73,7 +73,7 @@ impl Hand {
                     for _i in 0..counter {
                         sum.push_str(&piece.to_string());
                     }
-                } else {
+                } else if counter > 0 {
                     sum.push_str(&format!("{}{}", counter, &piece.to_string()));
                 }
             }
