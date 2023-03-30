@@ -9,8 +9,8 @@ use std::{
 use itertools::Itertools;
 
 use crate::{
-    attacks::Attacks, bitboard::BitBoard, Color, Hand, Move, MoveError,
-    MoveRecord, Piece, PieceType, SfenError, Square, Variant,
+    attacks::Attacks, bitboard::BitBoard, Color, Hand, Move, MoveData,
+    MoveError, MoveRecord, Piece, PieceType, SfenError, Square, Variant,
 };
 
 /// Outcome stores information about outcome after move.
@@ -425,7 +425,9 @@ where
         let move_history = self.get_move_history();
         if !move_history.is_empty() {
             sfen.push_str(format!(" {} ", self.ply()).as_str());
-            sfen.push_str(&move_history.last().unwrap().to_sfen());
+            let last = move_history.last().unwrap();
+            sfen.push_str(&last.to_sfen());
+            sfen.push_str(&last.format());
         }
         self.insert_sfen(&sfen);
     }
@@ -1028,6 +1030,29 @@ where
         }
     }
 
+    fn gen_move_data(
+        &self,
+        legal_moves: &HashMap<S, B>,
+        (from, to): (S, S),
+        piece: Piece,
+        move_data: MoveData,
+    ) -> MoveData {
+        let color = self.player_bb(piece.color);
+        let pieces = self.type_bb(&piece.piece_type);
+        let all = &color & &pieces;
+        for p in all {
+            if let Some(targets) = legal_moves.get(&p) {
+                if (targets & &to).is_any() {
+                    if from.file() == p.file() {
+                        return move_data.precise(true, false);
+                    }
+                    return move_data.precise(false, true);
+                }
+            }
+        }
+        move_data
+    }
+
     /// Check if player is in stalemate.
     fn is_stalemate(&self, color: &Color) -> Result<(), MoveError> {
         let moves = self.legal_moves(color);
@@ -1117,12 +1142,130 @@ where
         move_type.moves(self, &bb, p, *sq)
     }
 
-    /// Make move from `Move`. It can be of three types.
-    /// It's useful for all three stages of the game.
-    fn make_move(&mut self, m: Move<S>) -> Result<Outcome, MoveError>;
-
     /// Returns BitBoard with rank. Panics if file is bigger than expected.
     fn file_bb(&self, rank: usize) -> B;
+
+    fn update_after_move(
+        &mut self,
+        from: S,
+        to: S,
+        placed: Piece,
+        moved: Piece,
+        captured: Option<Piece>,
+        opponent: Color,
+    );
+
+    fn game_status(&self) -> Outcome;
+
+    /// Make move from `Move`. It can be of three types.
+    /// It's useful for all three stages of the game.
+    fn make_move(&mut self, m: Move<S>) -> Result<Outcome, MoveError> {
+        let mut promoted = false;
+        let stm = self.side_to_move();
+        let opponent = stm.flip();
+        let (from, to) = m.info();
+        let moved = self
+            .piece_at(from)
+            .ok_or(MoveError::Inconsistent("No piece found"))?;
+        let captured = *self.piece_at(to);
+        let outcome = Outcome::Checkmate { color: opponent };
+        let legal_moves = self.legal_moves(&stm);
+
+        if moved.color != stm {
+            return Err(MoveError::Inconsistent(
+                "The piece is not for the side to move",
+            ));
+        } else if self.game_status() == outcome {
+            return Err(MoveError::Inconsistent("Match is over."));
+        }
+
+        match captured {
+            Some(_i) => {
+                if moved.piece_type == PieceType::Pawn
+                    && to.in_promotion_zone(moved.color)
+                {
+                    promoted = true;
+                }
+            }
+            None => {
+                if moved.piece_type == PieceType::Pawn
+                    && to.in_promotion_zone(moved.color)
+                {
+                    promoted = true;
+                }
+            }
+        }
+
+        if let Some(attacks) = legal_moves.get(&from) {
+            if (attacks & &to).is_empty() {
+                return Err(MoveError::Inconsistent(
+                    "The piece cannot move to there",
+                ));
+            }
+        } else {
+            return Err(MoveError::Inconsistent(
+                "The piece cannot move to there",
+            ));
+        }
+        let mut move_data = MoveData::default();
+
+        let placed = if promoted {
+            match moved.promote() {
+                Some(promoted) => promoted,
+                None => {
+                    return Err(MoveError::Inconsistent(
+                        "This type of piece cannot promote",
+                    ));
+                }
+            }
+        } else {
+            moved
+        };
+
+        move_data = move_data.promoted(promoted);
+        move_data = move_data.piece(Some(moved));
+
+        self.update_after_move(from, to, placed, moved, captured, opponent);
+
+        let stm = self.side_to_move();
+
+        let outcome = {
+            if self.is_checkmate(&stm) {
+                move_data = move_data.checks(false, true);
+                Outcome::Checkmate { color: stm.flip() }
+            } else if self.in_check(stm) {
+                move_data = move_data.checks(true, false);
+                Outcome::Check { color: stm }
+            } else if (&self.player_bb(stm.flip())
+                & &self.type_bb(&PieceType::King))
+                .count()
+                == 0
+            {
+                move_data = move_data.checks(false, true);
+                Outcome::Checkmate { color: stm.flip() }
+            } else {
+                Outcome::MoveOk
+            }
+        };
+
+        move_data =
+            self.gen_move_data(&legal_moves, (from, to), moved, move_data);
+        let move_record = MoveRecord::Normal {
+            from,
+            to,
+            placed,
+            move_data,
+        };
+
+        self.insert_move(move_record);
+
+        self.log_position();
+        self.detect_repetition()?;
+        self.detect_insufficient_material()?;
+
+        self.is_stalemate(&stm)?;
+        Ok(outcome)
+    }
 }
 
 #[derive(Debug)]

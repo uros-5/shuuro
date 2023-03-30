@@ -105,7 +105,13 @@ impl<S: Square> fmt::Display for Move<S> {
                 write!(f, "{piece}@{to}")
             }
             Move::Normal { from, to, promote } => {
-                write!(f, "{}_{}{}", from, to, if promote { "fixthis" } else { "" })
+                write!(
+                    f,
+                    "{}_{}{}",
+                    from,
+                    to,
+                    if promote { "fixthis" } else { "" }
+                )
             }
         }
     }
@@ -125,9 +131,48 @@ pub enum MoveRecord<S: Square> {
         from: S,
         to: S,
         placed: Piece,
-        captured: Option<Piece>,
-        promoted: bool,
+        move_data: MoveData,
     },
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+pub struct MoveData {
+    check: bool,
+    checkmate: bool,
+    same_file: bool,
+    same_rank: bool,
+    captured: Option<Piece>,
+    piece: Option<Piece>,
+    promoted: bool,
+}
+
+impl MoveData {
+    pub fn checks(mut self, check: bool, checkmate: bool) -> Self {
+        self.check = check;
+        self.checkmate = checkmate;
+        self
+    }
+
+    pub fn precise(mut self, same_file: bool, same_rank: bool) -> Self {
+        self.same_file = same_file;
+        self.same_rank = same_rank;
+        self
+    }
+
+    pub fn captured(mut self, captured: Option<Piece>) -> Self {
+        self.captured = captured;
+        self
+    }
+
+    pub fn promoted(mut self, promoted: bool) -> Self {
+        self.promoted = promoted;
+        self
+    }
+
+    pub fn piece(mut self, piece: Option<Piece>) -> Self {
+        self.piece = piece;
+        self
+    }
 }
 
 impl<S: Square> MoveRecord<S> {
@@ -137,8 +182,16 @@ impl<S: Square> MoveRecord<S> {
             MoveRecord::Buy { piece } => format!("+{piece}"),
             MoveRecord::Put { to, piece } => format!("{piece}@{to}"),
             MoveRecord::Normal {
-                from, to, promoted, ..
-            } => format!("{}_{}{}", from, to, if promoted { "*" } else { "" }),
+                from,
+                to,
+                move_data,
+                ..
+            } => format!(
+                "{}_{}{}",
+                from,
+                to,
+                if move_data.promoted { "*" } else { "" }
+            ),
         }
     }
 }
@@ -150,7 +203,7 @@ impl<S: Square> PartialEq<Move<S>> for MoveRecord<S> {
                 &MoveRecord::Normal {
                     from: f1,
                     to: t1,
-                    promoted,
+                    move_data,
                     ..
                 },
                 &Move::Normal {
@@ -158,8 +211,11 @@ impl<S: Square> PartialEq<Move<S>> for MoveRecord<S> {
                     to: t2,
                     promote,
                 },
-            ) => f1 == f2 && t1 == t2 && promote == promoted,
-            (&MoveRecord::Buy { piece: piece1 }, &Move::Buy { piece: piece2 }) => piece1 == piece2,
+            ) => f1 == f2 && t1 == t2 && promote == move_data.promoted,
+            (
+                &MoveRecord::Buy { piece: piece1 },
+                &Move::Buy { piece: piece2 },
+            ) => piece1 == piece2,
             (
                 &MoveRecord::Put {
                     to: to1,
@@ -174,3 +230,77 @@ impl<S: Square> PartialEq<Move<S>> for MoveRecord<S> {
         }
     }
 }
+
+impl<S> MoveRecord<S>
+where
+    S: Square,
+{
+    pub fn format(&self) -> String {
+        if let MoveRecord::Normal {
+            from,
+            to,
+            move_data,
+            ..
+        } = &self
+        {
+            let piece = move_data.piece.unwrap().to_string().to_uppercase();
+            let move_to = to.to_string();
+
+            let action = {
+                if move_data.check {
+                    "+"
+                } else if move_data.checkmate {
+                    "#"
+                } else {
+                    ""
+                }
+            };
+            let piece = {
+                if piece == "P" {
+                    String::from("")
+                } else {
+                    piece
+                }
+            };
+            let promote = {
+                if move_data.promoted && piece == "P" {
+                    "=Q"
+                } else {
+                    ""
+                }
+            };
+
+            let same = {
+                if move_data.same_file {
+                    from.rank().to_string()
+                } else if move_data.same_rank {
+                    from.file().to_string()
+                } else {
+                    String::new()
+                }
+            };
+
+            let captures = {
+                if move_data.captured.is_some() {
+                    if piece == "P" {
+                        format!("{}x", from.file())
+                    } else {
+                        "x".to_string()
+                    }
+                } else {
+                    "".to_string()
+                }
+            };
+
+            return format!(
+                "{}{}{}{}{}{}",
+                piece, same, captures, move_to, promote, action
+            );
+        }
+        " ".to_string()
+    }
+}
+
+// pub fn generate_normal_sfen(f) {
+
+// }

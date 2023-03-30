@@ -7,8 +7,7 @@ use std::{
 use crate::{
     bitboard::BitBoard,
     position::{Board, Outcome, Placement, Play, Position, Sfen},
-    Color, Hand, Move, MoveError, MoveRecord, Piece, PieceType, SfenError,
-    Square, Variant,
+    Color, Hand, MoveRecord, Piece, PieceType, SfenError, Square, Variant,
 };
 
 use super::{
@@ -267,68 +266,23 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
 impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     for P8<Square8, BB8<Square8>>
 {
-    fn make_move(&mut self, m: Move<Square8>) -> Result<Outcome, MoveError> {
-        let mut promoted = false;
-        let stm = self.side_to_move();
-        let opponent = stm.flip();
-        let (from, to) = m.info();
-        let moved = self
-            .piece_at(from)
-            .ok_or(MoveError::Inconsistent("No piece found"))?;
-        let captured = *self.piece_at(to);
-        let outcome = Outcome::Checkmate { color: opponent };
-        let legal_moves = self.legal_moves(&stm);
+    fn game_status(&self) -> Outcome {
+        self.game_status.clone()
+    }
 
-        if moved.color != stm {
-            return Err(MoveError::Inconsistent(
-                "The piece is not for the side to move",
-            ));
-        } else if self.game_status == outcome {
-            return Err(MoveError::Inconsistent("Match is over."));
-        }
+    fn file_bb(&self, file: usize) -> BB8<Square8> {
+        FILE_BB[file]
+    }
 
-        match captured {
-            Some(_i) => {
-                if moved.piece_type == PieceType::Pawn
-                    && to.in_promotion_zone(moved.color)
-                {
-                    promoted = true;
-                }
-            }
-            None => {
-                if moved.piece_type == PieceType::Pawn
-                    && to.in_promotion_zone(moved.color)
-                {
-                    promoted = true;
-                }
-            }
-        }
-
-        if let Some(attacks) = legal_moves.get(&from) {
-            if (attacks & &to).is_empty() {
-                return Err(MoveError::Inconsistent(
-                    "The piece cannot move to there",
-                ));
-            }
-        } else {
-            return Err(MoveError::Inconsistent(
-                "The piece cannot move to there",
-            ));
-        }
-
-        let placed = if promoted {
-            match moved.promote() {
-                Some(promoted) => promoted,
-                None => {
-                    return Err(MoveError::Inconsistent(
-                        "This type of piece cannot promote",
-                    ));
-                }
-            }
-        } else {
-            moved
-        };
-
+    fn update_after_move(
+        &mut self,
+        from: Square8,
+        to: Square8,
+        placed: Piece,
+        moved: Piece,
+        captured: Option<Piece>,
+        opponent: Color,
+    ) {
         self.set_piece(from, None);
         self.set_piece(to, Some(placed));
         self.occupied_bb ^= &from;
@@ -347,44 +301,6 @@ impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
 
         self.side_to_move = opponent;
         self.ply += 1;
-
-        let move_record = MoveRecord::Normal {
-            from,
-            to,
-            placed,
-            captured,
-            promoted,
-        };
-
-        self.move_history.push(move_record);
-
-        self.log_position();
-        self.detect_repetition()?;
-        self.detect_insufficient_material()?;
-
-        if self.is_checkmate(&self.side_to_move) {
-            return Ok(Outcome::Checkmate {
-                color: self.side_to_move.flip(),
-            });
-        } else if self.in_check(self.side_to_move) {
-            return Ok(Outcome::Check {
-                color: self.side_to_move,
-            });
-        } else if (&self.color_bb[self.side_to_move.flip().index()]
-            & &self.type_bb[PieceType::King.index()])
-            .count()
-            == 0
-        {
-            return Ok(Outcome::Checkmate {
-                color: self.side_to_move.flip(),
-            });
-        }
-        self.is_stalemate(&self.side_to_move)?;
-        Ok(Outcome::MoveOk)
-    }
-
-    fn file_bb(&self, file: usize) -> BB8<Square8> {
-        FILE_BB[file]
     }
 }
 
