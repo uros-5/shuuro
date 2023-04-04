@@ -122,7 +122,7 @@ impl Square for Square8 {
         self.inner
     }
 
-    fn in_promotion_zone(&self, c: crate::Color) -> bool {
+    fn in_promotion_zone(&self, c: Color) -> bool {
         match c {
             Color::White => self.rank() == 7,
             Color::Black => self.rank() == 0,

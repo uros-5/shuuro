@@ -1106,40 +1106,65 @@ where
     }
 
     /// Returns a `BitBoard` where the given piece at the given square can move.
-    fn move_candidates(&self, sq: &S, p: Piece, move_type: MoveType<S>) -> B {
-        let blockers = move_type.blockers(self, &p.color);
+    fn move_candidates(
+        &self,
+        current_sq: &S,
+        piece: Piece,
+        move_type: MoveType<S>,
+    ) -> B {
+        let blockers = move_type.blockers(self, &piece.color);
 
-        let bb = match p.piece_type {
+        let attacks = match piece.piece_type {
             PieceType::Rook => {
-                A::get_sliding_attacks(PieceType::Rook, sq, blockers)
+                A::get_sliding_attacks(PieceType::Rook, current_sq, blockers)
             }
             PieceType::Bishop => {
-                A::get_sliding_attacks(PieceType::Bishop, sq, blockers)
+                A::get_sliding_attacks(PieceType::Bishop, current_sq, blockers)
             }
             PieceType::Queen => {
-                A::get_sliding_attacks(PieceType::Queen, sq, blockers)
+                A::get_sliding_attacks(PieceType::Queen, current_sq, blockers)
             }
-            PieceType::Knight => {
-                A::get_non_sliding_attacks(PieceType::Knight, sq, p.color)
-            }
-            PieceType::Pawn => {
-                A::get_non_sliding_attacks(PieceType::Pawn, sq, p.color)
-            }
-            PieceType::King => {
-                A::get_non_sliding_attacks(PieceType::King, sq, p.color)
-            }
+            PieceType::Knight => A::get_non_sliding_attacks(
+                PieceType::Knight,
+                current_sq,
+                piece.color,
+            ),
+            PieceType::Pawn => A::get_non_sliding_attacks(
+                PieceType::Pawn,
+                current_sq,
+                piece.color,
+            ),
+            PieceType::King => A::get_non_sliding_attacks(
+                PieceType::King,
+                current_sq,
+                piece.color,
+            ),
             PieceType::Chancellor => {
-                &A::get_non_sliding_attacks(PieceType::Knight, sq, p.color)
-                    | &A::get_sliding_attacks(PieceType::Rook, sq, blockers)
+                &A::get_non_sliding_attacks(
+                    PieceType::Knight,
+                    current_sq,
+                    piece.color,
+                ) | &A::get_sliding_attacks(
+                    PieceType::Rook,
+                    current_sq,
+                    blockers,
+                )
             }
             PieceType::ArchBishop => {
-                &A::get_non_sliding_attacks(PieceType::Knight, sq, p.color)
-                    | &A::get_sliding_attacks(PieceType::Bishop, sq, blockers)
+                &A::get_non_sliding_attacks(
+                    PieceType::Knight,
+                    current_sq,
+                    piece.color,
+                ) | &A::get_sliding_attacks(
+                    PieceType::Bishop,
+                    current_sq,
+                    blockers,
+                )
             }
-            PieceType::Giraffe => A::get_girrafe_attacks(sq),
+            PieceType::Giraffe => A::get_girrafe_attacks(current_sq),
             _ => B::empty(),
         };
-        move_type.moves(self, &bb, p, *sq)
+        move_type.moves(self, &attacks, piece, *current_sq)
     }
 
     /// Returns BitBoard with rank. Panics if file is bigger than expected.
@@ -1309,9 +1334,9 @@ where
     pub fn moves<B: BitBoard<S>, A: Attacks<S, B>, P: Play<S, B, A>>(
         &self,
         position: &P,
-        bb: &B,
-        p: Piece,
-        sq: S,
+        attacks: &B,
+        piece: Piece,
+        current_sq: S,
     ) -> B
     where
         for<'b> &'b B: BitOr<&'b B, Output = B>,
@@ -1320,8 +1345,8 @@ where
         for<'a> &'a B: BitOr<&'a S, Output = B>,
         for<'a> &'a B: BitAnd<&'a S, Output = B>,
     {
-        let my_color = p.color;
-        let without_main_color = bb & &!&position.player_bb(my_color);
+        let my_color = piece.color;
+        let without_main_color = attacks & &!&position.player_bb(my_color);
         let knights = [
             PieceType::Knight,
             PieceType::ArchBishop,
@@ -1331,13 +1356,18 @@ where
         match self {
             MoveType::Empty => B::empty(),
             MoveType::Plinth => {
-                if !knights.contains(&p.piece_type) {
+                if !knights.contains(&piece.piece_type) {
                     let mut without_plinth = &(without_main_color)
                         & &!&position.player_bb(Color::NoColor);
-                    if p.piece_type == PieceType::Pawn {
-                        without_plinth &= &position.player_bb(p.color.flip());
-                        let up_sq = &!&position.player_bb(p.color.flip())
-                            & &self.pawn_move::<B, A, P>(sq, &p.color);
+                    if piece.piece_type == PieceType::Pawn {
+                        without_plinth &=
+                            &position.player_bb(piece.color.flip());
+                        let up_sq = &!&position.player_bb(piece.color.flip())
+                            & &self.pawn_move::<B, A, P>(
+                                current_sq,
+                                &piece.color,
+                                position,
+                            );
                         without_plinth |=
                             &(&up_sq & &!&position.player_bb(my_color));
                         without_plinth &= &!&position.player_bb(Color::NoColor);
@@ -1350,15 +1380,19 @@ where
                 }
             }
             MoveType::NoKing { king } => {
-                if !knights.contains(&p.piece_type) {
-                    if p.piece_type == PieceType::Pawn {
-                        let up_sq = self.pawn_move::<B, A, P>(sq, &p.color);
-                        return bb & &!&up_sq;
+                if !knights.contains(&piece.piece_type) {
+                    if piece.piece_type == PieceType::Pawn {
+                        let up_sq = self.pawn_move::<B, A, P>(
+                            current_sq,
+                            &piece.color,
+                            position,
+                        );
+                        return attacks & &!&up_sq;
                     }
-                    &((bb) & &!&position.player_bb(Color::NoColor))
-                        | &(bb & &B::from_square(&king.to_owned()))
+                    &((attacks) & &!&position.player_bb(Color::NoColor))
+                        | &(attacks & &B::from_square(&king.to_owned()))
                 } else {
-                    bb | &(bb & &B::from_square(&king.to_owned()))
+                    attacks | &(attacks & &B::from_square(&king.to_owned()))
                 }
             }
         }
@@ -1368,6 +1402,7 @@ where
         &self,
         sq: S,
         color: &Color,
+        position: &P,
     ) -> B
     where
         for<'b> &'b B: BitOr<&'b B, Output = B>,
@@ -1376,9 +1411,26 @@ where
         for<'a> &'a B: BitOr<&'a S, Output = B>,
         for<'a> &'a B: BitAnd<&'a S, Output = B>,
     {
+        let pops = |mut blocked: B, color: &Color| -> Option<S> {
+            if color == &Color::White {
+                blocked.pop()
+            } else {
+                blocked.pop_reverse()
+            }
+        };
+        let occupied =
+            &position.occupied_bb() | &position.player_bb(Color::NoColor);
         match color {
             &Color::White | &Color::Black => {
-                A::get_pawn_moves(sq.index(), *color)
+                let attacks = A::get_pawn_moves(sq.index(), *color);
+                let mut blocked = &attacks & &occupied;
+                match pops(blocked, color) {
+                    Some(s) => {
+                        blocked = &blocked & &!&B::from_square(&s);
+                        blocked
+                    }
+                    None => attacks,
+                }
             }
             _ => B::empty(),
         }

@@ -548,7 +548,7 @@ pub mod position_tests {
             .expect("failed to parse SFEN string");
         let lm = pos.legal_moves(&Color::White);
         if let Some(b) = lm.get(&E2) {
-            assert_eq!(b.count(), 1);
+            assert_eq!(b.count(), 2);
         }
     }
 
@@ -639,7 +639,7 @@ pub mod position_tests {
     fn move_candidates() {
         setup();
 
-        let cases = [("RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr b - 1", 12)];
+        let cases = [("RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr b - 1", 20)];
         for case in cases {
             let mut pos = P8::new();
             pos.set_sfen(case.0).expect("failed to parse SFEN string");

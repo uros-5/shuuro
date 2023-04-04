@@ -386,20 +386,22 @@ mod tests {
     fn pawn_moves() {
         Attacks12::init_pawn_moves();
         let ok_cases = [
-            (A1, square_bb(&A2), Color::White, 1),
-            (L11, square_bb(&L12), Color::White, 1),
-            (C12, EMPTY_BB, Color::White, 0),
-            (G12, EMPTY_BB, Color::White, 0),
-            (H12, square_bb(&H11), Color::Black, 1),
-            (D4, square_bb(&D3), Color::Black, 1),
-            (A2, square_bb(&A1), Color::Black, 1),
-            (L1, EMPTY_BB, Color::Black, 0),
+            (A1, square_bb(&A2), Color::White, true, 1),
+            (L11, square_bb(&L12), Color::White, true, 1),
+            (C12, EMPTY_BB, Color::White, false, 0),
+            (G12, EMPTY_BB, Color::White, false, 0),
+            (H12, square_bb(&H11), Color::Black, true, 1),
+            (D4, square_bb(&D3), Color::Black, true, 1),
+            (A2, square_bb(&A1), Color::Black, true, 1),
+            (L1, EMPTY_BB, Color::Black, false, 0),
         ];
 
         for case in ok_cases {
             unsafe {
                 let bb = PAWN_MOVES[case.2.index()][case.0.index()];
-                assert_eq!((&bb & &case.1).count(), case.3);
+                let moves = &bb & &case.1;
+                assert_eq!(moves.is_any(), case.3);
+                assert_eq!(bb.count(), case.4);
             };
         }
     }

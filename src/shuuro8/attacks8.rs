@@ -47,6 +47,12 @@ impl Attacks8<Square8, BB8<Square8>> {
     }
 }
 
+impl Default for Attacks8<Square8, BB8<Square8>> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     fn init_pawn_moves() {
         let add = |current: Square8, next: Square8, color: &Color| unsafe {
@@ -56,6 +62,11 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
             for sq in Square8::iter() {
                 if let Some(up) = sq.upward(&color) {
                     add(sq, up, &color);
+                    if sq.first_pawn_rank(color) {
+                        if let Some(up) = up.upward(&color) {
+                            add(sq, up, &color);
+                        }
+                    }
                 }
             }
         }
@@ -380,23 +391,25 @@ pub mod tests {
     use super::{Attacks, Attacks8, NON_SLIDING_ATTACKS, PAWN_MOVES, RAYS};
 
     #[test]
-    fn pawn_moves() {
+    fn jeste() {
         Attacks8::init_pawn_moves();
         let ok_cases = [
-            (A1, square_bb(&A2), Color::White, 1),
-            (H7, square_bb(&H8), Color::White, 1),
-            (C8, EMPTY_BB, Color::White, 0),
-            (G8, EMPTY_BB, Color::White, 0),
-            (H8, EMPTY_BB, Color::Black, 0),
-            (D4, square_bb(&D3), Color::Black, 1),
-            (A2, square_bb(&A1), Color::Black, 1),
-            (H1, EMPTY_BB, Color::Black, 0),
+            (A1, square_bb(&A2), Color::White, true, 1),
+            (A2, square_bb(&A3), Color::White, true, 2),
+            (H7, square_bb(&H8), Color::White, true, 1),
+            (C8, EMPTY_BB, Color::White, false, 0),
+            (G8, EMPTY_BB, Color::White, false, 0),
+            (H8, EMPTY_BB, Color::Black, false, 1),
+            (D4, square_bb(&D3), Color::Black, true, 1),
+            (A2, square_bb(&A1), Color::Black, true, 1),
+            (H1, EMPTY_BB, Color::Black, false, 0),
         ];
         for case in ok_cases {
             unsafe {
                 let bb = PAWN_MOVES[case.2.index()][case.0.index()];
-
-                assert_eq!((&bb & &case.1).count(), case.3);
+                let moves = &bb & &case.1;
+                assert_eq!(moves.is_any(), case.3);
+                assert_eq!(bb.count(), case.4);
             };
         }
     }
