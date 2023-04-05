@@ -54,17 +54,20 @@ impl Default for Attacks8<Square8, BB8<Square8>> {
 }
 
 impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
-    fn init_pawn_moves() {
-        let add = |current: Square8, next: Square8, color: &Color| unsafe {
+    fn add_pawn_moves(current: Square8, next: Square8, color: &Color) {
+        unsafe {
             PAWN_MOVES[color.index()][current.index()] |= &square_bb(&next);
         };
+    }
+
+    fn init_pawn_moves() {
         for color in Color::iter() {
             for sq in Square8::iter() {
                 if let Some(up) = sq.upward(&color) {
-                    add(sq, up, &color);
+                    Self::add_pawn_moves(sq, up, &color);
                     if sq.first_pawn_rank(color) {
                         if let Some(up) = up.upward(&color) {
-                            add(sq, up, &color);
+                            Self::add_pawn_moves(sq, up, &color);
                         }
                     }
                 }

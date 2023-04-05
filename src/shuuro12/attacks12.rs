@@ -52,14 +52,22 @@ impl Attacks12<Square12, BB12<Square12>> {
 }
 
 impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
-    fn init_pawn_moves() {
-        let add = |current: Square12, next: Square12, color: &Color| unsafe {
+    fn add_pawn_moves(current: Square12, next: Square12, color: &Color) {
+        unsafe {
             PAWN_MOVES[color.index()][current.index()] |= &square_bb(&next);
         };
+    }
+
+    fn init_pawn_moves() {
         for color in Color::iter() {
             for sq in Square12::iter() {
                 if let Some(up) = sq.upward(&color) {
-                    add(sq, up, &color);
+                    Self::add_pawn_moves(sq, up, &color);
+                    if sq.first_pawn_rank(color) {
+                        if let Some(up) = up.upward(&color) {
+                            Self::add_pawn_moves(sq, up, &color);
+                        }
+                    }
                 }
             }
         }

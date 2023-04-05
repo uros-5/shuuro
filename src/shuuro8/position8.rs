@@ -656,6 +656,7 @@ pub mod position_tests {
                     }
                 }
             }
+            println!("{pos}");
 
             assert_eq!(sum, case.1);
         }
@@ -830,6 +831,7 @@ pub mod position_tests {
         position
             .set_sfen("NNNKN3/PPPPPP1P/PL0PL0N1P1/5P2/8/ppPbpL0pL0/ppppbp1p/1bb1k1b1 b - 48")
             .ok();
+        println!("{position}");
         let lm = position.legal_moves(&Color::Black);
         assert_eq!(1, lm.get(&B7).unwrap().count());
     }

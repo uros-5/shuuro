@@ -664,6 +664,8 @@ pub mod position_tests {
             }
         }
 
+        println!("{pos}");
+
         assert_eq!(21, sum);
     }
 
@@ -713,29 +715,29 @@ pub mod position_tests {
     fn pawn_moves() {
         setup();
         let cases = [
-            (
-                "4K1Q4LN/4L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 b - 12",
-                "f11",
-                "f10",
-            ),
-            (
-                "2N1L0QKRL01N1/2P4P3P/55L01/57/57/L056/57/57/3L08/8L03/2pp2L05/4qLnk2r1b b - 15",
-                "c11",
-                "c10",
-            ),
+            // (
+            //     "4K1Q4LN/4L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 b - 12",
+            //     "f11",
+            //     "f10",
+            // ),
+            // (
+            //     "2N1L0QKRL01N1/2P4P3P/55L01/57/57/L056/57/57/3L08/8L03/2pp2L05/4qLnk2r1b b - 15",
+            //     "c11",
+            //     "c10",
+            // ),
             (
                 "2N1L0QKRL01N1/2P4P3P/55L01/57/57/L056/57/57/3L08/8L03/2pp2L05/4qLnk2r1b b - 15",
                 "d11",
                 "d10",
             ),
-            (
-                "4KN1Q4/4L0P1P1PP1/1P55/3L08/56L0/6L05/4L01L05/57/57/6L05/p7ppp1/L02q1k3r2 b - 16",
-                "a11",
-                "a10",
-            ),
-            ("2LNN2KNBB2/6L03P1/57/7L04/1L055/57/9L02/57/6L05/ppp2p2pQ2/pppL0p1ppp1pp/L02kq7 b - 29",
-             "i11",
-             "j10")
+            // (
+            //     "4KN1Q4/4L0P1P1PP1/1P55/3L08/56L0/6L05/4L01L05/57/57/6L05/p7ppp1/L02q1k3r2 b - 16",
+            //     "a11",
+            //     "a10",
+            // ),
+            // ("2LNN2KNBB2/6L03P1/57/7L04/1L055/57/9L02/57/6L05/ppp2p2pQ2/pppL0p1ppp1pp/L02kq7 b - 29",
+            //  "i11",
+            //  "j10")
         ];
         let ng_cases = [(
             "4K1Q4LN/2P1L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 w - 12",

@@ -39,6 +39,8 @@ where
     fn init_south_west_ray();
     fn init_between();
 
+    fn add_pawn_moves(current: S, next: S, color: &Color);
+
     fn get_non_sliding_attacks(
         piece_type: PieceType,
         square: &S,

@@ -834,6 +834,7 @@ where
             } else {
                 let moves =
                     self.fix_pin(&sq, &pinned_moves, &check_moves, my_moves);
+
                 map.insert(sq, moves);
             }
         }
@@ -1368,9 +1369,11 @@ where
                                 &piece.color,
                                 position,
                             );
+
                         without_plinth |=
                             &(&up_sq & &!&position.player_bb(my_color));
                         without_plinth &= &!&position.player_bb(Color::NoColor);
+
                         without_plinth
                     } else {
                         without_plinth
@@ -1411,25 +1414,36 @@ where
         for<'a> &'a B: BitOr<&'a S, Output = B>,
         for<'a> &'a B: BitAnd<&'a S, Output = B>,
     {
-        let pops = |mut blocked: B, color: &Color| -> Option<S> {
-            if color == &Color::White {
-                blocked.pop()
+        let pop_sq = |sq: S, mut blocked: B, color: &Color| -> B {
+            let old = blocked;
+            let deleted = {
+                if color == &Color::White {
+                    blocked.pop()
+                } else {
+                    blocked.pop_reverse()
+                }
+            };
+            if let Some(deleted) = deleted {
+                A::between(sq, deleted)
             } else {
-                blocked.pop_reverse()
+                old
             }
         };
+
         let occupied =
             &position.occupied_bb() | &position.player_bb(Color::NoColor);
         match color {
             &Color::White | &Color::Black => {
-                let attacks = A::get_pawn_moves(sq.index(), *color);
-                let mut blocked = &attacks & &occupied;
-                match pops(blocked, color) {
-                    Some(s) => {
-                        blocked = &blocked & &!&B::from_square(&s);
-                        blocked
-                    }
-                    None => attacks,
+                let moves = A::get_pawn_moves(sq.index(), *color);
+                let blocked = &moves & &occupied;
+                if blocked.count() == 2 {
+                    B::empty()
+                } else if blocked.count() == 0 && moves.count() == 2 {
+                    moves
+                } else if sq.first_pawn_rank(*color) {
+                    pop_sq(sq, blocked, color)
+                } else {
+                    moves
                 }
             }
             _ => B::empty(),
