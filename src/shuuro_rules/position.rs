@@ -427,7 +427,7 @@ where
             sfen.push_str(format!(" {} ", self.ply()).as_str());
             let last = move_history.last().unwrap();
             sfen.push_str(&last.to_sfen());
-            sfen.push_str(&last.format());
+            sfen.push_str(&format!(" {}", &last.format()));
         }
         self.insert_sfen(&sfen);
     }
