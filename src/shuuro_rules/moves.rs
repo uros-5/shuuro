@@ -272,9 +272,9 @@ where
 
             let same = {
                 if move_data.same_file {
-                    from.rank().to_string()
+                    self.same_format(from, 1, true)
                 } else if move_data.same_rank {
-                    from.file().to_string()
+                    from.to_string().chars().next().unwrap().to_string()
                 } else {
                     String::new()
                 }
@@ -283,7 +283,7 @@ where
             let captures = {
                 if move_data.captured.is_some() {
                     if piece == "P" {
-                        format!("{}x", from.file())
+                        format!("{}x", self.same_format(from, 0, false))
                     } else {
                         "x".to_string()
                     }
@@ -298,6 +298,19 @@ where
             );
         }
         " ".to_string()
+    }
+
+    fn same_format(&self, from: &S, skip: usize, is_numeric: bool) -> String {
+        let c = |x: &char| -> bool {
+            if is_numeric {
+                x.is_numeric()
+            } else {
+                !x.is_numeric()
+            }
+        };
+        let rank = from.to_string();
+        let rank = rank.chars().skip(skip).take_while(c);
+        rank.collect()
     }
 }
 

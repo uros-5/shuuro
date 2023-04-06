@@ -7,7 +7,8 @@ use std::{
 use crate::{
     bitboard::BitBoard,
     position::{Board, Outcome, Placement, Play, Position, Sfen},
-    Color, Hand, MoveRecord, Piece, PieceType, SfenError, Square, Variant,
+    Color, Hand, MoveData, MoveRecord, Piece, PieceType, SfenError, Square,
+    Variant,
 };
 
 use super::{
@@ -282,7 +283,8 @@ impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         moved: Piece,
         captured: Option<Piece>,
         opponent: Color,
-    ) {
+        mut move_data: MoveData,
+    ) -> MoveData {
         self.set_piece(from, None);
         self.set_piece(to, Some(placed));
         self.occupied_bb ^= &from;
@@ -296,11 +298,13 @@ impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
             self.occupied_bb ^= &to;
             self.type_bb[cap.piece_type.index()] ^= &to;
             self.color_bb[cap.color.index()] ^= &to;
+            move_data = move_data.captured(captured);
             //self.hand.increment(pc);
         }
 
         self.side_to_move = opponent;
         self.ply += 1;
+        move_data
     }
 }
 
@@ -656,7 +660,6 @@ pub mod position_tests {
                     }
                 }
             }
-            println!("{pos}");
 
             assert_eq!(sum, case.1);
         }
@@ -831,8 +834,34 @@ pub mod position_tests {
         position
             .set_sfen("NNNKN3/PPPPPP1P/PL0PL0N1P1/5P2/8/ppPbpL0pL0/ppppbp1p/1bb1k1b1 b - 48")
             .ok();
-        println!("{position}");
         let lm = position.legal_moves(&Color::Black);
         assert_eq!(1, lm.get(&B7).unwrap().count());
+    }
+
+    #[test]
+    fn move_notation() {
+        setup();
+        let cases = [
+            (B4, "Rbxe4"),
+            (C3, "Ncxe4"),
+            (E1, "R1xe4"),
+            (E7, "R7xe4"),
+            (H1, "Bhxe4"),
+        ];
+        let sfen = "1BK1R2B/8/2N3N1/1R2p2R/8/8/4R3/2k5 w - 19";
+
+        for case in cases {
+            let mut position = P8::default();
+            position.set_sfen(sfen).ok();
+            let m = Move::Normal {
+                from: case.0,
+                to: E4,
+                promote: false,
+            };
+            let _ = position.make_move(m).is_ok();
+            let last = position.get_move_history().last().unwrap();
+            let notation = last.format();
+            assert_eq!(&notation, case.1);
+        }
     }
 }

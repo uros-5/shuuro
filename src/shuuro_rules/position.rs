@@ -1044,10 +1044,11 @@ where
         for p in all {
             if let Some(targets) = legal_moves.get(&p) {
                 if (targets & &to).is_any() {
-                    if from.file() == p.file() {
+                    if from.rank() == p.rank() {
+                        return move_data.precise(false, true);
+                    } else if from.file() == p.file() {
                         return move_data.precise(true, false);
                     }
-                    return move_data.precise(false, true);
                 }
             }
         }
@@ -1179,7 +1180,8 @@ where
         moved: Piece,
         captured: Option<Piece>,
         opponent: Color,
-    );
+        move_data: MoveData,
+    ) -> MoveData;
 
     fn game_status(&self) -> Outcome;
 
@@ -1251,7 +1253,9 @@ where
         move_data = move_data.promoted(promoted);
         move_data = move_data.piece(Some(moved));
 
-        self.update_after_move(from, to, placed, moved, captured, opponent);
+        move_data = self.update_after_move(
+            from, to, placed, moved, captured, opponent, move_data,
+        );
 
         let stm = self.side_to_move();
 

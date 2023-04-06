@@ -7,7 +7,8 @@ use std::{
 use crate::{
     bitboard::BitBoard,
     position::{Board, Outcome, Placement, Play, Position, Sfen},
-    Color, Hand, MoveRecord, Piece, PieceType, SfenError, Square, Variant,
+    Color, Hand, MoveData, MoveRecord, Piece, PieceType, SfenError, Square,
+    Variant,
 };
 
 use super::{
@@ -282,7 +283,8 @@ impl Play<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         moved: Piece,
         captured: Option<Piece>,
         opponent: Color,
-    ) {
+        mut move_data: MoveData,
+    ) -> MoveData {
         self.set_piece(from, None);
         self.set_piece(to, Some(placed));
         self.occupied_bb ^= &from;
@@ -296,11 +298,13 @@ impl Play<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
             self.occupied_bb ^= &to;
             self.type_bb[cap.piece_type.index()] ^= &to;
             self.color_bb[cap.color.index()] ^= &to;
+            move_data = move_data.captured(captured);
             //self.hand.increment(pc);
         }
 
         self.side_to_move = opponent;
         self.ply += 1;
+        move_data
     }
 }
 
@@ -663,8 +667,6 @@ pub mod position_tests {
                 }
             }
         }
-
-        println!("{pos}");
 
         assert_eq!(21, sum);
     }
