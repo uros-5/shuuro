@@ -842,26 +842,69 @@ pub mod position_tests {
     fn move_notation() {
         setup();
         let cases = [
-            (B4, "Rbxe4"),
-            (C3, "Ncxe4"),
-            (E1, "R1xe4"),
-            (E7, "R7xe4"),
-            (H1, "Bhxe4"),
+            (
+                "1BK1R2B/8/2N3N1/1R2p2R/8/8/4R3/2k5 w - 19",
+                vec![
+                    (B4, E4, false, "Rbxe4"),
+                    (C3, E4, false, "Ncxe4"),
+                    (E1, E4, false, "R1xe4"),
+                    (E7, E4, false, "R7xe4"),
+                    (H1, E4, false, "Bhxe4"),
+                ],
+            ),
+            (
+                "3Q4/1K6/8/8/8/8/4P3/1k3n2 w - 1",
+                vec![
+                    (E7, E8, true, "e8=Q+"),
+                    (E7, F8, true, "exf8=Q+"),
+                    (D1, D6, true, "Qd6+"),
+                ],
+            ),
+            ("8/3p2K1/8/8/Q7/8/8/2k5 b - 1", vec![(D2, D1, true, "d1=Q")]),
+            (
+                "7K/5p2/8/8/4P1q1/8/8/2k5 b - 1",
+                vec![(G5, G1, false, "Qg1#"), (F2, F1, false, "f1=Q+")],
+            ),
+            (
+                "5K2/8/1Q6/8/8/8/2P5/kq6 w - 1",
+                vec![
+                    (B3, B7, false, "Qb7+"),
+                    (C7, C8, false, "c8=Q"),
+                    (C7, B8, false, "cxb8=Q#"),
+                ],
+            ),
+            (
+                "5K2/8/1Q3Q2/8/1Q3Q2/8/2P5/1q5k w - 1",
+                vec![
+                    (F3, D5, false, "Qf3d5"),
+                    (F5, D5, false, "Qf5d5"),
+                    (B3, D5, false, "Qb3d5"),
+                    (B5, D7, false, "Qbd7"),
+                    (B5, E5, false, "Qbe5#"),
+                    (F5, F8, false, "Qf8+"),
+                ],
+            ),
+            (
+                "1K6/8/8/8/8/4Q3/3P1Pn1/3bqkn1 w - 1",
+                vec![(D7, E8, true, "dxe8=Q+"), (F7, E8, true, "fxe8=Q+")],
+            ),
         ];
-        let sfen = "1BK1R2B/8/2N3N1/1R2p2R/8/8/4R3/2k5 w - 19";
 
         for case in cases {
-            let mut position = P8::default();
-            position.set_sfen(sfen).ok();
-            let m = Move::Normal {
-                from: case.0,
-                to: E4,
-                promote: false,
-            };
-            let _ = position.make_move(m).is_ok();
-            let last = position.get_move_history().last().unwrap();
-            let notation = last.format();
-            assert_eq!(&notation, case.1);
+            for mn in case.1 {
+                let mut position = P8::default();
+                position.set_sfen(case.0).ok();
+                println!("{position}");
+                let m = Move::Normal {
+                    from: mn.0,
+                    to: mn.1,
+                    promote: mn.2,
+                };
+                let _ = position.make_move(m).is_ok();
+                let last = position.get_move_history().last().unwrap();
+                let notation = last.format();
+                assert_eq!(&notation, mn.3);
+            }
         }
     }
 }

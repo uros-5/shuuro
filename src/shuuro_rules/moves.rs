@@ -247,10 +247,10 @@ where
             let move_to = to.to_string();
 
             let action = {
-                if move_data.check {
-                    "+"
-                } else if move_data.checkmate {
+                if move_data.checkmate {
                     "#"
+                } else if move_data.check {
+                    "+"
                 } else {
                     ""
                 }
@@ -263,7 +263,7 @@ where
                 }
             };
             let promote = {
-                if move_data.promoted && piece == "P" {
+                if move_data.promoted && piece.is_empty() {
                     "=Q"
                 } else {
                     ""
@@ -271,18 +271,24 @@ where
             };
 
             let same = {
-                if move_data.same_file {
+                if piece.is_empty() {
+                    piece.to_string()
+                } else if move_data.same_rank && move_data.same_file {
+                    let file = self.same_format(from, 0, false);
+                    let rank = self.same_format(from, 1, true);
+                    format!("{file}{rank}")
+                } else if move_data.same_file {
                     self.same_format(from, 1, true)
                 } else if move_data.same_rank {
                     from.to_string().chars().next().unwrap().to_string()
                 } else {
-                    String::new()
+                    "".to_string()
                 }
             };
 
             let captures = {
                 if move_data.captured.is_some() {
-                    if piece == "P" {
+                    if piece.is_empty() {
                         format!("{}x", self.same_format(from, 0, false))
                     } else {
                         "x".to_string()

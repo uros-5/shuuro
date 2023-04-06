@@ -1041,18 +1041,19 @@ where
         let color = self.player_bb(piece.color);
         let pieces = self.type_bb(&piece.piece_type);
         let all = &color & &pieces;
+        let (mut same_file, mut same_rank) = (false, false);
         for p in all {
             if let Some(targets) = legal_moves.get(&p) {
                 if (targets & &to).is_any() {
                     if from.rank() == p.rank() {
-                        return move_data.precise(false, true);
+                        same_rank = true;
                     } else if from.file() == p.file() {
-                        return move_data.precise(true, false);
+                        same_file = true;
                     }
                 }
             }
         }
-        move_data
+        move_data.precise(same_file, same_rank)
     }
 
     /// Check if player is in stalemate.
