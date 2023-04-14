@@ -1294,7 +1294,9 @@ where
         self.detect_repetition()?;
         self.detect_insufficient_material()?;
 
-        self.is_stalemate(&stm)?;
+        if outcome == Outcome::MoveOk {
+            self.is_stalemate(&stm)?;
+        }
         Ok(outcome)
     }
 }

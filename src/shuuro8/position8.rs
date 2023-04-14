@@ -436,7 +436,7 @@ pub mod position_tests {
         attacks::Attacks,
         bitboard::BitBoard,
         piece_type::PieceType,
-        position::{Board, MoveType, Placement, Play},
+        position::{Board, MoveType, Outcome, Placement, Play},
         shuuro8::{
             attacks8::Attacks8,
             position8::P8,
@@ -766,6 +766,20 @@ pub mod position_tests {
                 assert_eq!(res.to_string(), "stalemate detected");
             }
         }
+
+        let stalemate_moves = [(
+            "8/q6P/3Ln1KP1/PLnP2P2/pB1pL0p2/BQ2p2L0/2n4p/k2b4 w - 97",
+            "b6",
+            "b7",
+            Color::Black,
+        )];
+
+        for case in stalemate_moves {
+            let mut pos = P8::new();
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
+            let valid = pos.play(case.1, case.2).is_ok();
+            assert!(valid);
+        }
     }
 
     #[test]
@@ -894,7 +908,6 @@ pub mod position_tests {
             for mn in case.1 {
                 let mut position = P8::default();
                 position.set_sfen(case.0).ok();
-                println!("{position}");
                 let m = Move::Normal {
                     from: mn.0,
                     to: mn.1,
@@ -906,5 +919,42 @@ pub mod position_tests {
                 assert_eq!(&notation, mn.3);
             }
         }
+    }
+
+    #[test]
+    fn example_with_moves() {
+        setup();
+        let moves = [
+            "g8_f6", "g2_g3", "d7_d6", "f2_f4", "f6_g4", "f1_g2", "c7_c6",
+            "b2_b3", "g4_e5", "c1_b2", "f8_e6", "c2_c4", "e6_c7", "b2_d4",
+            "c6_c5", "d4_f2", "e5_d3", "g2_b7", "g7_g6", "h1_c6", "e8_f8",
+            "a2_a4", "a7_a5", "d1_f1", "e7_e6", "e2_e4", "f7_f5", "e4_f5",
+            "g6_f5", "f2_e3", "h8_g6", "f1_g2", "g6_e5", "c6_b5", "d3_e1",
+            "g2_h1", "f8_g7", "b7_a6", "d6_d5", "e3_c5", "g7_g4", "g1_d4",
+            "g4_d1", "b1_a2", "d1_d2", "d4_b2", "e1_d3", "c5_d4", "d3_b4",
+            "a2_b1", "d2_c2", "b1_a1", "c2_b3", "a1_b1", "b3_a2", "b1_c1",
+            "e5_d3", "c1_d2", "d3_b2", "d4_a7", "b8_a8", "d2_e3", "a8_a7",
+            "e3_f3", "b2_d3", "h1_g1", "a7_b8", "g1_b6", "b8_a8", "b6_b7",
+        ];
+
+        let fen =
+            "1KBQ1BBB/PPPPPPPP/3L04/1L06/4L03/7L0/pppppppp/1k1bqnnn b - 1";
+
+        let mut position = P8::default();
+        let _ = position.set_sfen(fen).is_ok();
+
+        for m in moves {
+            let mut parts = m.split('_');
+            let from = parts.next().unwrap();
+            let to = parts.next().unwrap();
+            let _ = position.play(from, to).is_ok();
+        }
+
+        assert_eq!(
+            position.outcome(),
+            &Outcome::Checkmate {
+                color: Color::White
+            }
+        );
     }
 }
