@@ -91,6 +91,14 @@ impl PieceType {
         )
     }
 
+    pub fn is_rook_type(&self) -> bool {
+        matches!(self, Self::Queen | Self::Rook | Self::Chancellor)
+    }
+
+    pub fn is_bishop_type(&self) -> bool {
+        matches!(self, Self::Queen | Self::Bishop | Self::ArchBishop)
+    }
+
     pub fn is_fairy_piece(&self) -> bool {
         matches!(self, Self::Chancellor | Self::ArchBishop | Self::Giraffe)
     }

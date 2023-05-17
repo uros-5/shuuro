@@ -514,8 +514,8 @@ where
     }
 
     fn empty_squares(&self, p: Piece) -> B {
-        let calc = |p: Piece, list: [usize; 3]| -> B {
-            for rank in list {
+        let calc = |p: Piece, ranks: [usize; 3]| -> B {
+            for rank in ranks {
                 let mut bb = self.rank_bb(rank);
                 bb &= &!&self.player_bb(p.color);
                 let plinths = self.player_bb(Color::NoColor);
@@ -557,6 +557,7 @@ where
             B::empty()
         };
         let checks = self.checks(&p.color);
+        // println!("{checks}");
         if checks.is_any() {
             return checks;
         } else if !self.is_king_placed(p.color)
@@ -580,19 +581,27 @@ where
         let occupied_bb = &self.occupied_bb() | &self.player_bb(Color::NoColor);
         let king_sq = (&king | &B::empty()).pop().unwrap();
 
-        for kp in [PieceType::Rook, PieceType::Bishop] {
+        for pt in [PieceType::Rook, PieceType::Bishop] {
             let king_attacks =
-                A::get_sliding_attacks(kp, &king_sq, occupied_bb);
+                A::get_sliding_attacks(pt, &king_sq, occupied_bb);
+
             for p in [
                 PieceType::Queen,
                 PieceType::Rook,
-                PieceType::Bishop,
                 PieceType::Chancellor,
+                PieceType::Bishop,
                 PieceType::ArchBishop,
             ] {
                 if !self.variant().can_buy(&p) {
                     continue;
                 }
+                if pt == PieceType::Rook && !p.is_rook_type() {
+                    continue;
+                }
+                if pt == PieceType::Bishop && !p.is_bishop_type() {
+                    continue;
+                }
+
                 let them =
                     &self.type_bb(&p) & &self.player_bb(attacked_color.flip());
 

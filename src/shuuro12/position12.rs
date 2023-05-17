@@ -1556,4 +1556,18 @@ pub mod position_tests {
             assert!(position.detect_insufficient_material().is_ok());
         }
     }
+
+    #[test]
+    fn bishop_placement_check() {
+        setup();
+        let cases = [
+           "4B2K2L01/1L055/7L04/57/57/1L055/6L05/L056/3L02L05/57/57/4k7 b qrbQRB 3" 
+        ];
+        for case in cases {
+            let mut position = P12::default();
+            position.set_sfen(case).ok();
+            let lm = position.empty_squares(Piece::from_sfen('q').unwrap());
+            assert!(lm.count() == 11);
+        }
+    }
 }
