@@ -144,7 +144,6 @@ impl Default for PieceTypeIter {
 
 impl iter::Iterator for PieceTypeIter {
     type Item = PieceType;
-
     fn next(&mut self) -> Option<Self::Item> {
         let current = self.current;
 
