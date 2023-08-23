@@ -13,19 +13,17 @@ use super::{
 };
 
 static mut NON_SLIDING_ATTACKS: [[[BB12<Square12>; 144]; 6]; 2] =
-    [[[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 6]; 2];
+    [[[BB12::new((0, 0)); 144]; 6]; 2];
 
-static mut GIRAFFE_ATTACKS: [BB12<Square12>; 144] =
-    [BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144];
+static mut GIRAFFE_ATTACKS: [BB12<Square12>; 144] = [BB12::new((0, 0)); 144];
 
 static mut PAWN_MOVES: [[BB12<Square12>; 144]; 2] =
-    [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 2];
+    [[BB12::new((0, 0)); 144]; 2];
 
-pub static mut RAYS: [[BB12<Square12>; 144]; 8] =
-    [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 8];
+pub static mut RAYS: [[BB12<Square12>; 144]; 8] = [[BB12::new((0, 0)); 144]; 8];
 
 static mut BETWEEN_BB: [[BB12<Square12>; 144]; 144] =
-    [[BB12::new([0, 0, 0, 0, 0, 0, 0, 0, 0]); 144]; 144];
+    [[BB12::new((0, 0)); 144]; 144];
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Attacks12<S, B>
