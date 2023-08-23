@@ -141,6 +141,11 @@ impl BitBoard<Square12> for BB12<Square12> {
     }
 
     #[inline(always)]
+    fn full() -> Self {
+        BB12::new((1, 1))
+    }
+
+    #[inline(always)]
     fn is_any(&self) -> bool {
         (self.0 .0 | self.0 .1 as u128) != 0
     }
@@ -177,11 +182,35 @@ impl BitBoard<Square12> for BB12<Square12> {
 
     #[inline(always)]
     fn pop(&mut self) -> Option<Square12> {
+        if self.0 .0 != 0 {
+            let sq = Square12::from_index(self.0 .0.trailing_zeros() as u8);
+            self.0 .0 &= self.0 .0 - 1;
+            return sq;
+        } else if self.0 .1 != 0 {
+            let sq = Square12::from_index(self.0 .1.trailing_zeros() as u8);
+            self.0 .1 &= self.0 .1 - 1;
+            return sq;
+        }
         None
     }
 
     #[inline(always)]
     fn pop_reverse(&mut self) -> Option<Square12> {
+        if self.0 .1 != 0 {
+            let sq =
+                Square12::from_index(15 - self.0 .1.trailing_zeros() as u8);
+            if let Some(sq) = sq {
+                self.clear_at(sq);
+                return Some(sq);
+            }
+        } else if self.0 .0 != 0 {
+            let sq =
+                Square12::from_index(127 - self.0 .0.trailing_zeros() as u8);
+            if let Some(sq) = sq {
+                self.clear_at(sq);
+                return Some(sq);
+            }
+        }
         None
     }
 
@@ -197,14 +226,14 @@ impl fmt::Display for BB12<Square12> {
         for rank in (0..12).rev() {
             write!(f, "|")?;
             for file in 0..12 {
-                let sq = Square12::new(file, rank).unwrap();
-                write!(
-                    f,
-                    " {} |",
-                    if (self & &sq).is_empty() { " " } else { "X" }
-                )?;
+                if let Some(sq) = Square12::new(file, rank) {
+                    write!(
+                        f,
+                        " {} |",
+                        if (self & &sq).is_empty() { " " } else { "X" }
+                    )?;
+                }
             }
-            //writeln!(f, " {}", (b'a' + rank) as char)?;
             writeln!(f, "\n+---+---+---+---+---+---+---+---+---+---+---+---+")?;
         }
         writeln!(f, "a   b   c   d   e   f   g   h   i   j   k   l")?;
@@ -212,152 +241,21 @@ impl fmt::Display for BB12<Square12> {
     }
 }
 
-pub const SQUARE_BB: [BB12<Square12>; 144] = [
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-    BB12::new((0, 0)),
-];
+const fn all_squares() -> [BB12<Square12>; 144] {
+    let mut all = [BB12::new((0, 0)); 144];
+    let mut sq = 0;
+    while sq < 128 {
+        all[sq] = BB12::new((1 << sq, 0));
+        sq += 1;
+    }
+    sq = 0;
+    while sq < 16 {
+        all[128 + sq] = BB12::new((0, 1 << sq));
+        sq += 1;
+    }
+    all
+}
+pub const SQUARE_BB: [BB12<Square12>; 144] = all_squares();
 
 pub fn square_bb(sq: &Square12) -> BB12<Square12> {
     SQUARE_BB[sq.index()]

@@ -157,6 +157,11 @@ impl BitBoard<Square8> for BB8<Square8> {
     }
 
     #[inline(always)]
+    fn full() -> Self {
+        BB8::new(1)
+    }
+
+    #[inline(always)]
     fn is_any(&self) -> bool {
         self.0 != 0
     }

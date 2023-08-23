@@ -1,6 +1,8 @@
 use std::{
     fmt::{Debug, Display},
-    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not},
+    ops::{
+        BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not,
+    },
 };
 
 use crate::shuuro_rules::Square;
@@ -27,6 +29,7 @@ where
     for<'a> Self: BitOrAssign<&'a S>,
 {
     fn empty() -> Self;
+    fn full() -> Self;
     fn is_any(&self) -> bool;
     fn is_empty(&self) -> bool;
     fn clear_at(&mut self, sq: S);
