@@ -182,7 +182,7 @@ impl BitBoard<Square8> for BB8<Square8> {
     }
 
     #[inline(always)]
-    fn count(&self) -> u32 {
+    fn len(&self) -> u32 {
         self.0.count_ones()
     }
 

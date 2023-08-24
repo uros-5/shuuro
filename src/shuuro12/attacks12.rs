@@ -12,6 +12,59 @@ use super::{
     square12::Square12,
 };
 
+const ROOK_DELTAS: [i32; 4] = [8, 1, -8, -1];
+const BISHOP_DELTAS: [i32; 4] = [9, 7, -9, -7];
+const KING_DELTAS: [i32; 8] = [9, 8, 7, 1, -9, -8, -7, -1];
+const KNIGHT_DELTAS: [i32; 8] = [25, 23, 14, 10, -25, -23, -14, -10];
+const WHITE_PAWN_DELTAS: [i32; 2] = [7, 9];
+const BLACK_PAWN_DELTAS: [i32; 2] = [-7, -9];
+
+const fn knight_attacks(square: i32, deltas: &[i32]) -> BB12<Square12> {
+    let mut attack = BB12::new((0, 0));
+    let mut i = 0;
+    let len = deltas.len();
+    while i < len {
+        let mut previous = square;
+        loop {
+            let sq = previous + deltas[i];
+            let file_diff = (sq % 12) - (previous % 12);
+            if file_diff > 2 || file_diff < -2 || sq < 0 {
+                break;
+            } else if sq > 127 && sq < 144 {
+                attack.0 .1 |= SQUARE_BB[sq as usize].0 .1;
+                previous = sq;
+                break;
+            } else if sq > 127 {
+                previous = sq;
+                break;
+            }
+
+            let bb = 1 << sq;
+            attack.0 .0 |= bb;
+            if attack.0 .0 & bb != 0 {
+                break;
+            }
+            previous = sq;
+        }
+        i += 1;
+    }
+
+    attack
+}
+
+const fn init_stepping_attacks(deltas: &[i32]) -> [BB12<Square12>; 144] {
+    let mut table = [BB12::new((0, 0)); 144];
+    let mut sq = 0;
+    while sq < 144 {
+        table[sq] = knight_attacks(sq as i32, deltas);
+        sq += 1;
+    }
+    table
+}
+
+pub static KNIGHT_ATTACKS: [BB12<Square12>; 144] =
+    init_stepping_attacks(&KNIGHT_DELTAS);
+
 static mut NON_SLIDING_ATTACKS: [[[BB12<Square12>; 144]; 6]; 2] =
     [[[BB12::new((0, 0)); 144]; 6]; 2];
 
@@ -381,12 +434,17 @@ mod tests {
         attacks::Ray,
         bitboard::BitBoard,
         shuuro12::{
-            bitboard12::square_bb, board_defs::EMPTY_BB, square12::consts::*,
+            bitboard12::{square_bb, BB12},
+            board_defs::EMPTY_BB,
+            square12::{consts::*, Square12},
         },
         Color, PieceType, Square,
     };
 
-    use super::{Attacks, Attacks12, NON_SLIDING_ATTACKS, PAWN_MOVES, RAYS};
+    use super::{
+        Attacks, Attacks12, KNIGHT_ATTACKS, NON_SLIDING_ATTACKS, PAWN_MOVES,
+        RAYS,
+    };
 
     #[test]
     fn pawn_moves() {
@@ -442,26 +500,23 @@ mod tests {
     }
 
     #[test]
-    fn knight_attacks() {
-        Attacks12::init_knight_attacks();
+    fn knight_attacks2() {
+        // Attacks12::init_knight_attacks();
         let knight_cases = [
-            (A1, vec![B3, C2], Color::White),
-            (E4, vec![D2, F2, C3, G3, C5, G5, D6, F6], Color::White),
-            (B11, vec![D12, D10, C9, A9], Color::Black),
-            (L8, vec![K10, J9, J7, K6], Color::Black),
+            (A1, vec![B3, C2]),
+            (E4, vec![D2, F2, C3, G3, C5, G5, D6, F6]),
+            (B11, vec![D12, D10, C9, A9]),
+            (L8, vec![K10, J9, J7, K6]),
         ];
         for case in knight_cases {
-            let knight = PieceType::Knight as usize;
             let sq = case.0.index();
-            let color = case.2 as usize;
-            unsafe {
-                let attacks = NON_SLIDING_ATTACKS[color][knight][sq];
-                let capacity = case.1.len();
-                for sq in case.1 {
-                    assert!((&attacks & &sq).is_any());
-                }
-                assert_eq!(attacks.count(), capacity);
+            let attacks = KNIGHT_ATTACKS[sq];
+            let capacity = case.1.len();
+            for sq in case.1 {
+                assert!((&attacks & &sq).is_any());
             }
+            assert_eq!(attacks.len(), capacity as u32);
+            // assert!(false);
         }
     }
 
@@ -518,5 +573,12 @@ mod tests {
                 assert_eq!(calc.count(), case.2);
             }
         }
+    }
+
+    #[test]
+    fn abc() {
+        let a = KNIGHT_ATTACKS[L11.index()];
+        println!("{a}");
+        assert!(false);
     }
 }

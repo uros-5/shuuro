@@ -21,11 +21,11 @@ const fn files() -> [BB12<Square12>; 12] {
     let mut all = [BB12::new((0, 0)); 12];
     let mut i = 0;
     let file = 0x1001001001001001001001001001001;
-    let file2 = 0x1001001001001001001001001001;
+    let file_u16 = 0x1001001001001001001001001001;
     while i < 12 {
         if i >= 8 {
             let c = 1 << (i - 8) | (1 << (4 + i));
-            all[i] = BB12::new((file2 << i, c));
+            all[i] = BB12::new((file_u16 << i, c));
         } else {
             all[i] = BB12::new((file << i, 1 << (4 + i)));
         }

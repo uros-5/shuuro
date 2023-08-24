@@ -557,7 +557,7 @@ pub mod position_tests {
         pos.set_sfen(sfen).expect("failed to parse SFEN string");
         let lm = pos.legal_moves(&Color::Black);
         if let Some(b) = lm.get(&D3) {
-            assert!(b.count() == 1);
+            assert!(b.len() == 1);
         }
     }
 
@@ -569,7 +569,7 @@ pub mod position_tests {
             .expect("failed to parse SFEN string");
         let lm = pos.legal_moves(&Color::White);
         if let Some(b) = lm.get(&G5) {
-            assert_eq!(b.count(), 1);
+            assert_eq!(b.len(), 1);
         }
     }
 
@@ -598,7 +598,7 @@ pub mod position_tests {
             pos.set_sfen(case.0).expect("failed to parse sfen string");
             let legal_moves = pos.legal_moves(&Color::White);
             if let Some(b) = legal_moves.get(&case.1) {
-                assert_eq!(b.count(), case.2);
+                assert_eq!(b.len(), case.2);
             }
         }
     }
@@ -611,7 +611,7 @@ pub mod position_tests {
             .expect("failed to parse sfen string");
         let legal_moves = pos.legal_moves(&Color::Black);
         if let Some(b) = legal_moves.get(&F11) {
-            assert_eq!(b.count(), 0);
+            assert_eq!(b.len(), 0);
         }
     }
 
@@ -633,7 +633,7 @@ pub mod position_tests {
             pos.set_sfen(i.0).expect("failed to parse sfen string");
             let legal_moves = pos.legal_moves(&Color::Black);
             if let Some(b) = legal_moves.get(&F8) {
-                assert_eq!(b.count(), i.1);
+                assert_eq!(b.len(), i.1);
             }
         }
     }
@@ -709,7 +709,7 @@ pub mod position_tests {
         pos.set_sfen(sfen).expect("failed to parse SFEN string");
         let legal_moves = pos.legal_moves(&Color::Black);
         if let Some(b) = legal_moves.get(&F10) {
-            assert_eq!(b.count(), 6);
+            assert_eq!(b.len(), 6);
         }
     }
 
@@ -779,7 +779,7 @@ pub mod position_tests {
             .expect("failed to parse sfen string");
         let pawn_moves = position.legal_moves(&Color::White);
         if let Some(b) = pawn_moves.get(&B11) {
-            assert_eq!(b.count(), 2);
+            assert_eq!(b.len(), 2);
         }
         let result = position.play("b11", "c12");
         assert!(result.is_ok());
@@ -811,7 +811,7 @@ pub mod position_tests {
                 .expect("failed to parse sfen string");
             let queen_moves = position.legal_moves(&Color::White);
             if let Some(b) = queen_moves.get(&case.1) {
-                assert_eq!(b.count(), case.2);
+                assert_eq!(b.len(), case.2);
             }
         }
     }
@@ -1163,7 +1163,7 @@ pub mod position_tests {
             let color = pos.side_to_move();
             let moves = pos.legal_moves(&color);
             if let Some(b) = moves.get(&Square12::from_sfen(case.1).unwrap()) {
-                assert_eq!(b.count(), case.2);
+                assert_eq!(b.len(), case.2);
             }
         }
     }
@@ -1375,7 +1375,7 @@ pub mod position_tests {
             position.set_sfen(case.0).expect("error while parsing sfen");
             let moves = position.legal_moves(&Color::White);
             if let Some(b) = moves.get(&G2) {
-                assert_eq!(b.count(), case.1);
+                assert_eq!(b.len(), case.1);
             }
         }
     }
@@ -1539,7 +1539,7 @@ pub mod position_tests {
                 for sq in case.2 {
                     assert!((b & sq).is_any());
                 }
-                assert_eq!(b.count(), len as u32);
+                assert_eq!(b.len(), len as u32);
             }
         }
     }
