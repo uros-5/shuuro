@@ -1173,7 +1173,7 @@ where
                     blockers,
                 )
             }
-            PieceType::Giraffe => A::get_girrafe_attacks(current_sq),
+            PieceType::Giraffe => A::get_giraffe_attacks(current_sq),
             _ => B::empty(),
         };
         move_type.moves(self, &attacks, piece, *current_sq)

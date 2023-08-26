@@ -106,7 +106,7 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
         }
     }
 
-    fn init_girraffe_attacks() {
+    fn init_giraffe_attacks() {
         for sq in Square8::iter() {
             let mut bb = BB8::empty();
             for attack in sq.giraffe().into_iter().flatten() {
@@ -140,6 +140,8 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
             }
         }
     }
+
+    fn init_rays() {}
 
     fn init_north_ray() {
         for sq in 0..64 {
@@ -307,7 +309,7 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
         }
     }
 
-    fn get_girrafe_attacks(square: &Square8) -> BB8<Square8> {
+    fn get_giraffe_attacks(square: &Square8) -> BB8<Square8> {
         unsafe { GIRAFFE_ATTACKS[square.index()] }
     }
 
