@@ -47,6 +47,7 @@ where
         piece_type: PieceType,
         square: &S,
         color: Color,
+        blockers: B,
     ) -> B;
 
     fn get_giraffe_attacks(square: &S) -> B;

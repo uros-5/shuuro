@@ -257,10 +257,23 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
         piece_type: PieceType,
         square: &Square12,
         color: Color,
+        blockers: BB12<Square12>,
     ) -> BB12<Square12> {
-        unsafe {
-            NON_SLIDING_ATTACKS[color as usize][piece_type as usize]
-                [square.index()]
+        let a = &KING_MOVES[square.index()] & &blockers;
+        match piece_type {
+            PieceType::King => &KING_MOVES[square.index()] & &blockers,
+            PieceType::Knight => &KNIGHT_ATTACKS[square.index()] & &blockers,
+            PieceType::Giraffe => &GIRAFFE_ATTACKS[square.index()] & &blockers,
+            PieceType::Pawn => match color {
+                Color::Black => {
+                    &BLACK_PAWN_ATTACKS[square.index()] & &BB12::empty()
+                }
+                Color::White => {
+                    &WHITE_PAWN_ATTACKS[square.index()] & &BB12::empty()
+                }
+                Color::NoColor => &BB12::empty() & &BB12::empty(),
+            },
+            _ => BB12::empty(),
         }
     }
 

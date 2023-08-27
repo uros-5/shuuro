@@ -30,6 +30,7 @@ impl PlinthGen<Square12, BB12<Square12>>
             crate::PieceType::King,
             &sq,
             crate::Color::White,
+            BB12::empty(),
         )
     }
 

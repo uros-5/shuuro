@@ -1140,22 +1140,26 @@ where
                 PieceType::Knight,
                 current_sq,
                 piece.color,
+                B::empty(),
             ),
             PieceType::Pawn => A::get_non_sliding_attacks(
                 PieceType::Pawn,
                 current_sq,
                 piece.color,
+                B::empty(),
             ),
             PieceType::King => A::get_non_sliding_attacks(
                 PieceType::King,
                 current_sq,
                 piece.color,
+                B::empty(),
             ),
             PieceType::Chancellor => {
                 &A::get_non_sliding_attacks(
                     PieceType::Knight,
                     current_sq,
                     piece.color,
+                    B::empty(),
                 ) | &A::get_sliding_attacks(
                     PieceType::Rook,
                     current_sq,
@@ -1167,6 +1171,7 @@ where
                     PieceType::Knight,
                     current_sq,
                     piece.color,
+                    B::empty(),
                 ) | &A::get_sliding_attacks(
                     PieceType::Bishop,
                     current_sq,

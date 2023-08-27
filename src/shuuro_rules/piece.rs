@@ -90,6 +90,10 @@ impl Piece {
     //         _ => true,
     //     }
     // }
+
+    fn index(&self) -> usize {
+        self.piece_type.index() + 10
+    }
 }
 
 impl fmt::Display for Piece {

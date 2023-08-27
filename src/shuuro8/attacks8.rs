@@ -302,6 +302,7 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
         piece_type: PieceType,
         square: &Square8,
         color: Color,
+        blockers: BB8<Square8>,
     ) -> BB8<Square8> {
         unsafe {
             NON_SLIDING_ATTACKS[color as usize][piece_type as usize]

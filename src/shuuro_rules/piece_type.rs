@@ -103,6 +103,10 @@ impl PieceType {
         matches!(self, Self::Chancellor | Self::ArchBishop | Self::Giraffe)
     }
 
+    pub fn is_non_sliding_piece(&self) -> bool {
+        matches!(self, Self::Knight | Self::Giraffe | Self::King | Self::Pawn)
+    }
+
     /// Converts the instance into the unique number for array indexing purpose.
     pub fn index(self) -> usize {
         self as usize
