@@ -4,7 +4,10 @@ use std::{
 };
 
 pub use crate::attacks::Attacks;
-use crate::{attacks::Ray, bitboard::BitBoard, Color, PieceType, Square};
+use crate::{
+    attacks::Ray, bitboard::BitBoard, shuuro12::square12::consts::F11, Color,
+    PieceType, Square,
+};
 
 use super::{
     bitboard12::{square_bb, BB12, SQUARE_BB},
@@ -28,9 +31,6 @@ pub static BLACK_PAWN_ATTACKS: [BB12<Square12>; 144] =
     init_stepping_attacks(&BLACK_PAWN_DELTAS);
 pub static KING_MOVES: [BB12<Square12>; 144] =
     init_stepping_attacks(&KING_DELTAS);
-
-static mut NON_SLIDING_ATTACKS: [[[BB12<Square12>; 144]; 6]; 2] =
-    [[[BB12::new((0, 0)); 144]; 6]; 2];
 
 static mut PAWN_MOVES: [[BB12<Square12>; 144]; 2] =
     [init_stepping_attacks(&[-12]), init_stepping_attacks(&[12])];
@@ -68,20 +68,26 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     fn add_pawn_moves(_current: Square12, _next: Square12, _color: &Color) {}
 
     fn init_pawn_moves() {
-        for color in [(Color::White, 0, 24), (Color::Black, 132, -24_isize)] {
+        for color in [(Color::White, 0, 12), (Color::Black, 132, -12_isize)] {
             let index = color.0.index();
             match color.0 {
                 Color::NoColor => (),
                 _ => {
-                    let mut i = color.1;
-                    let len = i + 12;
-                    while i < len {
-                        let sq = i + color.2;
-                        let sq = &SQUARE_BB[sq as usize];
+                    for i in color.1..color.1 + 12 {
                         unsafe {
-                            PAWN_MOVES[index][i as usize] |= sq;
+                            PAWN_MOVES[index][i as usize] = BB12::empty();
                         }
-                        i += 1;
+                    }
+                    let start = color.1 + color.2;
+                    let end = start + 12;
+                    for i in start..end {
+                        let first = i + color.2;
+                        let second = i + (color.2 * 2);
+                        unsafe {
+                            let sq = &SQUARE_BB[first as usize]
+                                | &SQUARE_BB[second as usize];
+                            PAWN_MOVES[index][i as usize] |= &sq;
+                        }
                     }
                 }
             }
@@ -333,13 +339,11 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn get_pawn_moves(square: usize, color: Color) -> BB12<Square12> {
-        unsafe {
-            match color {
-                Color::White | Color::Black => {
-                    PAWN_MOVES[color.index()][square]
-                }
-                Color::NoColor => BB12::empty(),
-            }
+        match color {
+            Color::White | Color::Black => unsafe {
+                PAWN_MOVES[color.index()][square]
+            },
+            Color::NoColor => BB12::empty(),
         }
     }
 }
@@ -397,7 +401,7 @@ mod tests2 {
         shuuro12::{
             attacks12::{BLACK_PAWN_ATTACKS, WHITE_PAWN_ATTACKS},
             bitboard12::square_bb,
-            board_defs::{EMPTY_BB, RANK_BB},
+            board_defs::EMPTY_BB,
             square12::consts::*,
         },
         Color, Square,

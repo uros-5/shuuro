@@ -873,13 +873,16 @@ where
     /// Returns all legal moves where piece can be moved.
     fn legal_moves(&self, color: &Color) -> HashMap<S, B> {
         let mut map = HashMap::new();
-        let pinned_moves = self.pinned_moves(*color);
+        let pinned_moves = self.pins(color);
         let check_moves = self.check_moves(*color);
-        let enemy_moves = self.enemy_moves(color);
+        let enemy_moves = self.enemy_moves2(color);
         let move_task = check_moves.add_enemy_moves(enemy_moves).unwrap();
         let king = self.find_king(color).unwrap();
         for sq in self.player_bb(*color) {
             let my_moves = self.non_legal_moves(&sq);
+            if sq.to_string() == "f11" {
+                println!("{my_moves}");
+            }
             if let MoveTask::Checks { check, .. } = move_task {
                 if check.is_some() {
                     if king == sq {
@@ -977,6 +980,7 @@ where
                         all |= &moves;
                     }
                 }
+                all &= &!&self.player_bb(Color::NoColor);
                 all
             }
             Color::NoColor => B::empty(),
@@ -1643,7 +1647,9 @@ where
                     );
                     let them = &self.type_bb(&pt)
                         & &self.player_bb(attacked_color.flip());
-                    match 1.cmp(&them.len()) {
+                    let mut attackers = &(&them & &moves) & &them;
+                    let len = attackers.len();
+                    match &len.cmp(&1) {
                         Ordering::Equal => {
                             if check.is_some() {
                                 double_check = true;
@@ -1652,9 +1658,17 @@ where
                                     double_check,
                                     enemy_moves: None,
                                 };
+                            } else if pt.is_non_sliding_piece() {
+                                check = Some(moves);
+                                double_check = false;
+                            } else if let Some(attacker) = attackers.pop() {
+                                let between = A::between(king, attacker);
+                                if between.len() == 0 {
+                                    check = Some(moves);
+                                } else {
+                                    check = Some(&between | &attacker);
+                                }
                             }
-                            check = Some(moves);
-                            double_check = false;
                         }
                         Ordering::Greater => {
                             double_check = true;
@@ -1664,7 +1678,7 @@ where
                                 enemy_moves: None,
                             };
                         }
-                        Ordering::Less => {}
+                        _ => {}
                     }
                 }
             }
@@ -1681,7 +1695,7 @@ where
         if color == &Color::NoColor {
             return pins;
         }
-        let ksq = self.find_king(&color);
+        let ksq = self.find_king(color);
         if ksq.is_none() {
             return pins;
         }

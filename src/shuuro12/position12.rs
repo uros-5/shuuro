@@ -446,6 +446,7 @@ pub mod position_tests {
         position::{Board, MoveType, Outcome, Placement, Play, Sfen},
         shuuro12::{
             attacks12::Attacks12,
+            bitboard12::BB12,
             position12::P12,
             square12::{consts::*, Square12},
         },
@@ -718,32 +719,32 @@ pub mod position_tests {
     }
 
     #[test]
-    fn pawn_moves() {
+    fn pawn_moves2() {
         setup();
         let cases = [
-            // (
-            //     "4K1Q4LN/4L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 b - 12",
-            //     "f11",
-            //     "f10",
-            // ),
-            // (
-            //     "2N1L0QKRL01N1/2P4P3P/55L01/57/57/L056/57/57/3L08/8L03/2pp2L05/4qLnk2r1b b - 15",
-            //     "c11",
-            //     "c10",
-            // ),
+            (
+                "4K1Q4LN/4L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 b - 12",
+                "f11",
+                "f10",
+            ),
+            (
+                "2N1L0QKRL01N1/2P4P3P/55L01/57/57/L056/57/57/3L08/8L03/2pp2L05/4qLnk2r1b b - 15",
+                "c11",
+                "c10",
+            ),
             (
                 "2N1L0QKRL01N1/2P4P3P/55L01/57/57/L056/57/57/3L08/8L03/2pp2L05/4qLnk2r1b b - 15",
                 "d11",
                 "d10",
             ),
-            // (
-            //     "4KN1Q4/4L0P1P1PP1/1P55/3L08/56L0/6L05/4L01L05/57/57/6L05/p7ppp1/L02q1k3r2 b - 16",
-            //     "a11",
-            //     "a10",
-            // ),
-            // ("2LNN2KNBB2/6L03P1/57/7L04/1L055/57/9L02/57/6L05/ppp2p2pQ2/pppL0p1ppp1pp/L02kq7 b - 29",
-            //  "i11",
-            //  "j10")
+            (
+                "4KN1Q4/4L0P1P1PP1/1P55/3L08/56L0/6L05/4L01L05/57/57/6L05/p7ppp1/L02q1k3r2 b - 16",
+                "a11",
+                "a10",
+            ),
+            ("2LNN2KNBB2/6L03P1/57/7L04/1L055/57/9L02/57/6L05/ppp2p2pQ2/pppL0p1ppp1pp/L02kq7 b - 29",
+             "i11",
+             "j10")
         ];
         let ng_cases = [(
             "4K1Q4LN/2P1L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 w - 12",
@@ -752,10 +753,12 @@ pub mod position_tests {
         )];
 
         for case in cases {
+            dbg!(case);
             let mut position = P12::new();
             position
                 .set_sfen(case.0)
                 .expect("failed to parse sfen string");
+            println!("{position}");
 
             let played = position.play(case.1, case.2);
             assert!(played.is_ok());
@@ -835,30 +838,30 @@ pub mod position_tests {
     }
 
     #[test]
-    fn in_check2() {
+    fn in_check() {
         setup();
 
         let test_cases = [
-            // (
-            //     "KQR9/1PPP8/57/57/57/57/57/57/57/57/1ppp8/qkb9 w - 1",
-            //     false,
-            //     true,
-            // ),
-            // (
-            //     "5QR5/1K55/57/57/57/57/57/57/57/57/57/5k6 b - 1",
-            //     true,
-            //     false,
-            // ),
-            // (
-            //     "2RNBKQBNR2/57/2PPPPPPPP2/57/57/57/57/57/57/2pppppppp2/57/2rnbkqbnr2 b - 1",
-            //     false,
-            //     false,
-            // ),
-            // (
-            //     "RR5K4/7L04/QP55/7L04/57/57/57/nbq9/7q4/57/57/56k w - 1",
-            //     false,
-            //     false,
-            // ),
+            (
+                "KQR9/1PPP8/57/57/57/57/57/57/57/57/1ppp8/qkb9 w - 1",
+                false,
+                true,
+            ),
+            (
+                "5QR5/1K55/57/57/57/57/57/57/57/57/57/5k6 b - 1",
+                true,
+                false,
+            ),
+            (
+                "2RNBKQBNR2/57/2PPPPPPPP2/57/57/57/57/57/57/2pppppppp2/57/2rnbkqbnr2 b - 1",
+                false,
+                false,
+            ),
+            (
+                "RR5K4/7L04/QP55/7L04/57/57/57/nbq9/7q4/57/57/56k w - 1",
+                false,
+                false,
+            ),
             ("KQP8/2n8/57/57/57/57/57/k11/57/57/57/57 w - 1", false, true),
         ];
 
