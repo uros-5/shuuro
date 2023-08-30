@@ -28,6 +28,7 @@ impl PlinthGen<Square8, BB8<Square8>> for PlinthGen8<Square8, BB8<Square8>> {
             crate::PieceType::King,
             &sq,
             crate::Color::White,
+            BB8::empty(),
         )
     }
 

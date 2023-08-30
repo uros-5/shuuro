@@ -1,3 +1,4 @@
+pub mod abc;
 pub mod attacks12;
 pub mod bitboard12;
 pub mod board_defs;

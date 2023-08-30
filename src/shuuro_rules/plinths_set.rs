@@ -39,7 +39,7 @@ where
             // & &!&bb
             let check = &attacks & sq2;
             let sum = &bb | sq2;
-            if check.is_empty() && sum.count() == 2 {
+            if check.is_empty() && sum.len() == 2 {
                 return sum;
             }
         }
@@ -68,7 +68,7 @@ where
                     break;
                 }
             }
-            if self.plinths_count(bb.count()) {
+            if self.plinths_count(bb.len() as usize) {
                 break;
             }
         }

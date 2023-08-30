@@ -3,6 +3,7 @@ use std::{
     cmp::Ordering,
     collections::HashMap,
     hash::Hash,
+    marker::PhantomData,
     ops::{BitAnd, BitOr, BitOrAssign, Not},
 };
 
@@ -12,6 +13,56 @@ use crate::{
     attacks::Attacks, bitboard::BitBoard, Color, Hand, Move, MoveData,
     MoveError, MoveRecord, Piece, PieceType, SfenError, Square, Variant,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MoveTask<S, B>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    Self: Sized,
+    for<'a> &'a B: BitOr<&'a B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    for<'a> B: BitOrAssign<&'a S>,
+{
+    Enemy(Piece, B),
+    Checks {
+        check: Option<B>,
+        double_check: bool,
+        enemy_moves: Option<B>,
+    },
+    _0(PhantomData<S>),
+}
+
+impl<S, B> MoveTask<S, B>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    Self: Sized,
+    for<'a> &'a B: BitOr<&'a B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    for<'a> B: BitOrAssign<&'a S>,
+{
+    fn add_enemy_moves(self, enemy_moves: B) -> Option<Self> {
+        match self {
+            Self::Checks {
+                check,
+                double_check,
+                ..
+            } => Some(Self::Checks {
+                check,
+                double_check,
+                enemy_moves: Some(enemy_moves),
+            }),
+            _ => None,
+        }
+    }
+}
 
 /// Outcome stores information about outcome after move.
 #[derive(Debug, Clone, PartialEq)]
@@ -72,7 +123,8 @@ where
         + Board<S, B, A>
         + Sfen<S, B, A>
         + Placement<S, B, A>
-        + Play<S, B, A>,
+        + Play<S, B, A>
+        + Rules<S, B, A>,
     for<'a> &'a B: BitOr<&'a B, Output = B>,
     for<'a> &'a B: BitAnd<&'a B, Output = B>,
     for<'a> &'a B: Not<Output = B>,
@@ -484,7 +536,7 @@ where
     /// Check if king is placed.
     fn is_king_placed(&self, c: Color) -> bool {
         let king = &self.player_bb(c) & &self.type_bb(&PieceType::King);
-        if king.count() == 1 {
+        if king.len() == 1 {
             return true;
         }
         false
@@ -557,7 +609,6 @@ where
             B::empty()
         };
         let checks = self.checks(&p.color);
-        // println!("{checks}");
         if checks.is_any() {
             return checks;
         } else if !self.is_king_placed(p.color)
@@ -676,7 +727,7 @@ where
     S: Square + Hash,
     B: BitBoard<S>,
     A: Attacks<S, B>,
-    Self: Sized + Clone + Board<S, B, A> + Sfen<S, B, A>,
+    Self: Sized + Clone + Board<S, B, A> + Sfen<S, B, A> + Rules<S, B, A>,
     for<'a> &'a B: BitOr<&'a B, Output = B>,
     for<'a> &'a B: BitAnd<&'a B, Output = B>,
     for<'a> &'a B: Not<Output = B>,
@@ -764,7 +815,7 @@ where
             PieceType::ArchBishop,
         ];
         let minor = [PieceType::Knight, PieceType::Bishop, PieceType::Giraffe];
-        if self.occupied_bb().count() == 2 {
+        if self.occupied_bb().len() == 2 {
             return Err(MoveError::DrawByInsufficientMaterial);
         }
         for c in Color::iter() {
@@ -781,7 +832,7 @@ where
             for i in minor {
                 bb |= &(&self.player_bb(c) & &self.type_bb(&i));
             }
-            let minor_count = bb.count();
+            let minor_count = bb.len();
             if minor_count >= 3 {
                 return Ok(());
             }
@@ -810,7 +861,7 @@ where
                     continue;
                 }
             }
-            if bb.count() == 0 || minor_count == bb.count() {
+            if bb.len() == 0 || minor_count == bb.len() {
                 continue;
             }
 
@@ -823,28 +874,30 @@ where
     fn legal_moves(&self, color: &Color) -> HashMap<S, B> {
         let mut map = HashMap::new();
         let pinned_moves = self.pinned_moves(*color);
-        let check_moves = self.check_moves(color);
+        let check_moves = self.check_moves(*color);
         let enemy_moves = self.enemy_moves(color);
+        let move_task = check_moves.add_enemy_moves(enemy_moves).unwrap();
         let king = self.find_king(color).unwrap();
         for sq in self.player_bb(*color) {
             let my_moves = self.non_legal_moves(&sq);
-            if !check_moves.is_empty() {
-                if king == sq {
-                    map.insert(king, &my_moves & &!&enemy_moves);
+            if let MoveTask::Checks { check, .. } = move_task {
+                if check.is_some() {
+                    if king == sq {
+                        map.insert(king, &my_moves & &!&enemy_moves);
+                    } else {
+                        let moves = self.fix_pin(
+                            &sq,
+                            &pinned_moves,
+                            move_task,
+                            my_moves,
+                        );
+                        map.insert(sq, moves);
+                    }
                 } else {
-                    let moves = self.fix_pin(
-                        &sq,
-                        &pinned_moves,
-                        &check_moves,
-                        my_moves,
-                    );
+                    let moves =
+                        self.fix_pin(&sq, &pinned_moves, move_task, my_moves);
                     map.insert(sq, moves);
                 }
-            } else {
-                let moves =
-                    self.fix_pin(&sq, &pinned_moves, &check_moves, my_moves);
-
-                map.insert(sq, moves);
             }
         }
         map
@@ -867,44 +920,65 @@ where
         all
     }
 
-    /// Returns  `BitBoard` of all moves after fixing pin.
-    fn fix_pin(
-        &self,
-        sq: &S,
-        pins: &HashMap<S, B>,
-        checks: &Vec<B>,
-        my_moves: B,
-    ) -> B {
-        let piece = self.piece_at(*sq).unwrap();
-        if let Some(pin) = pins.get(sq) {
-            match (1).cmp(&checks.len()) {
-                Ordering::Equal => {
-                    let checks = checks.get(0).unwrap();
-                    &(checks & pin) & &my_moves
-                }
-                Ordering::Greater => pin & &my_moves,
-                Ordering::Less => B::empty(),
-            }
-        } else {
-            let mut my_moves = my_moves;
-            let enemy_moves = self.enemy_moves(&piece.color);
-            if piece.piece_type == PieceType::King {
-                my_moves = &my_moves & &!&enemy_moves;
-                return my_moves;
-            } else if checks.len() > 1 {
-                return B::empty();
-            }
-            for bb in checks.iter() {
-                my_moves &= bb;
-            }
-            my_moves
-        }
-    }
+    // /// Returns  `BitBoard` of all moves after fixing pin.
+    // fn fix_pin(
+    //     &self,
+    //     sq: &S,
+    //     pins: &HashMap<S, B>,
+    //     checks: &Vec<B>,
+    //     my_moves: B,
+    // ) -> B {
+    //     let piece = self.piece_at(*sq).unwrap();
+    //     if let Some(pin) = pins.get(sq) {
+    //         match (1).cmp(&checks.len()) {
+    //             Ordering::Equal => {
+    //                 let checks = checks.get(0).unwrap();
+    //                 &(checks & pin) & &my_moves
+    //             }
+    //             Ordering::Greater => pin & &my_moves,
+    //             Ordering::Less => B::empty(),
+    //         }
+    //     } else {
+    //         let mut my_moves = my_moves;
+    //         let enemy_moves = self.enemy_moves(&piece.color);
+    //         if piece.piece_type == PieceType::King {
+    //             my_moves = &my_moves & &!&enemy_moves;
+    //             return my_moves;
+    //         } else if checks.len() > 1 {
+    //             return B::empty();
+    //         }
+    //         for bb in checks.iter() {
+    //             my_moves &= bb;
+    //         }
+    //         my_moves
+    //     }
+    // }
 
     /// Returns `BitBoard` of all moves by opponent.
     fn enemy_moves(&self, color: &Color) -> B {
         match color {
             Color::Black | Color::White => self.color_moves(&color.flip()),
+            Color::NoColor => B::empty(),
+        }
+    }
+    fn enemy_moves2(&self, color: &Color) -> B {
+        match color {
+            Color::Black | Color::White => {
+                let mut all = B::empty();
+                let enemy = color.flip();
+                let blockers =
+                    &self.occupied_bb() | &self.player_bb(Color::NoColor);
+                let blockers =
+                    blockers ^ &B::from_square(&self.find_king(color).unwrap());
+                for sq in self.player_bb(enemy).into_iter() {
+                    let piece = self.piece_at(sq);
+                    if let Some(piece) = piece {
+                        let moves = self.get_moves(&sq, piece, blockers);
+                        all |= &moves;
+                    }
+                }
+                all
+            }
             Color::NoColor => B::empty(),
         }
     }
@@ -952,7 +1026,7 @@ where
                     & &!&self.player_bb(Color::NoColor);
                 // this is unpin
                 let my_piece = &pinned & &self.player_bb(color);
-                if pinned.count() == 1 && my_piece.is_any() {
+                if pinned.len() == 1 && my_piece.is_any() {
                     let fix = &(&A::between(psq, ksq) & &!&pinned) | &enemy_bb;
                     let my_square = pinned.pop_reverse();
                     pins.insert(my_square.unwrap(), fix);
@@ -1006,9 +1080,14 @@ where
 
     fn in_check(&self, c: Color) -> bool {
         let king = &self.find_king(&c);
-        if let Some(_k) = king {
-            let check_moves = self.check_moves(&c);
-            return !check_moves.is_empty();
+        if let Some(k) = king {
+            let check_moves = self.enemy_moves2(&c);
+            return (&check_moves & k).is_any();
+            // if let MoveTask::Checks { check, .. } = check_moves {
+            //     if let Some(check) = check {
+            //         return !check.is_empty();
+            //     }
+            // }
         }
         false
     }
@@ -1069,52 +1148,11 @@ where
     fn is_stalemate(&self, color: &Color) -> Result<(), MoveError> {
         let moves = self.legal_moves(color);
         for m in moves {
-            if m.1.count() > 0 {
+            if m.1.len() > 0 {
                 return Ok(());
             }
         }
         Err(MoveError::DrawByStalemate)
-    }
-
-    /// Returns Vector of all checks.
-    fn check_moves(&self, color: &Color) -> Vec<B> {
-        let mut all = vec![];
-        let ksq = self.find_king(color);
-        if ksq.is_none() {
-            return vec![];
-        }
-        let ksq = ksq.unwrap();
-
-        for s in [
-            PieceType::Queen,
-            PieceType::Rook,
-            PieceType::Bishop,
-            PieceType::Knight,
-            PieceType::Pawn,
-            PieceType::Chancellor,
-            PieceType::ArchBishop,
-            PieceType::Giraffe,
-        ]
-        .iter()
-        {
-            if !self.variant().can_buy(s) {
-                continue;
-            }
-            let p = Piece {
-                piece_type: *s,
-                color: *color,
-            };
-            let move_candidates =
-                self.move_candidates(&ksq, p, MoveType::Plinth);
-            // this is enemy
-            let bb = &(&self.type_bb(s) & &self.player_bb(color.flip()))
-                & &move_candidates;
-            for psq in bb {
-                let fix = A::between(ksq, psq);
-                all.push(&fix | &bb);
-            }
-        }
-        all
     }
 
     /// Returns a `BitBoard` where the given piece at the given square can move.
@@ -1146,20 +1184,20 @@ where
                 PieceType::Pawn,
                 current_sq,
                 piece.color,
-                B::empty(),
+                blockers,
             ),
             PieceType::King => A::get_non_sliding_attacks(
                 PieceType::King,
                 current_sq,
                 piece.color,
-                B::empty(),
+                blockers,
             ),
             PieceType::Chancellor => {
                 &A::get_non_sliding_attacks(
                     PieceType::Knight,
                     current_sq,
                     piece.color,
-                    B::empty(),
+                    blockers,
                 ) | &A::get_sliding_attacks(
                     PieceType::Rook,
                     current_sq,
@@ -1171,7 +1209,7 @@ where
                     PieceType::Knight,
                     current_sq,
                     piece.color,
-                    B::empty(),
+                    blockers,
                 ) | &A::get_sliding_attacks(
                     PieceType::Bishop,
                     current_sq,
@@ -1283,7 +1321,7 @@ where
                 Outcome::Check { color: stm }
             } else if (&self.player_bb(stm.flip())
                 & &self.type_bb(&PieceType::King))
-                .count()
+                .len()
                 == 0
             {
                 move_data = move_data.checks(false, true);
@@ -1457,9 +1495,9 @@ where
             &Color::White | &Color::Black => {
                 let moves = A::get_pawn_moves(sq.index(), *color);
                 let blocked = &moves & &occupied;
-                if blocked.count() == 2 {
+                if blocked.len() == 2 {
                     B::empty()
-                } else if blocked.count() == 0 && moves.count() == 2 {
+                } else if blocked.len() == 0 && moves.len() == 2 {
                     moves
                 } else if sq.first_pawn_rank(*color) {
                     pop_sq(sq, blocked, color)
@@ -1467,6 +1505,262 @@ where
                     moves
                 }
             }
+            _ => B::empty(),
+        }
+    }
+}
+
+pub trait Rules<S, B, A>
+where
+    S: Square + Hash,
+    B: BitBoard<S>,
+    A: Attacks<S, B>,
+    Self: Sized + Clone + Board<S, B, A>,
+    for<'a> &'a B: BitOr<&'a B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    for<'a> B: BitOrAssign<&'a S>,
+{
+    fn get_moves(&self, current_sq: &S, piece: &Piece, blockers: B) -> B {
+        match piece.piece_type {
+            PieceType::Rook => {
+                A::get_sliding_attacks(PieceType::Rook, current_sq, blockers)
+            }
+            PieceType::Bishop => {
+                A::get_sliding_attacks(PieceType::Bishop, current_sq, blockers)
+            }
+            PieceType::Queen => {
+                A::get_sliding_attacks(PieceType::Queen, current_sq, blockers)
+            }
+            PieceType::Knight => A::get_non_sliding_attacks(
+                PieceType::Knight,
+                current_sq,
+                piece.color,
+                blockers,
+            ),
+            PieceType::Pawn => A::get_non_sliding_attacks(
+                PieceType::Pawn,
+                current_sq,
+                piece.color,
+                blockers,
+            ),
+            PieceType::King => A::get_non_sliding_attacks(
+                PieceType::King,
+                current_sq,
+                piece.color,
+                blockers,
+            ),
+            PieceType::Chancellor => {
+                &A::get_non_sliding_attacks(
+                    PieceType::Knight,
+                    current_sq,
+                    piece.color,
+                    blockers,
+                ) | &A::get_sliding_attacks(
+                    PieceType::Rook,
+                    current_sq,
+                    blockers,
+                )
+            }
+            PieceType::ArchBishop => {
+                &A::get_non_sliding_attacks(
+                    PieceType::Knight,
+                    current_sq,
+                    piece.color,
+                    B::empty(),
+                ) | &A::get_sliding_attacks(
+                    PieceType::Bishop,
+                    current_sq,
+                    blockers,
+                )
+            }
+            PieceType::Giraffe => A::get_giraffe_attacks(current_sq),
+            _ => B::empty(),
+        }
+    }
+    fn filtering(&self, mt: MoveTask<S, B>) -> B {
+        match mt {
+            MoveTask::Enemy(piece, bb) => {
+                // delete plinths for non knight piece
+                if !piece.piece_type.is_knight_piece() {
+                    return &bb & &!&self.player_bb(Color::NoColor);
+                } else {
+                    return bb;
+                }
+            }
+            _ => B::empty(),
+        }
+    }
+    fn check_moves2(&self, attacked_color: Color) {
+        let mut king =
+            &self.type_bb(&PieceType::King) & &self.player_bb(attacked_color);
+        if king.is_empty() {
+            // return MoveTask::Checks {
+            //     check: None,
+            //     double_check: false,
+            //     enemy_moves: None,
+            // };
+        }
+        let occupied_bb = &self.occupied_bb() | &self.player_bb(Color::NoColor);
+        let occupied_bb = occupied_bb ^ &king;
+        let pt_iter = PieceType::iter();
+        for pt in pt_iter {
+            //
+        }
+    }
+    fn check_moves(&self, attacked_color: Color) -> MoveTask<S, B> {
+        let mut king =
+            &self.type_bb(&PieceType::King) & &self.player_bb(attacked_color);
+        if king.is_empty() {
+            return MoveTask::Checks {
+                check: None,
+                double_check: false,
+                enemy_moves: None,
+            };
+        }
+        let occupied_bb = &self.occupied_bb() | &self.player_bb(Color::NoColor);
+        let king = king.pop().unwrap();
+        let mut double_check = false;
+        let mut check = None;
+        let pt_iter = PieceType::iter();
+        for pt in pt_iter {
+            //
+            match pt {
+                PieceType::King => continue,
+                _ => {
+                    if !self.variant().can_buy(&pt) {
+                        continue;
+                    }
+                    let moves = self.get_moves(
+                        &king,
+                        &Piece {
+                            piece_type: pt,
+                            color: attacked_color,
+                        },
+                        occupied_bb,
+                    );
+                    let them = &self.type_bb(&pt)
+                        & &self.player_bb(attacked_color.flip());
+                    match 1.cmp(&them.len()) {
+                        Ordering::Equal => {
+                            if check.is_some() {
+                                double_check = true;
+                                return MoveTask::Checks {
+                                    check: None,
+                                    double_check,
+                                    enemy_moves: None,
+                                };
+                            }
+                            check = Some(moves);
+                            double_check = false;
+                        }
+                        Ordering::Greater => {
+                            double_check = true;
+                            return MoveTask::Checks {
+                                check: None,
+                                double_check,
+                                enemy_moves: None,
+                            };
+                        }
+                        Ordering::Less => {}
+                    }
+                }
+            }
+        }
+        MoveTask::Checks {
+            check,
+            double_check,
+            enemy_moves: None,
+        }
+    }
+
+    fn pins(&self, color: &Color) -> HashMap<S, B> {
+        let mut pins = HashMap::new();
+        if color == &Color::NoColor {
+            return pins;
+        }
+        let ksq = self.find_king(&color);
+        if ksq.is_none() {
+            return pins;
+        }
+        let ksq = ksq.unwrap();
+        let plinths = self.player_bb(Color::NoColor);
+        for pt in [PieceType::Rook, PieceType::Bishop] {
+            if !self.variant().can_buy(&pt) {
+                continue;
+            }
+            let attacks = A::get_sliding_attacks(pt, &ksq, plinths);
+            // enemies
+            let enemy_bb = &(&self.type_bb(&pt)
+                & &self.player_bb(color.flip()))
+                & &attacks;
+            for enemy_sq in enemy_bb {
+                // this piece is pinned
+                let mut pinned = &(&A::between(ksq, enemy_sq)
+                    & &self.occupied_bb())
+                    & &!&self.player_bb(Color::NoColor);
+                let my_piece = &pinned & &self.player_bb(*color);
+                if pinned.len() == 1 && my_piece.is_any() {
+                    let unpin =
+                        &(&A::between(enemy_sq, ksq) & &!&pinned) | &enemy_bb;
+                    let my_square = pinned.pop_reverse();
+                    pins.insert(my_square.unwrap(), unpin);
+                }
+            }
+        }
+        pins
+    }
+
+    fn my_moves(&self, square: &S, blockers: B) -> B {
+        let piece = self.piece_at(*square);
+        match piece {
+            Some(i) => self.get_moves(square, i, blockers),
+            None => B::empty(),
+        }
+    }
+
+    fn fix_pin(
+        &self,
+        sq: &S,
+        pins: &HashMap<S, B>,
+        move_task: MoveTask<S, B>,
+        my_moves: B,
+    ) -> B {
+        match move_task {
+            MoveTask::Checks {
+                check,
+                double_check,
+                enemy_moves,
+            } => match self.piece_at(*sq) {
+                Some(piece) => {
+                    if let Some(pin) = pins.get(sq) {
+                        if let Some(check) = check {
+                            &(&check & pin) & &my_moves
+                        } else if double_check {
+                            pin & &my_moves
+                        } else {
+                            B::empty()
+                        }
+                    } else {
+                        let mut my_moves = my_moves;
+                        if piece.piece_type == PieceType::King {
+                            if let Some(enemy_moves) = enemy_moves {
+                                my_moves = &my_moves & &!&enemy_moves;
+                                return my_moves;
+                            }
+                        } else if double_check {
+                            return B::empty();
+                        }
+                        if let Some(check) = check {
+                            my_moves &= &check;
+                        }
+                        my_moves
+                    }
+                }
+                None => B::empty(),
+            },
             _ => B::empty(),
         }
     }

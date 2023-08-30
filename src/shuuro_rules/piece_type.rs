@@ -107,6 +107,13 @@ impl PieceType {
         matches!(self, Self::Knight | Self::Giraffe | Self::King | Self::Pawn)
     }
 
+    pub fn is_knight_piece(&self) -> bool {
+        matches!(
+            self,
+            Self::Knight | Self::Chancellor | Self::ArchBishop | Self::Giraffe
+        )
+    }
+
     /// Converts the instance into the unique number for array indexing purpose.
     pub fn index(self) -> usize {
         self as usize

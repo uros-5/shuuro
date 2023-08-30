@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     bitboard::BitBoard,
-    position::{Board, Outcome, Placement, Play, Position, Sfen},
+    position::{Board, Outcome, Placement, Play, Position, Rules, Sfen},
     Color, Hand, MoveData, MoveRecord, Piece, PieceType, SfenError, Square,
     Variant,
 };
@@ -262,6 +262,10 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     fn empty_placement_board() -> String {
         String::from("8/8/8/8/8/8/8/8 w")
     }
+}
+impl Rules<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
+    for P8<Square8, BB8<Square8>>
+{
 }
 
 impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>

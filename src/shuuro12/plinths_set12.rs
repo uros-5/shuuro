@@ -61,7 +61,9 @@ impl Default for PlinthGen12<Square12, BB12<Square12>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{attacks::Attacks, shuuro12::attacks12::Attacks12};
+    use crate::{
+        attacks::Attacks, bitboard::BitBoard, shuuro12::attacks12::Attacks12,
+    };
 
     use super::PlinthGen12;
 
@@ -70,6 +72,6 @@ mod tests {
         Attacks12::init();
         let pl = PlinthGen12::default();
         let b = pl.start();
-        assert_eq!(b.count(), 8);
+        assert_eq!(b.len() as usize, 8);
     }
 }

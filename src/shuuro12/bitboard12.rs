@@ -196,7 +196,8 @@ impl BitBoard<Square12> for BB12<Square12> {
             }
             return sq;
         } else if self.0 .1 != 0 {
-            let sq = Square12::from_index(self.0 .1.trailing_zeros() as u8);
+            let sq =
+                Square12::from_index(128 + self.0 .1.trailing_zeros() as u8);
             if sq.is_some() {
                 self.0 .1 &= self.0 .1 - 1;
             }
@@ -208,16 +209,17 @@ impl BitBoard<Square12> for BB12<Square12> {
     #[inline(always)]
     fn pop_reverse(&mut self) -> Option<Square12> {
         if self.0 .1 != 0 {
-            let sq = Square12::from_index(15 - self.0 .1.leading_zeros() as u8);
-            if sq.is_some() {
-                self.0 .1 &= self.0 .1 - 1;
+            let sq =
+                Square12::from_index(143 - self.0 .1.leading_zeros() as u8);
+            if let Some(sq) = sq {
+                self.clear_at(sq);
             }
             return sq;
         } else if self.0 .0 != 0 {
             let sq =
                 Square12::from_index(127 - self.0 .0.leading_zeros() as u8);
-            if sq.is_some() {
-                self.0 .0 &= self.0 .0 - 1;
+            if let Some(sq) = sq {
+                self.clear_at(sq);
             }
             return sq;
         }
