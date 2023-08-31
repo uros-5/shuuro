@@ -34,19 +34,20 @@ impl PlinthGen<Square12, BB12<Square12>>
         )
     }
 
-    fn plinths_count(&self, _count: usize) -> bool {
-        false
-        // matches!((8).cmp(&count), std::cmp::Ordering::Equal)
+    fn y(&self) -> u8 {
+        12
     }
 }
 
 impl PlinthGen12<Square12, BB12<Square12>> {
     pub fn start(&self) -> BB12<Square12> {
-        let left_rank = &[1, 2, 3, 4, 5, 6];
-        let right_rank = &[7, 8, 9, 10, 11, 12];
-        let left_files = &['a', 'b', 'c', 'd', 'e', 'f'];
-        let right_files = &['g', 'h', 'i', 'j', 'k', 'l'];
-        self.generate_plinths(left_rank, right_rank, left_files, right_files)
+        let sections = [
+            (0, 6, 0, 6, 2),
+            (0, 6, 6, 12, 2),
+            (6, 12, 0, 6, 2),
+            (6, 12, 6, 12, 2),
+        ];
+        self.generate_plinths(&sections)
     }
 }
 

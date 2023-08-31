@@ -32,22 +32,15 @@ impl PlinthGen<Square8, BB8<Square8>> for PlinthGen8<Square8, BB8<Square8>> {
         )
     }
 
-    fn plinths_count(&self, _count: usize) -> bool {
-        _count == 4
-    }
-
-    fn only_two_plinths(&self) -> bool {
-        true
+    fn y(&self) -> u8 {
+        8
     }
 }
 
 impl PlinthGen8<Square8, BB8<Square8>> {
     pub fn start(&self) -> BB8<Square8> {
-        let left_rank = &[3, 4];
-        let right_rank = &[5, 6];
-        let left_files = &['a', 'b', 'c', 'd'];
-        let right_files = &['e', 'f', 'g', 'h'];
-        self.generate_plinths(left_rank, right_rank, left_files, right_files)
+        let sections = [(2, 4, 0, 8, 2), (5, 7, 0, 8, 2)];
+        self.generate_plinths(&sections)
     }
 }
 
