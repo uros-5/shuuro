@@ -30,10 +30,12 @@ where
                 let x = rang.gen_range(section.2..section.3);
                 let sq = (y * rank) + x;
                 if let Some(sq) = S::from_index(sq) {
-                    let king_moves = self.king_moves(sq);
-                    if (&king_moves & &bb).is_empty() {
-                        bb |= &sq;
-                        i += 1;
+                    if (&plinths & &sq).is_empty() && (&bb & &sq).is_empty() {
+                        let king_moves = self.king_moves(sq);
+                        if (&bb & &king_moves).is_empty() {
+                            bb |= &sq;
+                            i += 1;
+                        }
                     }
                 }
             }

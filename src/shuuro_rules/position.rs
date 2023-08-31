@@ -14,8 +14,8 @@ use crate::{
     MoveError, MoveRecord, Piece, PieceType, SfenError, Square, Variant,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum MoveTask<S, B>
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Checks<S, B>
 where
     S: Square + Hash,
     B: BitBoard<S>,
@@ -27,16 +27,13 @@ where
     for<'a> &'a B: BitAnd<&'a S, Output = B>,
     for<'a> B: BitOrAssign<&'a S>,
 {
-    Enemy(Piece, B),
-    Checks {
-        check: Option<B>,
-        double_check: bool,
-        enemy_moves: Option<B>,
-    },
-    _0(PhantomData<S>),
+    pub check: Option<B>,
+    pub double_check: bool,
+    pub enemy_moves: Option<B>,
+    _0: PhantomData<S>,
 }
 
-impl<S, B> MoveTask<S, B>
+impl<S, B> Checks<S, B>
 where
     S: Square + Hash,
     B: BitBoard<S>,
@@ -49,17 +46,24 @@ where
     for<'a> B: BitOrAssign<&'a S>,
 {
     fn add_enemy_moves(self, enemy_moves: B) -> Option<Self> {
-        match self {
-            Self::Checks {
-                check,
-                double_check,
-                ..
-            } => Some(Self::Checks {
-                check,
-                double_check,
-                enemy_moves: Some(enemy_moves),
-            }),
-            _ => None,
+        Some(Self {
+            check: self.check,
+            double_check: self.double_check,
+            enemy_moves: Some(enemy_moves),
+            _0: self._0,
+        })
+    }
+
+    fn new(
+        check: Option<B>,
+        double_check: bool,
+        enemy_moves: Option<B>,
+    ) -> Self {
+        Self {
+            check,
+            double_check,
+            enemy_moves,
+            _0: PhantomData,
         }
     }
 }
@@ -880,24 +884,18 @@ where
         let king = self.find_king(color).unwrap();
         for sq in self.player_bb(*color) {
             let my_moves = self.non_legal_moves(&sq);
-            if let MoveTask::Checks { check, .. } = move_task {
-                if check.is_some() {
-                    if king == sq {
-                        map.insert(king, &my_moves & &!&enemy_moves);
-                    } else {
-                        let moves = self.fix_pin(
-                            &sq,
-                            &pinned_moves,
-                            move_task,
-                            my_moves,
-                        );
-                        map.insert(sq, moves);
-                    }
+            if check_moves.check.is_some() {
+                if king == sq {
+                    map.insert(king, &my_moves & &!&enemy_moves);
                 } else {
                     let moves =
                         self.fix_pin(&sq, &pinned_moves, move_task, my_moves);
                     map.insert(sq, moves);
                 }
+            } else {
+                let moves =
+                    self.fix_pin(&sq, &pinned_moves, move_task, my_moves);
+                map.insert(sq, moves);
             }
         }
         map
@@ -1170,61 +1168,8 @@ where
     ) -> B {
         let blockers = move_type.blockers(self, &piece.color);
 
-        let attacks = match piece.piece_type {
-            PieceType::Rook => {
-                A::get_sliding_attacks(PieceType::Rook, current_sq, blockers)
-            }
-            PieceType::Bishop => {
-                A::get_sliding_attacks(PieceType::Bishop, current_sq, blockers)
-            }
-            PieceType::Queen => {
-                A::get_sliding_attacks(PieceType::Queen, current_sq, blockers)
-            }
-            PieceType::Knight => A::get_non_sliding_attacks(
-                PieceType::Knight,
-                current_sq,
-                piece.color,
-                B::empty(),
-            ),
-            PieceType::Pawn => A::get_non_sliding_attacks(
-                PieceType::Pawn,
-                current_sq,
-                piece.color,
-                blockers,
-            ),
-            PieceType::King => A::get_non_sliding_attacks(
-                PieceType::King,
-                current_sq,
-                piece.color,
-                blockers,
-            ),
-            PieceType::Chancellor => {
-                &A::get_non_sliding_attacks(
-                    PieceType::Knight,
-                    current_sq,
-                    piece.color,
-                    blockers,
-                ) | &A::get_sliding_attacks(
-                    PieceType::Rook,
-                    current_sq,
-                    blockers,
-                )
-            }
-            PieceType::ArchBishop => {
-                &A::get_non_sliding_attacks(
-                    PieceType::Knight,
-                    current_sq,
-                    piece.color,
-                    blockers,
-                ) | &A::get_sliding_attacks(
-                    PieceType::Bishop,
-                    current_sq,
-                    blockers,
-                )
-            }
-            PieceType::Giraffe => A::get_giraffe_attacks(current_sq),
-            _ => B::empty(),
-        };
+        let attacks = self.get_moves(current_sq, &piece, blockers);
+
         move_type.moves(self, &attacks, piece, *current_sq)
     }
 
@@ -1586,45 +1531,12 @@ where
             _ => B::empty(),
         }
     }
-    fn filtering(&self, mt: MoveTask<S, B>) -> B {
-        match mt {
-            MoveTask::Enemy(piece, bb) => {
-                // delete plinths for non knight piece
-                if !piece.piece_type.is_knight_piece() {
-                    return &bb & &!&self.player_bb(Color::NoColor);
-                } else {
-                    return bb;
-                }
-            }
-            _ => B::empty(),
-        }
-    }
-    fn check_moves2(&self, attacked_color: Color) {
+
+    fn check_moves(&self, attacked_color: Color) -> Checks<S, B> {
         let mut king =
             &self.type_bb(&PieceType::King) & &self.player_bb(attacked_color);
         if king.is_empty() {
-            // return MoveTask::Checks {
-            //     check: None,
-            //     double_check: false,
-            //     enemy_moves: None,
-            // };
-        }
-        let occupied_bb = &self.occupied_bb() | &self.player_bb(Color::NoColor);
-        let occupied_bb = occupied_bb ^ &king;
-        let pt_iter = PieceType::iter();
-        for pt in pt_iter {
-            //
-        }
-    }
-    fn check_moves(&self, attacked_color: Color) -> MoveTask<S, B> {
-        let mut king =
-            &self.type_bb(&PieceType::King) & &self.player_bb(attacked_color);
-        if king.is_empty() {
-            return MoveTask::Checks {
-                check: None,
-                double_check: false,
-                enemy_moves: None,
-            };
+            return Checks::new(None, false, None);
         }
         let occupied_bb = &self.occupied_bb() | &self.player_bb(Color::NoColor);
         let king = king.pop().unwrap();
@@ -1655,11 +1567,7 @@ where
                         Ordering::Equal => {
                             if check.is_some() {
                                 double_check = true;
-                                return MoveTask::Checks {
-                                    check: None,
-                                    double_check,
-                                    enemy_moves: None,
-                                };
+                                return Checks::new(None, double_check, None);
                             } else if pt.is_non_sliding_piece() {
                                 check = Some(moves);
                                 double_check = false;
@@ -1675,22 +1583,14 @@ where
                         }
                         Ordering::Greater => {
                             double_check = true;
-                            return MoveTask::Checks {
-                                check: None,
-                                double_check,
-                                enemy_moves: None,
-                            };
+                            return Checks::new(None, double_check, None);
                         }
                         _ => {}
                     }
                 }
             }
         }
-        MoveTask::Checks {
-            check,
-            double_check,
-            enemy_moves: None,
-        }
+        Checks::new(check, double_check, None)
     }
 
     fn pins(&self, color: &Color) -> HashMap<S, B> {
@@ -1748,41 +1648,34 @@ where
         &self,
         sq: &S,
         pins: &HashMap<S, B>,
-        move_task: MoveTask<S, B>,
+        checks: Checks<S, B>,
         my_moves: B,
     ) -> B {
-        match move_task {
-            MoveTask::Checks {
-                check,
-                double_check,
-                enemy_moves,
-            } => match self.piece_at(*sq) {
-                Some(piece) => {
-                    if let Some(pin) = pins.get(sq) {
-                        if let Some(check) = check {
-                            &(&check & pin) & &my_moves
-                        } else {
-                            pin & &my_moves
-                        }
+        match self.piece_at(*sq) {
+            Some(piece) => {
+                if let Some(pin) = pins.get(sq) {
+                    if let Some(check) = checks.check {
+                        &(&check & pin) & &my_moves
                     } else {
-                        let mut my_moves = my_moves;
-                        if piece.piece_type == PieceType::King {
-                            if let Some(enemy_moves) = enemy_moves {
-                                my_moves = &my_moves & &!&enemy_moves;
-                                return my_moves;
-                            }
-                        } else if double_check {
-                            return B::empty();
-                        }
-                        if let Some(check) = check {
-                            my_moves &= &check;
-                        }
-                        my_moves
+                        pin & &my_moves
                     }
+                } else {
+                    let mut my_moves = my_moves;
+                    if piece.piece_type == PieceType::King {
+                        if let Some(enemy_moves) = checks.enemy_moves {
+                            my_moves = &my_moves & &!&enemy_moves;
+                            return my_moves;
+                        }
+                    } else if checks.double_check {
+                        return B::empty();
+                    }
+                    if let Some(check) = checks.check {
+                        my_moves &= &check;
+                    }
+                    my_moves
                 }
-                None => B::empty(),
-            },
-            _ => B::empty(),
+            }
+            None => B::empty(),
         }
     }
 }

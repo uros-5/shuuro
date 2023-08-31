@@ -71,8 +71,11 @@ mod tests {
     #[test]
     fn generate_all_plinths() {
         Attacks12::init();
-        let pl = PlinthGen12::default();
-        let b = pl.start();
-        assert_eq!(b.len() as usize, 8);
+        for _i in 0..5 {
+            let pl = PlinthGen12::default();
+            let b = pl.start();
+            println!("{}", b);
+            assert_eq!(b.len() as usize, 8);
+        }
     }
 }

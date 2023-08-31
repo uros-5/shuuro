@@ -4,13 +4,10 @@ use std::{
 };
 
 pub use crate::attacks::Attacks;
-use crate::{
-    attacks::Ray, bitboard::BitBoard, shuuro12::square12::consts::F11, Color,
-    PieceType, Square,
-};
+use crate::{attacks::Ray, bitboard::BitBoard, Color, PieceType, Square};
 
 use super::{
-    bitboard12::{square_bb, BB12, SQUARE_BB},
+    bitboard12::{BB12, SQUARE_BB},
     board_defs::{FILE_BB, RANK_BB},
     square12::Square12,
 };

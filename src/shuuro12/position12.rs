@@ -446,7 +446,6 @@ pub mod position_tests {
         position::{Board, MoveType, Outcome, Placement, Play, Sfen},
         shuuro12::{
             attacks12::Attacks12,
-            bitboard12::BB12,
             position12::P12,
             square12::{consts::*, Square12},
         },
@@ -477,8 +476,9 @@ pub mod position_tests {
     #[test]
     fn player_bb() {
         setup();
-
-        let cases: &[(&str, &[Square12], &[Square12], &[Square12])] = &[
+        type CasePlayerBB<'a> =
+            [(&'a str, &'a [Square12], &'a [Square12], &'a [Square12])];
+        let cases: &CasePlayerBB = &[
             (
                 "BBQ8K/57/2L03L05/4R7/3L08/57/57/5ppp4/nnq/L0L0L09/57/1L05k4 b - 1",
                 &[A9, B9, C9, F8, G8, H8, H12],
@@ -655,7 +655,7 @@ pub mod position_tests {
     }
 
     #[test]
-    fn move_candidates() {
+    fn move_candidates2() {
         setup();
 
         let mut pos = P12::new();
@@ -672,6 +672,7 @@ pub mod position_tests {
                 }
             }
         }
+        // assert!(false);
 
         assert_eq!(21, sum);
     }
