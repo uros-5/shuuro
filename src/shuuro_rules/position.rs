@@ -880,9 +880,6 @@ where
         let king = self.find_king(color).unwrap();
         for sq in self.player_bb(*color) {
             let my_moves = self.non_legal_moves(&sq);
-            if sq.to_string() == "f11" {
-                println!("{my_moves}");
-            }
             if let MoveTask::Checks { check, .. } = move_task {
                 if check.is_some() {
                     if king == sq {
@@ -971,11 +968,16 @@ where
                 let enemy = color.flip();
                 let blockers =
                     &self.occupied_bb() | &self.player_bb(Color::NoColor);
-                let blockers =
-                    blockers ^ &B::from_square(&self.find_king(color).unwrap());
+                let king = self.find_king(color).unwrap();
+                let blockers = blockers ^ &B::from_square(&king);
                 for sq in self.player_bb(enemy).into_iter() {
                     let piece = self.piece_at(sq);
                     if let Some(piece) = piece {
+                        if piece.piece_type == PieceType::Pawn {
+                            let moves =
+                                self.get_moves(&sq, piece, &blockers | &king);
+                            all |= &moves;
+                        }
                         let moves = self.get_moves(&sq, piece, blockers);
                         all |= &moves;
                     }
@@ -1662,7 +1664,8 @@ where
                                 check = Some(moves);
                                 double_check = false;
                             } else if let Some(attacker) = attackers.pop() {
-                                let between = A::between(king, attacker);
+                                let between = A::between(attacker, king);
+                                let between = &between | &attacker;
                                 if between.len() == 0 {
                                     check = Some(moves);
                                 } else {
@@ -1701,7 +1704,13 @@ where
         }
         let ksq = ksq.unwrap();
         let plinths = self.player_bb(Color::NoColor);
-        for pt in [PieceType::Rook, PieceType::Bishop] {
+        for pt in [
+            PieceType::Rook,
+            PieceType::Bishop,
+            PieceType::Queen,
+            PieceType::Chancellor,
+            PieceType::ArchBishop,
+        ] {
             if !self.variant().can_buy(&pt) {
                 continue;
             }
@@ -1752,10 +1761,8 @@ where
                     if let Some(pin) = pins.get(sq) {
                         if let Some(check) = check {
                             &(&check & pin) & &my_moves
-                        } else if double_check {
-                            pin & &my_moves
                         } else {
-                            B::empty()
+                            pin & &my_moves
                         }
                     } else {
                         let mut my_moves = my_moves;

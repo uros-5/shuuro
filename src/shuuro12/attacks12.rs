@@ -416,13 +416,13 @@ mod tests2 {
     fn pawn_moves() {
         Attacks12::init_pawn_moves();
         let ok_cases = [
-            (A1, &square_bb(&A2) | &square_bb(&A3), Color::White, true, 2),
+            (A2, &square_bb(&A3) | &square_bb(&A4), Color::White, true, 2),
             (L11, square_bb(&L12), Color::White, true, 1),
             (C12, EMPTY_BB, Color::White, false, 0),
             (G12, EMPTY_BB, Color::White, false, 0),
             (
-                H12,
-                &square_bb(&H11) | &square_bb(&H10),
+                H11,
+                &square_bb(&H10) | &square_bb(&H9),
                 Color::Black,
                 true,
                 2,

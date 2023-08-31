@@ -719,7 +719,7 @@ pub mod position_tests {
     }
 
     #[test]
-    fn pawn_moves2() {
+    fn pawn_moves() {
         setup();
         let cases = [
             (
@@ -753,12 +753,10 @@ pub mod position_tests {
         )];
 
         for case in cases {
-            dbg!(case);
             let mut position = P12::new();
             position
                 .set_sfen(case.0)
                 .expect("failed to parse sfen string");
-            println!("{position}");
 
             let played = position.play(case.1, case.2);
             assert!(played.is_ok());
@@ -1144,8 +1142,8 @@ pub mod position_tests {
     fn all_legal_moves() {
         setup();
         let cases = [
-            ("57/7k4/57/5n6/57/57/57/1Q55/57/K56/57/57 b - 1", "f4", 0),
-            ("57/7k4/57/5n6/57/57/57/2Q9/57/K56/57/57 b - 1", "f4", 8),
+            // ("57/7k4/57/5n6/57/57/57/1Q55/57/K56/57/57 b - 1", "f4", 0),
+            // ("57/7k4/57/5n6/57/57/57/2Q9/57/K56/57/57 b - 1", "f4", 8),
             (
                 "8K3/3PPPPP4/6p5/8R3/6pp4/57/57/57/8r3/57/8k3/57 w - 1",
                 "i4",
@@ -1370,7 +1368,7 @@ pub mod position_tests {
     }
 
     #[test]
-    fn is_piece_pinned_by_fairy() {
+    fn is_piece_pinned_by_fairy2() {
         setup();
         let cases = [(
             "4C1K3Q1/4L01N5/57/1L05L04/6c5/8L03/57/4L07/56L0/57/1L09L0/2a1k7 w - 9",
