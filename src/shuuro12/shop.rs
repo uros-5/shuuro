@@ -29,8 +29,8 @@ mod tests5 {
         shop.confirm(Color::White);
         assert_eq!(shop.credit(Color::White), 800 - 260);
         assert_eq!(shop.credit(Color::Black), 800 - 690);
-        assert_ne!(shop.is_confirmed(Color::Black), true);
-        assert_eq!(shop.is_confirmed(Color::White), true);
+        assert!(!shop.is_confirmed(Color::Black));
+        assert!(shop.is_confirmed(Color::White));
     }
 
     #[test]

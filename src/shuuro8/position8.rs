@@ -369,24 +369,24 @@ impl fmt::Display for P8<Square8, BB8<Square8>> {
         for rank in (0..8).rev() {
             write!(f, "|")?;
             for file in 0..8 {
-                if let Some(ref piece) =
-                    *self.piece_at(Square8::new(file, rank).unwrap())
-                {
-                    write!(f, "{piece}")?;
-                    let plinth: BB8<Square8> = &self.player_bb(Color::NoColor)
-                        & &Square8::new(file, rank).unwrap();
-                    if plinth.is_any() {
-                        write!(f, " L|")?;
+                if let Some(sq) = Square8::new(file, rank) {
+                    if let Some(ref piece) = *self.piece_at(sq) {
+                        write!(f, "{piece}")?;
+                        let plinth: BB8<Square8> =
+                            &self.player_bb(Color::NoColor) & &sq;
+                        if plinth.is_any() {
+                            write!(f, " L|")?;
+                        } else {
+                            write!(f, "  |")?;
+                        }
                     } else {
-                        write!(f, "  |")?;
-                    }
-                } else {
-                    let plinth: BB8<Square8> = &self.player_bb(Color::NoColor)
-                        & &Square8::new(file, rank).unwrap();
-                    if plinth.is_any() {
-                        write!(f, "{:>3}|", "L")?;
-                    } else {
-                        write!(f, "   |")?;
+                        let plinth: BB8<Square8> =
+                            &self.player_bb(Color::NoColor) & &sq;
+                        if plinth.is_any() {
+                            write!(f, "{:>3}|", "L")?;
+                        } else {
+                            write!(f, "   |")?;
+                        }
                     }
                 }
             }

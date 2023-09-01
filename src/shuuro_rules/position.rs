@@ -1195,112 +1195,116 @@ where
         let mut promoted = false;
         let stm = self.side_to_move();
         let opponent = stm.flip();
-        let (from, to) = m.info();
-        let moved = self
-            .piece_at(from)
-            .ok_or(MoveError::Inconsistent("No piece found"))?;
-        let captured = *self.piece_at(to);
-        let outcome = Outcome::Checkmate { color: opponent };
-        let legal_moves = self.legal_moves(&stm);
+        if let Some((from, to)) = m.info() {
+            //
+            let moved = self
+                .piece_at(from)
+                .ok_or(MoveError::Inconsistent("No piece found"))?;
+            let captured = *self.piece_at(to);
+            let outcome = Outcome::Checkmate { color: opponent };
+            let legal_moves = self.legal_moves(&stm);
 
-        if moved.color != stm {
-            return Err(MoveError::Inconsistent(
-                "The piece is not for the side to move",
-            ));
-        } else if self.game_status() == outcome {
-            return Err(MoveError::Inconsistent("Match is over."));
-        }
+            if moved.color != stm {
+                return Err(MoveError::Inconsistent(
+                    "The piece is not for the side to move",
+                ));
+            } else if self.game_status() == outcome {
+                return Err(MoveError::Inconsistent("Match is over."));
+            }
 
-        match captured {
-            Some(_i) => {
-                if moved.piece_type == PieceType::Pawn
-                    && to.in_promotion_zone(moved.color)
-                {
-                    promoted = true;
+            match captured {
+                Some(_i) => {
+                    if moved.piece_type == PieceType::Pawn
+                        && to.in_promotion_zone(moved.color)
+                    {
+                        promoted = true;
+                    }
+                }
+                None => {
+                    if moved.piece_type == PieceType::Pawn
+                        && to.in_promotion_zone(moved.color)
+                    {
+                        promoted = true;
+                    }
                 }
             }
-            None => {
-                if moved.piece_type == PieceType::Pawn
-                    && to.in_promotion_zone(moved.color)
-                {
-                    promoted = true;
-                }
-            }
-        }
 
-        if let Some(attacks) = legal_moves.get(&from) {
-            if (attacks & &to).is_empty() {
+            if let Some(attacks) = legal_moves.get(&from) {
+                if (attacks & &to).is_empty() {
+                    return Err(MoveError::Inconsistent(
+                        "The piece cannot move to there",
+                    ));
+                }
+            } else {
                 return Err(MoveError::Inconsistent(
                     "The piece cannot move to there",
                 ));
             }
-        } else {
-            return Err(MoveError::Inconsistent(
-                "The piece cannot move to there",
-            ));
-        }
-        let mut move_data = MoveData::default();
+            let mut move_data = MoveData::default();
 
-        let placed = if promoted {
-            match moved.promote() {
-                Some(promoted) => promoted,
-                None => {
-                    return Err(MoveError::Inconsistent(
-                        "This type of piece cannot promote",
-                    ));
+            let placed = if promoted {
+                match moved.promote() {
+                    Some(promoted) => promoted,
+                    None => {
+                        return Err(MoveError::Inconsistent(
+                            "This type of piece cannot promote",
+                        ));
+                    }
                 }
-            }
-        } else {
-            moved
-        };
-
-        move_data = move_data.promoted(promoted);
-        move_data = move_data.piece(Some(moved));
-
-        move_data = self.update_after_move(
-            from, to, placed, moved, captured, opponent, move_data,
-        );
-
-        let stm = self.side_to_move();
-
-        let outcome = {
-            if self.is_checkmate(&stm) {
-                move_data = move_data.checks(false, true);
-                Outcome::Checkmate { color: stm.flip() }
-            } else if self.in_check(stm) {
-                move_data = move_data.checks(true, false);
-                Outcome::Check { color: stm }
-            } else if (&self.player_bb(stm.flip())
-                & &self.type_bb(&PieceType::King))
-                .len()
-                == 0
-            {
-                move_data = move_data.checks(false, true);
-                Outcome::Checkmate { color: stm.flip() }
             } else {
-                Outcome::MoveOk
+                moved
+            };
+
+            move_data = move_data.promoted(promoted);
+            move_data = move_data.piece(Some(moved));
+
+            move_data = self.update_after_move(
+                from, to, placed, moved, captured, opponent, move_data,
+            );
+
+            let stm = self.side_to_move();
+
+            let outcome = {
+                if self.is_checkmate(&stm) {
+                    move_data = move_data.checks(false, true);
+                    Outcome::Checkmate { color: stm.flip() }
+                } else if self.in_check(stm) {
+                    move_data = move_data.checks(true, false);
+                    Outcome::Check { color: stm }
+                } else if (&self.player_bb(stm.flip())
+                    & &self.type_bb(&PieceType::King))
+                    .len()
+                    == 0
+                {
+                    move_data = move_data.checks(false, true);
+                    Outcome::Checkmate { color: stm.flip() }
+                } else {
+                    Outcome::MoveOk
+                }
+            };
+
+            move_data =
+                self.gen_move_data(&legal_moves, (from, to), moved, move_data);
+            let move_record = MoveRecord::Normal {
+                from,
+                to,
+                placed,
+                move_data,
+            };
+
+            self.insert_move(move_record);
+
+            self.log_position();
+            self.detect_repetition()?;
+            self.detect_insufficient_material()?;
+
+            if outcome == Outcome::MoveOk {
+                self.is_stalemate(&stm)?;
             }
-        };
-
-        move_data =
-            self.gen_move_data(&legal_moves, (from, to), moved, move_data);
-        let move_record = MoveRecord::Normal {
-            from,
-            to,
-            placed,
-            move_data,
-        };
-
-        self.insert_move(move_record);
-
-        self.log_position();
-        self.detect_repetition()?;
-        self.detect_insufficient_material()?;
-
-        if outcome == Outcome::MoveOk {
-            self.is_stalemate(&stm)?;
+            Ok(outcome)
+        } else {
+            Err(MoveError::Inconsistent("No piece found"))
         }
-        Ok(outcome)
     }
 }
 

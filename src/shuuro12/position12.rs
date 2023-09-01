@@ -370,26 +370,24 @@ impl fmt::Display for P12<Square12, BB12<Square12>> {
         for rank in (0..12).rev() {
             write!(f, "|")?;
             for file in 0..12 {
-                if let Some(ref piece) =
-                    *self.piece_at(Square12::new(file, rank).unwrap())
-                {
-                    write!(f, "{piece}")?;
-                    let plinth: BB12<Square12> = &self
-                        .player_bb(Color::NoColor)
-                        & &Square12::new(file, rank).unwrap();
-                    if plinth.is_any() {
-                        write!(f, " L|")?;
+                if let Some(sq) = Square12::new(file, rank) {
+                    if let Some(ref piece) = *self.piece_at(sq) {
+                        write!(f, "{piece}")?;
+                        let plinth: BB12<Square12> =
+                            &self.player_bb(Color::NoColor) & &sq;
+                        if plinth.is_any() {
+                            write!(f, " L|")?;
+                        } else {
+                            write!(f, "  |")?;
+                        }
                     } else {
-                        write!(f, "  |")?;
-                    }
-                } else {
-                    let plinth: BB12<Square12> = &self
-                        .player_bb(Color::NoColor)
-                        & &Square12::new(file, rank).unwrap();
-                    if plinth.is_any() {
-                        write!(f, "{:>3}|", "L")?;
-                    } else {
-                        write!(f, "   |")?;
+                        let plinth: BB12<Square12> =
+                            &self.player_bb(Color::NoColor) & &sq;
+                        if plinth.is_any() {
+                            write!(f, "{:>3}|", "L")?;
+                        } else {
+                            write!(f, "   |")?;
+                        }
                     }
                 }
             }
@@ -463,14 +461,15 @@ pub mod position_tests {
     fn piece_exist() {
         setup();
         let mut pos = P12::new();
-        pos.set_sfen(START_POS).unwrap();
-        let sq = Square12::from_index(132).unwrap();
-        let piece = Piece {
-            piece_type: PieceType::King,
-            color: Color::Black,
-        };
-
-        assert_eq!(Some(piece), *pos.piece_at(sq));
+        pos.set_sfen(START_POS)
+            .expect("failed to parse SFEN string");
+        if let Some(sq) = Square12::from_index(132) {
+            let piece = Piece {
+                piece_type: PieceType::King,
+                color: Color::Black,
+            };
+            assert_eq!(Some(piece), *pos.piece_at(sq));
+        }
     }
 
     #[test]
@@ -672,8 +671,6 @@ pub mod position_tests {
                 }
             }
         }
-        // assert!(false);
-
         assert_eq!(21, sum);
     }
 

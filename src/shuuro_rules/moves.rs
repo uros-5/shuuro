@@ -28,17 +28,14 @@ impl<S: Square> Move<S> {
     }
 
     /// Information about normal move.
-    pub fn info(&self) -> (S, S) {
+    pub fn info(&self) -> Option<(S, S)> {
         match self {
             Self::Normal {
                 from,
                 to,
                 promote: _,
-            } => (*from, *to),
-            _ => (
-                Square::from_index(0).unwrap(),
-                Square::from_index(0).unwrap(),
-            ),
+            } => Some((*from, *to)),
+            _ => None,
         }
     }
 

@@ -24,10 +24,6 @@ where
     for<'a> &'a B: BitAnd<&'a S, Output = B>,
 {
     fn init_pawn_moves();
-    fn init_pawn_attacks();
-    fn init_knight_attacks();
-    fn init_giraffe_attacks();
-    fn init_king_attacks();
 
     fn init_north_ray();
     fn init_south_ray();
@@ -39,9 +35,7 @@ where
     fn init_south_west_ray();
     fn init_between();
 
-    fn add_pawn_moves(current: S, next: S, color: &Color);
-
-    fn init_rays() {}
+    fn init_quick() {}
 
     fn get_non_sliding_attacks(
         piece_type: PieceType,
@@ -83,11 +77,7 @@ where
     fn get_pawn_moves(square: usize, color: Color) -> B;
 
     fn init() {
-        Self::init_pawn_attacks();
         Self::init_pawn_moves();
-        Self::init_knight_attacks();
-        Self::init_giraffe_attacks();
-        Self::init_king_attacks();
 
         Self::init_north_ray();
         Self::init_south_ray();

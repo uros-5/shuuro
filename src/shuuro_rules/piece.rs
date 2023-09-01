@@ -82,14 +82,6 @@ impl Piece {
             color: self.color.flip(),
         }
     }
-    // Tests if it is legal to place this piece at the given square.
-    // pub fn is_placeable_at(self, sq: Square) -> bool {
-    //     match self.piece_type {
-    //         PieceType::Pawn => sq.relative_file(self.color) > 0,
-    //         PieceType::Knight => sq.relative_file(self.color) > 1,
-    //         _ => true,
-    //     }
-    // }
 }
 
 impl fmt::Display for Piece {
@@ -126,10 +118,10 @@ mod tests {
         let ng_cases = ['\0', ' ', '_', 'j', 'z', '+', 'J', 'Z'];
 
         for case in ok_cases.iter() {
-            let pc = Piece::from_sfen(case.0);
-            assert!(pc.is_some());
-            assert_eq!(case.1, pc.unwrap().piece_type);
-            assert_eq!(case.2, pc.unwrap().color);
+            if let Some(pc) = Piece::from_sfen(case.0) {
+                assert_eq!(case.1, pc.piece_type);
+                assert_eq!(case.2, pc.color);
+            }
         }
 
         for case in ng_cases.iter() {
@@ -180,13 +172,12 @@ mod tests {
                         piece_type: i,
                         color: Color::Black,
                     }
-                    .promote()
-                    .unwrap();
+                    .promote();
                     assert_eq!(
-                        Piece {
+                        Some(Piece {
                             piece_type: PieceType::Queen,
                             color: Color::Black
-                        },
+                        }),
                         bpc
                     );
 
@@ -194,13 +185,12 @@ mod tests {
                         piece_type: i,
                         color: Color::White,
                     }
-                    .promote()
-                    .unwrap();
+                    .promote();
                     assert_eq!(
-                        Piece {
+                        Some(Piece {
                             piece_type: PieceType::Queen,
                             color: Color::White
-                        },
+                        }),
                         rpc
                     );
                 }

@@ -32,10 +32,10 @@ pub static KING_MOVES: [BB12<Square12>; 144] =
 static mut PAWN_MOVES: [[BB12<Square12>; 144]; 2] =
     [init_stepping_attacks(&[-12]), init_stepping_attacks(&[12])];
 
-pub static mut RAYS: [[BB12<Square12>; 144]; 8] = [[BB12::new((0, 0)); 144]; 8];
+pub static mut RAYS: [[BB12<Square12>; 144]; 8] = [[BB12::new(0, 0); 144]; 8];
 
 static mut BETWEEN_BB: [[BB12<Square12>; 144]; 144] =
-    [[BB12::new((0, 0)); 144]; 144];
+    [[BB12::new(0, 0); 144]; 144];
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Attacks12<S, B>
@@ -62,8 +62,6 @@ impl Attacks12<Square12, BB12<Square12>> {
 }
 
 impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
-    fn add_pawn_moves(_current: Square12, _next: Square12, _color: &Color) {}
-
     fn init_pawn_moves() {
         for color in [(Color::White, 0, 12), (Color::Black, 132, -12_isize)] {
             let index = color.0.index();
@@ -91,15 +89,7 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
         }
     }
 
-    fn init_pawn_attacks() {}
-
-    fn init_knight_attacks() {}
-
-    fn init_giraffe_attacks() {}
-
-    fn init_king_attacks() {}
-
-    fn init_rays() {}
+    fn init_quick() {}
 
     fn init_north_ray() {
         for sq in 0..144 {
@@ -346,7 +336,7 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
 }
 
 const fn sliding_attacks(square: i32, deltas: &[i32]) -> BB12<Square12> {
-    let mut attack = BB12::new((0, 0));
+    let mut attack = BB12::new(0, 0);
     let mut i = 0;
     let len = deltas.len();
     let mut diff_limit = 2;
@@ -381,7 +371,7 @@ const fn sliding_attacks(square: i32, deltas: &[i32]) -> BB12<Square12> {
 }
 
 const fn init_stepping_attacks(deltas: &[i32]) -> [BB12<Square12>; 144] {
-    let mut table = [BB12::new((0, 0)); 144];
+    let mut table = [BB12::new(0, 0); 144];
     let mut sq = 0;
     while sq < 144 {
         table[sq] = sliding_attacks(sq as i32, deltas);
@@ -441,7 +431,6 @@ mod tests2 {
 
     #[test]
     fn pawn_attacks() {
-        Attacks12::init_pawn_attacks();
         let ok_cases = [
             (A1, [Some(B2), None], 1, Color::White),
             (D1, [Some(E2), Some(C2)], 2, Color::White),
@@ -524,18 +513,18 @@ mod tests2 {
     fn rays() {
         Attacks12::init();
         let ok_cases = [
-            // (A1, A12, 10, Ray::North),
-            // (D6, D12, 5, Ray::North),
-            // (L11, L12, 0, Ray::North),
-            // (E3, A3, 3, Ray::West),
+            (A1, A12, 10, Ray::North),
+            (D6, D12, 5, Ray::North),
+            (L11, L12, 0, Ray::North),
+            (E3, A3, 3, Ray::West),
             (G6, B6, 4, Ray::West),
-            // (L12, A12, 10, Ray::West),
-            // (H1, L1, 3, Ray::East),
-            // (C11, K11, 7, Ray::East),
-            // (F5, G5, 0, Ray::East),
-            // (E12, E3, 8, Ray::South),
-            // (K12, K10, 1, Ray::South),
-            // (F9, F4, 4, Ray::South),
+            (L12, A12, 10, Ray::West),
+            (H1, L1, 3, Ray::East),
+            (C11, K11, 7, Ray::East),
+            (F5, G5, 0, Ray::East),
+            (E12, E3, 8, Ray::South),
+            (K12, K10, 1, Ray::South),
+            (F9, F4, 4, Ray::South),
         ];
 
         for case in ok_cases {
@@ -558,7 +547,4 @@ mod tests2 {
             }
         }
     }
-
-    // #[test]
-    // fn abc() {}
 }

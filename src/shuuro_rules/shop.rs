@@ -1,8 +1,5 @@
 use crate::shuuro_rules::Square;
-use std::{
-    sync::{Arc, Mutex},
-    u8,
-};
+use std::u8;
 
 use crate::shuuro_rules::{variant::Variant, Color, Piece, PieceType};
 use crate::shuuro_rules::{Hand, Move, MoveRecord};
@@ -25,8 +22,8 @@ pub struct Shop<S: Square> {
     hand: Hand,
     confirmed: [bool; 2],
     pricing: [(i32, u8); 10],
-    move_history: Arc<Mutex<Vec<MoveRecord<S>>>>,
-    sfen_history: Arc<Mutex<Vec<(String, u8)>>>,
+    move_history: Vec<MoveRecord<S>>,
+    sfen_history: Vec<(String, u8)>,
     variant: Variant,
 }
 
@@ -68,11 +65,11 @@ impl<S: Square> Shop<S> {
                         self.credit[piece.color.index()] =
                             self.credit(piece.color) - piece_price;
                         let move_record = MoveRecord::Buy { piece };
-                        self.sfen_history.lock().unwrap().push((
+                        self.sfen_history.push((
                             move_record.to_sfen(),
                             self.hand.get(piece),
                         ));
-                        self.move_history.lock().unwrap().push(move_record);
+                        self.move_history.push(move_record);
                     }
                     if self.credit[piece.color.index()] == 0 {
                         self.confirm(piece.color);
@@ -94,8 +91,9 @@ impl<S: Square> Shop<S> {
     /// Set hand from string. Panics if wrong piece is found.
     pub fn set_hand(&mut self, s: &str) {
         for i in s.chars() {
-            let piece = Piece::from_sfen(i).unwrap();
-            self.play(Move::Buy { piece });
+            if let Some(piece) = Piece::from_sfen(i) {
+                self.play(Move::Buy { piece });
+            }
         }
     }
     /// Converts entire hand by color to string.
@@ -133,20 +131,18 @@ impl<S: Square> Shop<S> {
     }
 
     pub fn set_sfen_history(&mut self, history: Vec<(String, u8)>) {
-        let mut h = self.sfen_history.lock().unwrap();
-        h.clear();
-        h.extend(history);
+        self.sfen_history.clear();
+        self.sfen_history.extend(history);
     }
 
     pub fn set_move_history(&mut self, history: Vec<MoveRecord<S>>) {
-        let mut h = self.move_history.lock().unwrap();
-        h.clear();
-        h.extend(history);
+        self.move_history.clear();
+        self.move_history.extend(history);
     }
 
     #[warn(unused_variables)]
     pub fn get_sfen_history(&self, _color: &Color) -> Vec<(String, u8)> {
-        self.sfen_history.lock().unwrap().clone()
+        self.sfen_history.clone()
     }
 }
 

@@ -12,8 +12,8 @@ use std::ops::{
 pub struct BB12<S: Square>(pub (u128, u16), PhantomData<S>);
 
 impl BB12<Square12> {
-    pub const fn new(b: (u128, u16)) -> BB12<Square12> {
-        BB12(b, PhantomData)
+    pub const fn new(b: u128, b2: u16) -> BB12<Square12> {
+        BB12((b, b2), PhantomData)
     }
 
     pub fn count2(&self) -> u32 {
@@ -29,7 +29,7 @@ impl BitAnd<&BB12<Square12>> for &BB12<Square12> {
 
     #[inline(always)]
     fn bitand(self, rhs: &BB12<Square12>) -> BB12<Square12> {
-        BB12::new((self.0 .0 & rhs.0 .0, self.0 .1 & rhs.0 .1))
+        BB12::new(self.0 .0 & rhs.0 .0, self.0 .1 & rhs.0 .1)
     }
 }
 
@@ -38,7 +38,7 @@ impl BitXor<&BB12<Square12>> for BB12<Square12> {
 
     #[inline(always)]
     fn bitxor(self, rhs: &BB12<Square12>) -> BB12<Square12> {
-        BB12::new((self.0 .0 ^ rhs.0 .0, self.0 .1 ^ rhs.0 .1))
+        BB12::new(self.0 .0 ^ rhs.0 .0, self.0 .1 ^ rhs.0 .1)
     }
 }
 
@@ -47,7 +47,7 @@ impl BitOr<&BB12<Square12>> for &BB12<Square12> {
 
     #[inline(always)]
     fn bitor(self, rhs: &BB12<Square12>) -> BB12<Square12> {
-        BB12::new((self.0 .0 | rhs.0 .0, self.0 .1 | rhs.0 .1))
+        BB12::new(self.0 .0 | rhs.0 .0, self.0 .1 | rhs.0 .1)
     }
 }
 
@@ -56,7 +56,7 @@ impl Not for BB12<Square12> {
 
     #[inline(always)]
     fn not(self) -> Self::Output {
-        BB12::new((!self.0 .0, !self.0 .1))
+        BB12::new(!self.0 .0, !self.0 .1)
     }
 }
 
@@ -65,7 +65,7 @@ impl Not for &BB12<Square12> {
 
     #[inline(always)]
     fn not(self) -> Self::Output {
-        BB12::new((!self.0 .0, !self.0 .1))
+        BB12::new(!self.0 .0, !self.0 .1)
     }
 }
 
@@ -144,12 +144,12 @@ impl BitOrAssign<&Square12> for BB12<Square12> {
 impl BitBoard<Square12> for BB12<Square12> {
     #[inline(always)]
     fn empty() -> Self {
-        BB12::new((0, 0))
+        BB12::new(0, 0)
     }
 
     #[inline(always)]
     fn full() -> Self {
-        BB12::new((1, 1))
+        BB12::new(1, 1)
     }
 
     #[inline(always)]
@@ -254,15 +254,15 @@ impl fmt::Display for BB12<Square12> {
 }
 
 const fn all_squares() -> [BB12<Square12>; 144] {
-    let mut all = [BB12::new((0, 0)); 144];
+    let mut all = [BB12::new(0, 0); 144];
     let mut sq = 0;
     while sq < 128 {
-        all[sq] = BB12::new((1 << sq, 0));
+        all[sq] = BB12::new(1 << sq, 0);
         sq += 1;
     }
     sq = 0;
     while sq < 16 {
-        all[128 + sq] = BB12::new((0, 1 << sq));
+        all[128 + sq] = BB12::new(0, 1 << sq);
         sq += 1;
     }
     all

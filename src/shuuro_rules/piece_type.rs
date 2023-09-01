@@ -195,10 +195,9 @@ mod tests {
         let ng_cases = ['\0', ' ', '_', 'J', 'z', '+'];
         for case in ok_cases.iter() {
             assert_eq!(Some(case.1), PieceType::from_sfen(case.0));
-            assert_eq!(
-                Some(case.1),
-                PieceType::from_sfen(case.0.to_uppercase().next().unwrap())
-            );
+            if let Some(c) = case.0.to_uppercase().next() {
+                assert_eq!(Some(case.1), PieceType::from_sfen(c));
+            }
         }
 
         for case in ng_cases.iter() {

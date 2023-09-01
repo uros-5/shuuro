@@ -74,7 +74,6 @@ mod tests {
         for _i in 0..5 {
             let pl = PlinthGen12::default();
             let b = pl.start();
-            println!("{}", b);
             assert_eq!(b.len() as usize, 8);
         }
     }

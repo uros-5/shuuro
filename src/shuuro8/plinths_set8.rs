@@ -39,7 +39,7 @@ impl PlinthGen<Square8, BB8<Square8>> for PlinthGen8<Square8, BB8<Square8>> {
 
 impl PlinthGen8<Square8, BB8<Square8>> {
     pub fn start(&self) -> BB8<Square8> {
-        let sections = [(2, 4, 0, 8, 2), (5, 7, 0, 8, 2)];
+        let sections = [(2, 4, 0, 8, 2), (4, 6, 0, 8, 2)];
         self.generate_plinths(&sections)
     }
 }
