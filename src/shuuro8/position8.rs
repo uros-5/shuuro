@@ -46,7 +46,7 @@ where
     color_bb: [BB8<Square8>; 3],
     game_status: Outcome,
     variant: Variant,
-    pub type_bb: [BB8<Square8>; 17],
+    pub type_bb: [BB8<Square8>; 10],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
 }

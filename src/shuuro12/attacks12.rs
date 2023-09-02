@@ -28,6 +28,7 @@ pub static BLACK_PAWN_ATTACKS: [BB12<Square12>; 144] =
     init_stepping_attacks(&BLACK_PAWN_DELTAS);
 pub static KING_MOVES: [BB12<Square12>; 144] =
     init_stepping_attacks(&KING_DELTAS);
+pub static mut ABC: BB12<Square12> = BB12::new(0, 0);
 
 static mut PAWN_MOVES: [[BB12<Square12>; 144]; 2] =
     [init_stepping_attacks(&[-12]), init_stepping_attacks(&[12])];
@@ -92,14 +93,14 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     fn init_quick() {}
 
     fn init_north_ray() {
+        let empty = &BB12::empty();
         for sq in 0..144 {
             let file = &FILE_BB[sq % 12];
             let rank = sq / 12;
-            let mut bb = file | &BB12::empty();
-            #[allow(clippy::needless_range_loop)]
-            for j in 0..rank {
+            let mut bb = file | empty;
+            (0..rank).for_each(|j| {
                 bb &= &!&RANK_BB[j];
-            }
+            });
             bb &= &!&SQUARE_BB[sq];
             unsafe {
                 RAYS[Ray::North as usize][sq] = bb;
@@ -108,14 +109,14 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn init_south_ray() {
+        let empty = &BB12::empty();
         for sq in 0..144 {
             let file = &FILE_BB[sq % 12];
             let rank = sq / 12;
-            let mut bb = file | &BB12::empty();
-            #[allow(clippy::needless_range_loop)]
-            for j in rank..12 {
+            let mut bb = file | empty;
+            (rank..12).for_each(|j| {
                 bb &= &!&RANK_BB[j];
-            }
+            });
             bb &= &!&SQUARE_BB[sq];
             unsafe {
                 RAYS[Ray::South as usize][sq] = bb;
@@ -124,13 +125,13 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn init_east_ray() {
+        let empty = &BB12::empty();
         for sq in 0..144 {
             let rank = &RANK_BB[sq / 12];
-            let mut bb = rank | &BB12::empty();
-            #[allow(clippy::needless_range_loop)]
-            for j in 0..sq % 12 {
+            let mut bb = rank | empty;
+            (0..sq % 12).for_each(|j| {
                 bb &= &!&FILE_BB[j];
-            }
+            });
             bb &= &!&SQUARE_BB[sq];
             unsafe {
                 RAYS[Ray::East as usize][sq] = bb;
@@ -139,13 +140,13 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn init_west_ray() {
+        let empty = &BB12::empty();
         for sq in 0..144 {
             let rank = &RANK_BB[sq / 12];
-            let mut bb = rank | &BB12::empty();
-            #[allow(clippy::needless_range_loop)]
-            for j in sq % 12..12 {
+            let mut bb = rank | empty;
+            (sq % 12..12).for_each(|j| {
                 bb &= &!&FILE_BB[j];
-            }
+            });
             bb &= &!&SQUARE_BB[sq];
             unsafe {
                 RAYS[Ray::West as usize][sq] = bb;
@@ -154,12 +155,17 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn init_north_east_ray() {
+        let delta = &[13];
         for sq in Square12::iter() {
             let mut bb = BB12::empty();
-            let mut sq_east = sq;
-            while let Some(ne) = sq_east.nea() {
-                bb |= &ne;
-                sq_east = ne;
+            let mut sq2 = sq.index() as i32;
+            loop {
+                let b = sliding_attacks(sq2, delta);
+                if b.len() == 0 {
+                    break;
+                }
+                bb |= &b;
+                sq2 += 13;
             }
             unsafe {
                 RAYS[Ray::NorthEast as usize][sq.index()] = bb;
@@ -168,13 +174,19 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn init_north_west_ray() {
+        let delta = &[11];
         for sq in Square12::iter() {
             let mut bb = BB12::empty();
-            let mut sq_west = sq;
-            while let Some(w) = sq_west.nw() {
-                bb |= &w;
-                sq_west = w;
+            let mut sq2 = sq.index() as i32;
+            loop {
+                let b = sliding_attacks(sq2, delta);
+                if b.len() == 0 {
+                    break;
+                }
+                bb |= &b;
+                sq2 += 11;
             }
+
             unsafe {
                 RAYS[Ray::NorthWest as usize][sq.index()] = bb;
             }
@@ -182,12 +194,17 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn init_south_east_ray() {
+        let delta = &[-11];
         for sq in Square12::iter() {
             let mut bb = BB12::empty();
-            let mut sq_west = sq;
-            while let Some(w) = sq_west.se() {
-                bb |= &w;
-                sq_west = w;
+            let mut sq2 = sq.index() as i32;
+            loop {
+                let b = sliding_attacks(sq2, delta);
+                if b.len() == 0 {
+                    break;
+                }
+                bb |= &b;
+                sq2 += -11;
             }
             unsafe {
                 RAYS[Ray::SouthEast as usize][sq.index()] = bb;
@@ -196,12 +213,17 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     }
 
     fn init_south_west_ray() {
+        let delta = &[-13];
         for sq in Square12::iter() {
             let mut bb = BB12::empty();
-            let mut sq_west = sq;
-            while let Some(w) = sq_west.sw() {
-                bb |= &w;
-                sq_west = w;
+            let mut sq2 = sq.index() as i32;
+            loop {
+                let b = sliding_attacks(sq2, delta);
+                if b.len() == 0 {
+                    break;
+                }
+                bb |= &b;
+                sq2 += -13;
             }
             unsafe {
                 RAYS[Ray::SouthWest as usize][sq.index()] = bb;
@@ -533,6 +555,8 @@ mod tests2 {
                 let between = Attacks12::between(case.0, case.1);
                 let calc = ray & &between;
                 assert_eq!(calc.len(), case.2);
+                // println!("{}", &RAYS[Ray::NorthEast as usize][0]);
+                // assert!(false);
             }
         }
     }

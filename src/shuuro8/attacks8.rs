@@ -130,14 +130,14 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     fn init_quick() {}
 
     fn init_north_ray() {
+        let empty = &BB8::empty();
         for sq in 0..64 {
             let file = &FILE_BB[sq % 8];
             let rank = sq / 8;
-            let mut bb = file | &BB8::empty();
-            #[allow(clippy::needless_range_loop)]
-            for j in 0..rank {
+            let mut bb = file | empty;
+            (0..rank).for_each(|j| {
                 bb &= &!&RANK_BB[j];
-            }
+            });
             bb &= &!&SQUARE_BB[sq];
             unsafe {
                 RAYS[Ray::North as usize][sq] = bb;
@@ -146,14 +146,14 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_south_ray() {
+        let empty = &BB8::empty();
         for sq in 0..64 {
             let file = &FILE_BB[sq % 8];
             let rank = sq / 8;
-            let mut bb = file | &BB8::empty();
-            #[allow(clippy::needless_range_loop)]
-            for j in rank..8 {
+            let mut bb = file | empty;
+            (rank..8).for_each(|j| {
                 bb &= &!&RANK_BB[j];
-            }
+            });
             bb &= &!&SQUARE_BB[sq];
             unsafe {
                 RAYS[Ray::South as usize][sq] = bb;
@@ -162,13 +162,13 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_east_ray() {
+        let empty = &BB8::empty();
         for sq in 0..64 {
             let rank = &RANK_BB[sq / 8];
-            let mut bb = rank | &BB8::empty();
-            #[allow(clippy::needless_range_loop)]
-            for j in 0..sq % 8 {
+            let mut bb = rank | empty;
+            (0..sq % 8).for_each(|j| {
                 bb &= &!&FILE_BB[j];
-            }
+            });
             bb &= &!&SQUARE_BB[sq];
             unsafe {
                 RAYS[Ray::East as usize][sq] = bb;
@@ -177,13 +177,13 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_west_ray() {
+        let empty = &BB8::empty();
         for sq in 0..64 {
             let rank = &RANK_BB[sq / 8];
-            let mut bb = rank | &BB8::empty();
-            #[allow(clippy::needless_range_loop)]
-            for j in sq % 8..8 {
+            let mut bb = rank | empty;
+            (sq % 8..8).for_each(|j| {
                 bb &= &!&FILE_BB[j];
-            }
+            });
             bb &= &!&SQUARE_BB[sq];
             unsafe {
                 RAYS[Ray::West as usize][sq] = bb;
@@ -192,12 +192,18 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_north_east_ray() {
+        let empty = BB8::empty();
+        let delta = &[13];
         for sq in Square8::iter() {
-            let mut bb = BB8::empty();
-            let mut sq_east = sq;
-            while let Some(ne) = sq_east.nea() {
-                bb |= &ne;
-                sq_east = ne;
+            let mut bb = empty;
+            let mut sq2 = sq.index() as i32;
+            loop {
+                let b = BB8::new(sliding_attacks(sq2, delta));
+                if b.len() == 0 {
+                    break;
+                }
+                bb |= &b;
+                sq2 += 13;
             }
             unsafe {
                 RAYS[Ray::NorthEast as usize][sq.index()] = bb;
@@ -206,12 +212,18 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_north_west_ray() {
+        let empty = BB8::empty();
+        let delta = &[11];
         for sq in Square8::iter() {
-            let mut bb = BB8::empty();
-            let mut sq_west = sq;
-            while let Some(w) = sq_west.nw() {
-                bb |= &w;
-                sq_west = w;
+            let mut bb = empty;
+            let mut sq2 = sq.index() as i32;
+            loop {
+                let b = BB8::new(sliding_attacks(sq2, delta));
+                if b.len() == 0 {
+                    break;
+                }
+                bb |= &b;
+                sq2 += 11;
             }
             unsafe {
                 RAYS[Ray::NorthWest as usize][sq.index()] = bb;
@@ -220,12 +232,18 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_south_east_ray() {
+        let empty = BB8::empty();
+        let delta = &[-11];
         for sq in Square8::iter() {
-            let mut bb = BB8::empty();
-            let mut sq_west = sq;
-            while let Some(w) = sq_west.se() {
-                bb |= &w;
-                sq_west = w;
+            let mut bb = empty;
+            let mut sq2 = sq.index() as i32;
+            loop {
+                let b = BB8::new(sliding_attacks(sq2, delta));
+                if b.len() == 0 {
+                    break;
+                }
+                bb |= &b;
+                sq2 += -11;
             }
             unsafe {
                 RAYS[Ray::SouthEast as usize][sq.index()] = bb;
@@ -234,12 +252,18 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_south_west_ray() {
+        let empty = BB8::empty();
+        let delta = &[-11];
         for sq in Square8::iter() {
-            let mut bb = BB8::empty();
-            let mut sq_west = sq;
-            while let Some(w) = sq_west.sw() {
-                bb |= &w;
-                sq_west = w;
+            let mut bb = empty;
+            let mut sq2 = sq.index() as i32;
+            loop {
+                let b = BB8::new(sliding_attacks(sq2, delta));
+                if b.len() == 0 {
+                    break;
+                }
+                bb |= &b;
+                sq2 += -11;
             }
             unsafe {
                 RAYS[Ray::SouthWest as usize][sq.index()] = bb;

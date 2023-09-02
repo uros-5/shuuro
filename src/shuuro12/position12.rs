@@ -46,7 +46,7 @@ where
     color_bb: [BB12<Square12>; 3],
     game_status: Outcome,
     variant: Variant,
-    pub type_bb: [BB12<Square12>; 17],
+    pub type_bb: [BB12<Square12>; 10],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
 }

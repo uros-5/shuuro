@@ -15,13 +15,6 @@ impl BB12<Square12> {
     pub const fn new(b: u128, b2: u16) -> BB12<Square12> {
         BB12((b, b2), PhantomData)
     }
-
-    pub fn count2(&self) -> u32 {
-        let mut counting = 0;
-        counting += self.0 .0.count_ones();
-        counting += self.0 .1.count_ones();
-        counting
-    }
 }
 
 impl BitAnd<&BB12<Square12>> for &BB12<Square12> {
