@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests5 {
+mod tests {
 
     use crate::{
         shuuro12::square12::Square12, Color, Move, Piece, PieceType, Shop,

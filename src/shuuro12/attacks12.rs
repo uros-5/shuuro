@@ -157,16 +157,7 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     fn init_north_east_ray() {
         let delta = &[13];
         for sq in Square12::iter() {
-            let mut bb = BB12::empty();
-            let mut sq2 = sq.index() as i32;
-            loop {
-                let b = sliding_attacks(sq2, delta);
-                if b.len() == 0 {
-                    break;
-                }
-                bb |= &b;
-                sq2 += 13;
-            }
+            let bb = diagonal_ray(sq.index() as i32, delta, 13);
             unsafe {
                 RAYS[Ray::NorthEast as usize][sq.index()] = bb;
             }
@@ -176,17 +167,7 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     fn init_north_west_ray() {
         let delta = &[11];
         for sq in Square12::iter() {
-            let mut bb = BB12::empty();
-            let mut sq2 = sq.index() as i32;
-            loop {
-                let b = sliding_attacks(sq2, delta);
-                if b.len() == 0 {
-                    break;
-                }
-                bb |= &b;
-                sq2 += 11;
-            }
-
+            let bb = diagonal_ray(sq.index() as i32, delta, 11);
             unsafe {
                 RAYS[Ray::NorthWest as usize][sq.index()] = bb;
             }
@@ -196,16 +177,7 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     fn init_south_east_ray() {
         let delta = &[-11];
         for sq in Square12::iter() {
-            let mut bb = BB12::empty();
-            let mut sq2 = sq.index() as i32;
-            loop {
-                let b = sliding_attacks(sq2, delta);
-                if b.len() == 0 {
-                    break;
-                }
-                bb |= &b;
-                sq2 += -11;
-            }
+            let bb = diagonal_ray(sq.index() as i32, delta, -11);
             unsafe {
                 RAYS[Ray::SouthEast as usize][sq.index()] = bb;
             }
@@ -215,16 +187,7 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
     fn init_south_west_ray() {
         let delta = &[-13];
         for sq in Square12::iter() {
-            let mut bb = BB12::empty();
-            let mut sq2 = sq.index() as i32;
-            loop {
-                let b = sliding_attacks(sq2, delta);
-                if b.len() == 0 {
-                    break;
-                }
-                bb |= &b;
-                sq2 += -13;
-            }
+            let bb = diagonal_ray(sq.index() as i32, delta, -13);
             unsafe {
                 RAYS[Ray::SouthWest as usize][sq.index()] = bb;
             }
@@ -400,6 +363,20 @@ const fn init_stepping_attacks(deltas: &[i32]) -> [BB12<Square12>; 144] {
         sq += 1;
     }
     table
+}
+
+fn diagonal_ray(start: i32, delta: &[i32; 1], new_sq: i32) -> BB12<Square12> {
+    let mut sq = start;
+    let mut bb = BB12::empty();
+    loop {
+        let b = sliding_attacks(sq, delta);
+        if b.len() == 0 {
+            break;
+        }
+        bb |= &b;
+        sq += new_sq;
+    }
+    bb
 }
 
 #[cfg(test)]

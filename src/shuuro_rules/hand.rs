@@ -63,7 +63,6 @@ impl Hand {
         let mut sum = String::from("");
         for pt in PieceType::iter() {
             if !pt.eq(&PieceType::Plinth) {
-                // || !pt.eq(&PieceType::King) {
                 let piece = Piece {
                     piece_type: pt,
                     color: c,
@@ -89,16 +88,8 @@ impl Hand {
 
     fn index(p: Piece) -> Option<usize> {
         let base = match p.piece_type {
-            PieceType::King => 0,
-            PieceType::Queen => 1,
-            PieceType::Rook => 2,
-            PieceType::Bishop => 3,
-            PieceType::Knight => 4,
-            PieceType::Pawn => 5,
-            PieceType::Chancellor => 6,
-            PieceType::ArchBishop => 7,
-            PieceType::Giraffe => 8,
-            _ => return None,
+            PieceType::Plinth => return None,
+            _ => p.piece_type.index(),
         };
         let offset = if p.color == Color::Black { 0 } else { 9 };
 
@@ -107,41 +98,30 @@ impl Hand {
 }
 
 impl From<&str> for Hand {
-    fn from(value: &str) -> Self {
+    fn from(value: &str) -> Hand {
         let mut hand = Hand::default();
-
-        let mut num_pieces: u8 = 0;
-
-        for c in value.chars() {
-            match c {
+        let mut count = String::new();
+        for ch in value.chars() {
+            match ch {
                 n if n.is_numeric() => {
-                    if let Some(n) = n.to_digit(19) {
-                        if n == 9 {
-                            num_pieces = n as u8;
-                            continue;
-                        } else if num_pieces != 0 {
-                            let num2 = format!("{}{}", num_pieces, n as u8)
-                                .parse::<u8>()
-                                .unwrap();
-                            num_pieces = num2;
-                            continue;
-                        }
-                        num_pieces = n as u8;
-                    }
+                    count.push(n);
                 }
-                s => {
-                    match Piece::from_sfen(s) {
-                        Some(p) => hand.set(
-                            p,
-                            if num_pieces == 0 { 1 } else { num_pieces },
-                        ),
+                p => {
+                    match Piece::from_sfen(p) {
+                        Some(p) => {
+                            let n = count.parse::<u8>();
+                            if let Ok(n) = n {
+                                hand.set(p, if n == 0 { 1 } else { n });
+                            } else {
+                                hand.set(p, 1);
+                            }
+                        }
                         None => return hand,
                     };
-                    num_pieces = 0;
+                    count.clear();
                 }
             }
         }
-
         hand
     }
 }

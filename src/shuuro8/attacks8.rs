@@ -192,19 +192,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_north_east_ray() {
-        let empty = BB8::empty();
         let delta = &[13];
         for sq in Square8::iter() {
-            let mut bb = empty;
-            let mut sq2 = sq.index() as i32;
-            loop {
-                let b = BB8::new(sliding_attacks(sq2, delta));
-                if b.len() == 0 {
-                    break;
-                }
-                bb |= &b;
-                sq2 += 13;
-            }
+            let bb = diagonal_ray(sq.index() as i32, delta, 13);
             unsafe {
                 RAYS[Ray::NorthEast as usize][sq.index()] = bb;
             }
@@ -212,19 +202,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_north_west_ray() {
-        let empty = BB8::empty();
         let delta = &[11];
         for sq in Square8::iter() {
-            let mut bb = empty;
-            let mut sq2 = sq.index() as i32;
-            loop {
-                let b = BB8::new(sliding_attacks(sq2, delta));
-                if b.len() == 0 {
-                    break;
-                }
-                bb |= &b;
-                sq2 += 11;
-            }
+            let bb = diagonal_ray(sq.index() as i32, delta, 11);
             unsafe {
                 RAYS[Ray::NorthWest as usize][sq.index()] = bb;
             }
@@ -232,19 +212,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_south_east_ray() {
-        let empty = BB8::empty();
         let delta = &[-11];
         for sq in Square8::iter() {
-            let mut bb = empty;
-            let mut sq2 = sq.index() as i32;
-            loop {
-                let b = BB8::new(sliding_attacks(sq2, delta));
-                if b.len() == 0 {
-                    break;
-                }
-                bb |= &b;
-                sq2 += -11;
-            }
+            let bb = diagonal_ray(sq.index() as i32, delta, 11);
             unsafe {
                 RAYS[Ray::SouthEast as usize][sq.index()] = bb;
             }
@@ -252,19 +222,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_south_west_ray() {
-        let empty = BB8::empty();
         let delta = &[-11];
         for sq in Square8::iter() {
-            let mut bb = empty;
-            let mut sq2 = sq.index() as i32;
-            loop {
-                let b = BB8::new(sliding_attacks(sq2, delta));
-                if b.len() == 0 {
-                    break;
-                }
-                bb |= &b;
-                sq2 += -11;
-            }
+            let bb = diagonal_ray(sq.index() as i32, delta, 11);
             unsafe {
                 RAYS[Ray::SouthWest as usize][sq.index()] = bb;
             }
@@ -396,6 +356,20 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
             }
         }
     }
+}
+
+fn diagonal_ray(start: i32, delta: &[i32; 1], new_sq: i32) -> BB8<Square8> {
+    let mut sq = start;
+    let mut bb = BB8::new(0);
+    loop {
+        let b = BB8::new(sliding_attacks(sq, delta));
+        if b.len() == 0 {
+            break;
+        }
+        bb |= &b;
+        sq += new_sq;
+    }
+    bb
 }
 
 #[cfg(test)]

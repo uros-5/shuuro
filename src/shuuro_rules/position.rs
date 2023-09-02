@@ -389,78 +389,72 @@ where
         Ok(())
     }
 
-    fn parse_sfen_board(&mut self, s: &str) -> Result<(), SfenError> {
-        let ranks = s.split('/');
+    fn parse_sfen_board(&mut self, fen: &str) -> Result<(), SfenError> {
+        let ranks = fen.split('/');
         let dimension = self.dimensions();
         self.empty_all_bb();
-        for (rank, row) in ranks.enumerate() {
+        for (rank, file) in ranks.enumerate() {
             if rank >= dimension as usize {
                 return Err(SfenError::IllegalBoardState);
             }
+            let mut current_file = 0;
+            let mut is_plinth = false;
 
-            let mut file = 0;
-
-            let mut is_promoted = false;
-            for ch in row.chars() {
+            for ch in file.chars() {
                 match ch {
-                    '+' => {
-                        is_promoted = true;
-                    }
-                    '0' => {
-                        let sq = Square::new(file, rank as u8).unwrap();
-                        self.set_piece(sq, None);
-                        file += 1;
-                    }
                     n if n.is_numeric() => {
-                        if let Some(n) = n.to_digit(11) {
-                            for _ in 0..n {
-                                if file >= dimension {
+                        if let Some(n) = n.to_digit(10) {
+                            if n != 0 {
+                                for _ in 0..n {
+                                    if current_file >= dimension {
+                                        return Err(
+                                            SfenError::IllegalBoardState,
+                                        );
+                                    }
+                                    let sq = S::new(current_file, rank as u8)
+                                        .unwrap();
+
+                                    self.set_piece(sq, None);
+                                    current_file += 1;
+                                }
+                            } else if n == 0 {
+                                if is_plinth {
+                                    is_plinth = false;
+                                    let sq = S::new(current_file, rank as u8)
+                                        .unwrap();
+                                    self.set_piece(sq, None);
+                                    current_file += 1;
+                                } else {
                                     return Err(SfenError::IllegalBoardState);
                                 }
-
-                                let sq = Square::new(file, rank as u8).unwrap();
-
-                                self.set_piece(sq, None);
-
-                                file += 1;
                             }
+                            //
                         }
                     }
-                    s => match Piece::from_sfen(s) {
-                        Some(mut piece) => {
-                            if file >= dimension {
+                    s => {
+                        if let Some(piece) = Piece::from_sfen(s) {
+                            if current_file >= dimension {
                                 return Err(SfenError::IllegalBoardState);
                             }
-
-                            if is_promoted {
-                                if let Some(promoted) =
-                                    piece.piece_type.promote()
-                                {
-                                    piece.piece_type = promoted;
-                                } else {
-                                    return Err(SfenError::IllegalPieceType);
-                                }
-                            }
-
-                            let sq = Square::new(file, rank as u8).unwrap();
+                            let sq = S::new(current_file, rank as u8).unwrap();
                             match piece.piece_type {
                                 PieceType::Plinth => {
                                     self.update_player(piece, &sq);
+                                    is_plinth = true;
                                     continue;
                                 }
                                 _ => {
                                     self.sfen_to_bb(piece, &sq);
-                                    file += 1;
-                                    is_promoted = false;
+                                    current_file += 1;
                                 }
                             }
+                        } else {
+                            return Err(SfenError::IllegalPieceType);
                         }
-                        None => return Err(SfenError::IllegalPieceType),
-                    },
+                    }
                 }
             }
         }
-
         Ok(())
     }
 
