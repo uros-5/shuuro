@@ -73,6 +73,13 @@ impl Hand {
                         sum.push_str(&piece.to_string());
                     }
                 } else if counter > 0 {
+                    let counter = {
+                        if counter == 1 {
+                            String::new()
+                        } else {
+                            counter.to_string()
+                        }
+                    };
                     sum.push_str(&format!("{}{}", counter, &piece.to_string()));
                 }
             }

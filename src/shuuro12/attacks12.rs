@@ -532,8 +532,6 @@ mod tests2 {
                 let between = Attacks12::between(case.0, case.1);
                 let calc = ray & &between;
                 assert_eq!(calc.len(), case.2);
-                // println!("{}", &RAYS[Ray::NorthEast as usize][0]);
-                // assert!(false);
             }
         }
     }

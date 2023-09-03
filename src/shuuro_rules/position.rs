@@ -263,110 +263,79 @@ where
 
     /// Generate sfen.
     fn generate_sfen(&self) -> String {
-        fn add_num_space(num_spaces: i32, mut s: String) -> String {
-            if num_spaces == 10 {
-                s.push_str("55");
-            } else if num_spaces == 11 {
-                s.push_str("56");
-            } else if num_spaces == 12 {
-                s.push_str("57");
-            } else if num_spaces > 0 {
-                s.push_str(&num_spaces.to_string());
-            }
-            s
-        }
-        let knights = [
-            PieceType::Knight,
-            PieceType::Chancellor,
-            PieceType::ArchBishop,
-            PieceType::Giraffe,
-        ];
-
         let dimension = self.dimensions();
-
-        let board = (0..dimension)
-            .map(|row| {
-                let mut s = String::new();
-                let mut num_spaces = 0;
-                for file in 0..dimension {
-                    let sq = S::new(file, row).unwrap();
-                    match *self.piece_at(sq) {
-                        Some(pc) => {
-                            if num_spaces > 0 {
-                                let mut _s = add_num_space(num_spaces, s);
-                                s = _s;
-                                num_spaces = 0;
-                            }
-                            if (&self.player_bb(Color::NoColor) & &sq).is_any()
-                            {
-                                if knights.contains(&pc.piece_type) {
-                                    s.push('L');
-                                } else {
-                                    //return Err(SfenError::IllegalPieceTypeOnPlinth);
-                                }
-                            }
-
-                            s.push_str(&pc.to_string());
+        let mut fen = String::new();
+        let mut is_plinth = false;
+        for rank in 0..dimension {
+            let mut s = String::from("");
+            let mut space = 0;
+            for file in 0..dimension {
+                let sq = S::new(file, rank).unwrap();
+                match *self.piece_at(sq) {
+                    Some(piece) => {
+                        if space > 0 {
+                            s = self.add_space(space, s);
+                            space = 0;
                         }
-                        None => {
-                            if (&self.player_bb(Color::NoColor) & &sq).is_any()
-                            {
-                                let mut _s = add_num_space(num_spaces, s);
-                                s = _s;
-                                num_spaces = 0;
-                                s.push_str("L0");
-                            } else {
-                                num_spaces += 1;
+                        if is_plinth {
+                            if piece.piece_type.is_knight_piece() {
+                                s.push_str(&piece.to_string());
                             }
+                            is_plinth = false;
+                        } else {
+                            s.push_str(&piece.to_string());
+                            space = 0;
+                        }
+                    }
+                    None => {
+                        if (&self.player_bb(Color::NoColor) & &sq).is_any() {
+                            s = self.add_space(space, s);
+                            space = 0;
+                            is_plinth = true;
+                            s.push('L');
+                        } else if is_plinth {
+                            s.push('0');
+                            space = 0;
+                            is_plinth = false;
+                        } else {
+                            space += 1;
                         }
                     }
                 }
-
-                if num_spaces > 0 {
-                    let _s = add_num_space(num_spaces, s);
-                    s = _s;
-                    //num_spaces = 0;
-                }
-
-                s
-            })
-            .join("/");
-
+            }
+            if space > 0 {
+                s = self.add_space(space, s);
+            }
+            fen.push_str(&s);
+            if rank < dimension - 1 {
+                fen.push('/');
+            }
+        }
         let color = if self.side_to_move() == Color::Black {
             "b"
         } else {
             "w"
         };
 
-        let mut hand = [Color::Black, Color::White]
-            .iter()
-            .map(|c| {
-                PieceType::iter()
-                    .filter(|pt| pt.is_hand_piece())
-                    .map(|pt| {
-                        let pc = Piece {
-                            piece_type: pt,
-                            color: *c,
-                        };
-                        let n = self.hand(pc);
-
-                        if n == 0 {
-                            "".to_string()
-                        } else if n == 1 {
-                            format!("{pc}")
-                        } else {
-                            format!("{n}{pc}")
-                        }
-                    })
-                    .join("")
-            })
-            .join("");
-
+        let black = self.get_hand(Color::Black, false);
+        let white = self.get_hand(Color::White, false);
+        let mut hand = String::new();
+        hand.push_str(&black);
+        hand.push_str(&white);
         if hand.is_empty() {
             hand = "-".to_string();
         }
+        format!("{} {} {} {}", fen, color, hand, self.ply())
+    }
 
-        format!("{} {} {} {}", board, color, hand, self.ply())
+    fn add_space(&self, n: u8, mut s: String) -> String {
+        match n {
+            10 => s.push_str("55"),
+            11 => s.push_str("56"),
+            12 => s.push_str("57"),
+            _ => s.push_str(&n.to_string()),
+        }
+        s
     }
 
     fn clear_hand(&mut self);
@@ -948,12 +917,6 @@ where
 
     /// Returns `BitBoard` of all moves by opponent.
     fn enemy_moves(&self, color: &Color) -> B {
-        match color {
-            Color::Black | Color::White => self.color_moves(&color.flip()),
-            Color::NoColor => B::empty(),
-        }
-    }
-    fn enemy_moves2(&self, color: &Color) -> B {
         match color {
             Color::Black | Color::White => {
                 let mut all = B::empty();
