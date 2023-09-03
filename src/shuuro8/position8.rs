@@ -41,7 +41,6 @@ where
     ply: u16,
     side_to_move: Color,
     move_history: Vec<MoveRecord<Square8>>,
-    sfen_history: Vec<String>,
     occupied_bb: BB8<Square8>,
     color_bb: [BB8<Square8>; 3],
     game_status: Outcome,
@@ -140,7 +139,7 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     }
 
     fn insert_sfen(&mut self, sfen: &str) {
-        self.sfen_history.push(sfen.to_string());
+        // self.sfen_history.push(sfen.to_string());
     }
 
     fn insert_move(&mut self, move_record: MoveRecord<Square8>) {
@@ -148,11 +147,11 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     }
 
     fn clear_sfen_history(&mut self) {
-        self.sfen_history.clear();
+        // self.sfen_history.clear();
     }
 
     fn set_sfen_history(&mut self, history: Vec<String>) {
-        self.sfen_history = history;
+        // self.sfen_history = history;
     }
 
     fn set_move_history(&mut self, history: Vec<MoveRecord<Square8>>) {
@@ -163,12 +162,23 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         &self.move_history
     }
 
-    fn get_move_history(&self) -> &Vec<MoveRecord<Square8>> {
-        &self.move_history
+    fn update_last_move(&mut self, m: &str) {
+        if let Some(last) = self.move_history.last_mut() {
+            match last {
+                MoveRecord::Put { ref mut fen, .. } => {
+                    *fen = String::from(m);
+                }
+                MoveRecord::Normal { ref mut fen, .. } => {
+                    *fen = String::from(m);
+                }
+                _ => (),
+            }
+        }
     }
 
     fn get_sfen_history(&self) -> &Vec<String> {
-        &self.sfen_history
+        // &self.sfen_history
+        todo!()
     }
 
     fn hand(&self, p: Piece) -> u8 {
@@ -350,7 +360,7 @@ impl Default for P8<Square8, BB8<Square8>> {
             hand: Default::default(),
             ply: 0,
             move_history: Default::default(),
-            sfen_history: Default::default(),
+            // sfen_history: Default::default(),
             occupied_bb: Default::default(),
             color_bb: Default::default(),
             type_bb: Default::default(),

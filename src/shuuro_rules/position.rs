@@ -205,7 +205,8 @@ where
     fn set_move_history(&mut self, history: Vec<MoveRecord<S>>);
     /// Returns history of all moves in `MoveRecord` format.
     fn move_history(&self) -> &[MoveRecord<S>];
-    fn get_move_history(&self) -> &Vec<MoveRecord<S>>;
+    /// Update last move.
+    fn update_last_move(&mut self, m: &str);
     /// Returns history of all moves in `Vec` format.
     fn get_sfen_history(&self) -> &Vec<String>;
     /// Get hand count for Piece.
@@ -246,7 +247,7 @@ where
     /// Convert current position to sfen.
     fn to_sfen(&self) -> String {
         let sfen_history = self.get_sfen_history();
-        let move_history = self.get_move_history();
+        let move_history = self.move_history();
         let ply = self.ply();
         if sfen_history.is_empty() {
             return self.generate_sfen();
@@ -441,14 +442,14 @@ where
     /// Saves position in sfen_history.
     fn log_position(&mut self) {
         let mut sfen = self.generate_sfen().split(' ').take(3).join(" ");
-        let move_history = self.get_move_history();
-        if !move_history.is_empty() {
+        let move_history = self.move_history();
+        if let Some(last) = move_history.last() {
             sfen.push_str(format!(" {} ", self.ply()).as_str());
-            let last = move_history.last().unwrap();
-            sfen.push_str(&last.to_sfen());
+            sfen.push_str(&last.to_string());
             sfen.push_str(&format!(" {}", &last.format()));
         }
-        self.insert_sfen(&sfen);
+        self.update_last_move(&sfen);
+        // self.insert_sfen(&sfen);
     }
 
     fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool {
@@ -653,7 +654,11 @@ where
         } else if self.hand(p) > 0 && (&self.empty_squares(p) & &sq).is_any() {
             self.update_bb(p, sq);
             self.decrement_hand(p);
-            let move_record = MoveRecord::Put { to: sq, piece: p };
+            let move_record = MoveRecord::Put {
+                to: sq,
+                piece: p,
+                fen: String::new(),
+            };
             let sfen =
                 self.generate_sfen().split(' ').next().unwrap().to_string();
             let hand = {
@@ -674,13 +679,14 @@ where
             }
             let record = format!(
                 "{}_{}_{}_{}_{}",
-                &move_record.to_sfen(),
+                &move_record.to_string(),
                 &sfen,
                 hand,
                 self.side_to_move().to_string(),
                 ply
             );
-            self.insert_sfen(&record);
+            self.update_last_move(&record);
+            // self.insert_sfen(&record);
             return Some(record);
         }
         None
@@ -749,15 +755,17 @@ where
 
     /// If last position has appeared three times then it's draw.
     fn detect_repetition(&self) -> Result<(), MoveError> {
-        let sfen_history = self.get_sfen_history();
-
-        if sfen_history.len() < 9 {
-            return Ok(());
+        let sfen_history = self.move_history();
+        let mut h = Vec::new();
+        for i in sfen_history {
+            if let MoveRecord::Normal { fen, .. } = i {
+                h.push(fen);
+                if h.len() > 10 {
+                    break;
+                }
+            }
         }
-
-        let sfen_history: Vec<&String> =
-            sfen_history.iter().rev().take(15).collect();
-
+        let sfen_history: Vec<&&String> = h.iter().rev().take(15).collect();
         let cur = sfen_history.last().unwrap();
         let last_sfen = cur.split_whitespace().rev().last().unwrap();
         let mut cnt = 0;
@@ -842,7 +850,7 @@ where
         let mut map = HashMap::new();
         let pinned_moves = self.pins(color);
         let check_moves = self.check_moves(*color);
-        let enemy_moves = self.enemy_moves2(color);
+        let enemy_moves = self.enemy_moves(color);
         let move_task = check_moves.add_enemy_moves(enemy_moves).unwrap();
         let king = self.find_king(color).unwrap();
         for sq in self.player_bb(*color) {
@@ -1042,7 +1050,7 @@ where
     fn in_check(&self, c: Color) -> bool {
         let king = &self.find_king(&c);
         if let Some(k) = king {
-            let check_moves = self.enemy_moves2(&c);
+            let check_moves = self.enemy_moves(&c);
             return (&check_moves & k).is_any();
             // if let MoveTask::Checks { check, .. } = check_moves {
             //     if let Some(check) = check {
@@ -1247,6 +1255,7 @@ where
                 to,
                 placed,
                 move_data,
+                fen: String::new(),
             };
 
             self.insert_move(move_record);

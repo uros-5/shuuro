@@ -66,7 +66,7 @@ impl<S: Square> Shop<S> {
                             self.credit(piece.color) - piece_price;
                         let move_record = MoveRecord::Buy { piece };
                         self.sfen_history.push((
-                            move_record.to_sfen(),
+                            move_record.to_string(),
                             self.hand.get(piece),
                         ));
                         self.move_history.push(move_record);

@@ -92,6 +92,33 @@ impl<S: Square> Move<S> {
     }
 }
 
+impl<S: Square> TryFrom<&str> for Move<S> {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if value.contains('@') {
+            if let Some(m) = value.split('_').next() {
+                if let Some(m) = Self::get_put_move(m) {
+                    return Ok(m);
+                }
+            }
+        } else if value.contains('-') {
+            let mut parts = value.split(' ');
+            for _i in 0..3 {
+                parts.next();
+            }
+            if let Some(m) = parts.next() {
+                if let Some(m) = Self::get_normal_move(m) {
+                    return Ok(m);
+                }
+            }
+        } else if let Some(m) = Self::get_buy_move(value) {
+            return Ok(m);
+        }
+        Err(())
+    }
+}
+
 impl<S: Square> fmt::Display for Move<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
@@ -123,13 +150,46 @@ pub enum MoveRecord<S: Square> {
     Put {
         to: S,
         piece: Piece,
+        fen: String,
     },
     Normal {
         from: S,
         to: S,
         placed: Piece,
         move_data: MoveData,
+        fen: String,
     },
+}
+
+impl<S: Square> ToString for MoveRecord<S> {
+    /// Converts the move into SFEN formatted string.
+    fn to_string(&self) -> String {
+        match *self {
+            MoveRecord::Buy { piece } => format!("+{piece}"),
+            MoveRecord::Put { to, piece, .. } => format!("{piece}@{to}"),
+            MoveRecord::Normal {
+                from,
+                to,
+                move_data,
+                ..
+            } => format!(
+                "{}_{}{}",
+                from,
+                to,
+                if move_data.promoted { "*" } else { "" }
+            ),
+        }
+    }
+}
+
+impl<S: Square> MoveRecord<S> {
+    pub fn to_fen(&self) -> Option<String> {
+        match &self {
+            MoveRecord::Put { fen, .. } => Some(String::from(fen)),
+            MoveRecord::Normal { fen, .. } => Some(String::from(fen)),
+            MoveRecord::Buy { .. } => None,
+        }
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
@@ -172,27 +232,6 @@ impl MoveData {
     }
 }
 
-impl<S: Square> MoveRecord<S> {
-    /// Converts the move into SFEN formatted string.
-    pub fn to_sfen(&self) -> String {
-        match *self {
-            MoveRecord::Buy { piece } => format!("+{piece}"),
-            MoveRecord::Put { to, piece } => format!("{piece}@{to}"),
-            MoveRecord::Normal {
-                from,
-                to,
-                move_data,
-                ..
-            } => format!(
-                "{}_{}{}",
-                from,
-                to,
-                if move_data.promoted { "*" } else { "" }
-            ),
-        }
-    }
-}
-
 impl<S: Square> PartialEq<Move<S>> for MoveRecord<S> {
     fn eq(&self, other: &Move<S>) -> bool {
         match (self, other) {
@@ -217,6 +256,7 @@ impl<S: Square> PartialEq<Move<S>> for MoveRecord<S> {
                 &MoveRecord::Put {
                     to: to1,
                     piece: piece1,
+                    ..
                 },
                 &Move::Put {
                     to: to2,

@@ -41,7 +41,6 @@ where
     ply: u16,
     side_to_move: Color,
     move_history: Vec<MoveRecord<Square12>>,
-    sfen_history: Vec<String>,
     occupied_bb: BB12<Square12>,
     color_bb: [BB12<Square12>; 3],
     game_status: Outcome,
@@ -49,6 +48,20 @@ where
     pub type_bb: [BB12<Square12>; 10],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
+}
+
+impl<S, B> P12<S, B>
+where
+    S: Square,
+    B: BitBoard<S>,
+    for<'b> &'b B: BitOr<&'b B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    for<'a> B: BitXorAssign<&'a S>,
+{
+    //
 }
 
 impl Rules<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
@@ -145,7 +158,7 @@ impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
     }
 
     fn insert_sfen(&mut self, sfen: &str) {
-        self.sfen_history.push(sfen.to_string());
+        // self.sfen_history.push(sfen.to_string());
     }
 
     fn insert_move(&mut self, move_record: MoveRecord<Square12>) {
@@ -153,11 +166,11 @@ impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
     }
 
     fn clear_sfen_history(&mut self) {
-        self.sfen_history.clear();
+        // self.sfen_history.clear();
     }
 
     fn set_sfen_history(&mut self, history: Vec<String>) {
-        self.sfen_history = history;
+        // self.sfen_history = history;
     }
 
     fn set_move_history(&mut self, history: Vec<MoveRecord<Square12>>) {
@@ -168,12 +181,23 @@ impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         &self.move_history
     }
 
-    fn get_move_history(&self) -> &Vec<MoveRecord<Square12>> {
-        &self.move_history
+    fn update_last_move(&mut self, m: &str) {
+        if let Some(last) = self.move_history.last_mut() {
+            match last {
+                MoveRecord::Put { ref mut fen, .. } => {
+                    *fen = String::from(m);
+                }
+                MoveRecord::Normal { ref mut fen, .. } => {
+                    *fen = String::from(m);
+                }
+                _ => (),
+            }
+        }
     }
 
     fn get_sfen_history(&self) -> &Vec<String> {
-        &self.sfen_history
+        todo!()
+        // &self.sfen_history
     }
 
     fn hand(&self, p: Piece) -> u8 {
@@ -351,7 +375,7 @@ impl Default for P12<Square12, BB12<Square12>> {
             hand: Default::default(),
             ply: 0,
             move_history: Default::default(),
-            sfen_history: Default::default(),
+            // sfen_history: Default::default(),
             occupied_bb: Default::default(),
             color_bb: Default::default(),
             type_bb: Default::default(),
@@ -920,15 +944,15 @@ pub mod position_tests {
         let mut pos = P12::new();
         pos.set_sfen("57/57/PPPQP4K2/7RR3/57/57/57/4pp6/2kr8/57/57/57 b - 1")
             .expect("failed to parse SFEN string");
-        for i in 0..2 {
+        for i in 0..5 {
             assert!(pos.make_move(Move::new(D9, I9, false)).is_ok());
             assert!(pos.make_move(Move::new(H4, A4, false)).is_ok());
             assert!(pos.make_move(Move::new(I9, D9, false)).is_ok());
+            assert!(pos.make_move(Move::new(A4, H4, false)).is_ok());
             if i == 1 {
                 assert!(pos.make_move(Move::new(A4, H4, false)).is_err());
                 break;
             }
-            assert!(pos.make_move(Move::new(A4, H4, false)).is_ok());
         }
     }
 
