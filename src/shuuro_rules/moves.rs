@@ -1,15 +1,44 @@
-use crate::shuuro_rules::{Piece, Square};
+use crate::{
+    color::Color,
+    shuuro_rules::{Piece, Square},
+};
 use std::fmt;
 
 /// Represents a move which either is a normal move or a drop move.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Move<S: Square> {
-    Buy { piece: Piece },
-    Put { to: S, piece: Piece },
-    Normal { from: S, to: S, promote: bool },
+    Buy {
+        piece: Piece,
+    },
+    Put {
+        to: S,
+        piece: Piece,
+        fen: String,
+    },
+    Normal {
+        from: S,
+        to: S,
+        placed: Piece,
+        move_data: MoveData,
+        fen: String,
+    },
 }
 
 impl<S: Square> Move<S> {
+    /// Creating new normal with 'from' and 'to' Square.
+    pub fn new(from: S, to: S) -> Self {
+        Self::Normal {
+            from,
+            to,
+            placed: Piece {
+                piece_type: crate::PieceType::Rook,
+                color: Color::Black,
+            },
+            move_data: MoveData::default(),
+            fen: String::new(),
+        }
+    }
+
     /// Creates a new instance of `Self` from SFEN formatted string.
     pub fn from_sfen(s: &str) -> Option<Self> {
         if s.len() > 7 {
@@ -30,18 +59,9 @@ impl<S: Square> Move<S> {
     /// Information about normal move.
     pub fn info(&self) -> Option<(S, S)> {
         match self {
-            Self::Normal {
-                from,
-                to,
-                promote: _,
-            } => Some((*from, *to)),
+            Self::Normal { from, to, .. } => Some((*from, *to)),
             _ => None,
         }
-    }
-
-    /// Creating new normal with 'from' and 'to' Square.
-    pub fn new(from: S, to: S, promote: bool) -> Self {
-        Self::Normal { from, to, promote }
     }
 
     /// Getting buy move from str.
@@ -62,7 +82,11 @@ impl<S: Square> Move<S> {
                 if let Some(piece) = Piece::from_sfen(piece_char) {
                     if let Some(to) = fen_parts.next() {
                         if let Some(to) = Square::from_sfen(to) {
-                            return Some(Self::Put { piece, to });
+                            return Some(Self::Put {
+                                piece,
+                                to,
+                                fen: String::new(),
+                            });
                         }
                     }
                 }
@@ -78,11 +102,7 @@ impl<S: Square> Move<S> {
             if let Some(from) = Square::from_sfen(from) {
                 if let Some(to) = fen_parts.next() {
                     if let Some(to) = Square::from_sfen(to) {
-                        return Some(Self::Normal {
-                            from,
-                            to,
-                            promote: false,
-                        });
+                        return Some(Self::new(from, to));
                     }
                 }
             }
@@ -90,190 +110,17 @@ impl<S: Square> Move<S> {
 
         None
     }
-}
 
-impl<S: Square> TryFrom<&str> for Move<S> {
-    type Error = ();
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        if value.contains('@') {
-            if let Some(m) = value.split('_').next() {
-                if let Some(m) = Self::get_put_move(m) {
-                    return Ok(m);
-                }
-            }
-        } else if value.contains('-') {
-            let mut parts = value.split(' ');
-            for _i in 0..3 {
-                parts.next();
-            }
-            if let Some(m) = parts.next() {
-                if let Some(m) = Self::get_normal_move(m) {
-                    return Ok(m);
-                }
-            }
-        } else if let Some(m) = Self::get_buy_move(value) {
-            return Ok(m);
-        }
-        Err(())
-    }
-}
-
-impl<S: Square> fmt::Display for Move<S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match *self {
-            Move::Buy { piece } => {
-                write!(f, "+{piece}")
-            }
-            Move::Put { to, piece } => {
-                write!(f, "{piece}@{to}")
-            }
-            Move::Normal { from, to, promote } => {
-                write!(
-                    f,
-                    "{}_{}{}",
-                    from,
-                    to,
-                    if promote { "fixthis" } else { "" }
-                )
-            }
-        }
-    }
-}
-
-/// MoveRecord stores information necessary to undo the move.
-#[derive(Debug, Clone)]
-pub enum MoveRecord<S: Square> {
-    Buy {
-        piece: Piece,
-    },
-    Put {
-        to: S,
-        piece: Piece,
-        fen: String,
-    },
-    Normal {
-        from: S,
-        to: S,
-        placed: Piece,
-        move_data: MoveData,
-        fen: String,
-    },
-}
-
-impl<S: Square> ToString for MoveRecord<S> {
-    /// Converts the move into SFEN formatted string.
-    fn to_string(&self) -> String {
-        match *self {
-            MoveRecord::Buy { piece } => format!("+{piece}"),
-            MoveRecord::Put { to, piece, .. } => format!("{piece}@{to}"),
-            MoveRecord::Normal {
-                from,
-                to,
-                move_data,
-                ..
-            } => format!(
-                "{}_{}{}",
-                from,
-                to,
-                if move_data.promoted { "*" } else { "" }
-            ),
-        }
-    }
-}
-
-impl<S: Square> MoveRecord<S> {
     pub fn to_fen(&self) -> Option<String> {
         match &self {
-            MoveRecord::Put { fen, .. } => Some(String::from(fen)),
-            MoveRecord::Normal { fen, .. } => Some(String::from(fen)),
-            MoveRecord::Buy { .. } => None,
+            Move::Put { fen, .. } => Some(String::from(fen)),
+            Move::Normal { fen, .. } => Some(String::from(fen)),
+            Move::Buy { .. } => None,
         }
     }
-}
 
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
-pub struct MoveData {
-    check: bool,
-    checkmate: bool,
-    same_file: bool,
-    same_rank: bool,
-    captured: Option<Piece>,
-    piece: Option<Piece>,
-    promoted: bool,
-}
-
-impl MoveData {
-    pub fn checks(mut self, check: bool, checkmate: bool) -> Self {
-        self.check = check;
-        self.checkmate = checkmate;
-        self
-    }
-
-    pub fn precise(mut self, same_file: bool, same_rank: bool) -> Self {
-        self.same_file = same_file;
-        self.same_rank = same_rank;
-        self
-    }
-
-    pub fn captured(mut self, captured: Option<Piece>) -> Self {
-        self.captured = captured;
-        self
-    }
-
-    pub fn promoted(mut self, promoted: bool) -> Self {
-        self.promoted = promoted;
-        self
-    }
-
-    pub fn piece(mut self, piece: Option<Piece>) -> Self {
-        self.piece = piece;
-        self
-    }
-}
-
-impl<S: Square> PartialEq<Move<S>> for MoveRecord<S> {
-    fn eq(&self, other: &Move<S>) -> bool {
-        match (self, other) {
-            (
-                &MoveRecord::Normal {
-                    from: f1,
-                    to: t1,
-                    move_data,
-                    ..
-                },
-                &Move::Normal {
-                    from: f2,
-                    to: t2,
-                    promote,
-                },
-            ) => f1 == f2 && t1 == t2 && promote == move_data.promoted,
-            (
-                &MoveRecord::Buy { piece: piece1 },
-                &Move::Buy { piece: piece2 },
-            ) => piece1 == piece2,
-            (
-                &MoveRecord::Put {
-                    to: to1,
-                    piece: piece1,
-                    ..
-                },
-                &Move::Put {
-                    to: to2,
-                    piece: piece2,
-                },
-            ) => to1 == to2 && piece1 == piece2,
-            _ => false,
-        }
-    }
-}
-
-impl<S> MoveRecord<S>
-where
-    S: Square,
-{
     pub fn format(&self) -> String {
-        if let MoveRecord::Normal {
+        if let Move::Normal {
             from,
             to,
             move_data,
@@ -342,7 +189,6 @@ where
         }
         " ".to_string()
     }
-
     fn same_format(&self, from: &S, skip: usize, is_numeric: bool) -> String {
         let c = |x: &char| -> bool {
             if is_numeric {
@@ -357,6 +203,96 @@ where
     }
 }
 
-// pub fn generate_normal_sfen(f) {
+impl<S: Square> TryFrom<String> for Move<S> {
+    type Error = ();
 
-// }
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if value.contains('@') {
+            if let Some(m) = value.split('_').next() {
+                if let Some(m) = Self::get_put_move(m) {
+                    return Ok(m);
+                }
+            }
+        } else if value.contains('-') {
+            let mut parts = value.split(' ');
+            for _i in 0..3 {
+                parts.next();
+            }
+            if let Some(m) = parts.next() {
+                if let Some(m) = Self::get_normal_move(m) {
+                    return Ok(m);
+                }
+            }
+        } else if let Some(m) = Self::get_buy_move(&value) {
+            return Ok(m);
+        }
+        Err(())
+    }
+}
+
+impl<S: Square> fmt::Display for Move<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            Move::Buy { piece } => {
+                write!(f, "+{piece}")
+            }
+            Move::Put { to, piece, .. } => {
+                write!(f, "{piece}@{to}")
+            }
+            Move::Normal {
+                from,
+                to,
+                move_data,
+                ..
+            } => {
+                write!(
+                    f,
+                    "{}_{}{}",
+                    from,
+                    to,
+                    if move_data.promoted { "fixthis" } else { "" }
+                )
+            }
+        }
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+pub struct MoveData {
+    check: bool,
+    checkmate: bool,
+    same_file: bool,
+    same_rank: bool,
+    captured: Option<Piece>,
+    piece: Option<Piece>,
+    promoted: bool,
+}
+
+impl MoveData {
+    pub fn checks(mut self, check: bool, checkmate: bool) -> Self {
+        self.check = check;
+        self.checkmate = checkmate;
+        self
+    }
+
+    pub fn precise(mut self, same_file: bool, same_rank: bool) -> Self {
+        self.same_file = same_file;
+        self.same_rank = same_rank;
+        self
+    }
+
+    pub fn captured(mut self, captured: Option<Piece>) -> Self {
+        self.captured = captured;
+        self
+    }
+
+    pub fn promoted(mut self, promoted: bool) -> Self {
+        self.promoted = promoted;
+        self
+    }
+
+    pub fn piece(mut self, piece: Option<Piece>) -> Self {
+        self.piece = piece;
+        self
+    }
+}

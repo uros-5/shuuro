@@ -7,8 +7,7 @@ use std::{
 use crate::{
     bitboard::BitBoard,
     position::{Board, Outcome, Placement, Play, Position, Rules, Sfen},
-    Color, Hand, MoveData, MoveRecord, Piece, PieceType, SfenError, Square,
-    Variant,
+    Color, Hand, Move, MoveData, Piece, PieceType, SfenError, Square, Variant,
 };
 
 use super::{
@@ -40,7 +39,7 @@ where
     hand: Hand,
     ply: u16,
     side_to_move: Color,
-    move_history: Vec<MoveRecord<Square8>>,
+    move_history: Vec<Move<Square8>>,
     occupied_bb: BB8<Square8>,
     color_bb: [BB8<Square8>; 3],
     game_status: Outcome,
@@ -138,37 +137,33 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.variant = variant;
     }
 
-    fn insert_sfen(&mut self, sfen: &str) {
-        // self.sfen_history.push(sfen.to_string());
+    fn insert_sfen(&mut self, sfen: Move<Square8>) {
+        self.move_history.push(sfen);
     }
 
-    fn insert_move(&mut self, move_record: MoveRecord<Square8>) {
+    fn insert_move(&mut self, move_record: Move<Square8>) {
         self.move_history.push(move_record)
     }
 
     fn clear_sfen_history(&mut self) {
-        // self.sfen_history.clear();
+        self.move_history.clear();
     }
 
-    fn set_sfen_history(&mut self, history: Vec<String>) {
-        // self.sfen_history = history;
-    }
-
-    fn set_move_history(&mut self, history: Vec<MoveRecord<Square8>>) {
+    fn set_move_history(&mut self, history: Vec<Move<Square8>>) {
         self.move_history = history;
     }
 
-    fn move_history(&self) -> &[MoveRecord<Square8>] {
+    fn move_history(&self) -> &[Move<Square8>] {
         &self.move_history
     }
 
     fn update_last_move(&mut self, m: &str) {
         if let Some(last) = self.move_history.last_mut() {
             match last {
-                MoveRecord::Put { ref mut fen, .. } => {
+                Move::Put { ref mut fen, .. } => {
                     *fen = String::from(m);
                 }
-                MoveRecord::Normal { ref mut fen, .. } => {
+                Move::Normal { ref mut fen, .. } => {
                     *fen = String::from(m);
                 }
                 _ => (),

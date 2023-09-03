@@ -7,8 +7,7 @@ use std::{
 use crate::{
     bitboard::BitBoard,
     position::{Board, Outcome, Placement, Play, Position, Rules, Sfen},
-    Color, Hand, MoveData, MoveRecord, Piece, PieceType, SfenError, Square,
-    Variant,
+    Color, Hand, Move, MoveData, Piece, PieceType, SfenError, Square, Variant,
 };
 
 use super::{
@@ -40,7 +39,7 @@ where
     hand: Hand,
     ply: u16,
     side_to_move: Color,
-    move_history: Vec<MoveRecord<Square12>>,
+    move_history: Vec<Move<Square12>>,
     occupied_bb: BB12<Square12>,
     color_bb: [BB12<Square12>; 3],
     game_status: Outcome,
@@ -157,37 +156,33 @@ impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         self.variant = variant;
     }
 
-    fn insert_sfen(&mut self, sfen: &str) {
-        // self.sfen_history.push(sfen.to_string());
+    fn insert_sfen(&mut self, sfen: Move<Square12>) {
+        self.move_history.push(sfen);
     }
 
-    fn insert_move(&mut self, move_record: MoveRecord<Square12>) {
+    fn insert_move(&mut self, move_record: Move<Square12>) {
         self.move_history.push(move_record)
     }
 
     fn clear_sfen_history(&mut self) {
-        // self.sfen_history.clear();
+        self.move_history.clear();
     }
 
-    fn set_sfen_history(&mut self, history: Vec<String>) {
-        // self.sfen_history = history;
-    }
-
-    fn set_move_history(&mut self, history: Vec<MoveRecord<Square12>>) {
+    fn set_move_history(&mut self, history: Vec<Move<Square12>>) {
         self.move_history = history;
     }
 
-    fn move_history(&self) -> &[MoveRecord<Square12>] {
+    fn move_history(&self) -> &[Move<Square12>] {
         &self.move_history
     }
 
     fn update_last_move(&mut self, m: &str) {
         if let Some(last) = self.move_history.last_mut() {
             match last {
-                MoveRecord::Put { ref mut fen, .. } => {
+                Move::Put { ref mut fen, .. } => {
                     *fen = String::from(m);
                 }
-                MoveRecord::Normal { ref mut fen, .. } => {
+                Move::Normal { ref mut fen, .. } => {
                     *fen = String::from(m);
                 }
                 _ => (),
@@ -945,12 +940,12 @@ pub mod position_tests {
         pos.set_sfen("57/57/PPPQP4K2/7RR3/57/57/57/4pp6/2kr8/57/57/57 b - 1")
             .expect("failed to parse SFEN string");
         for i in 0..5 {
-            assert!(pos.make_move(Move::new(D9, I9, false)).is_ok());
-            assert!(pos.make_move(Move::new(H4, A4, false)).is_ok());
-            assert!(pos.make_move(Move::new(I9, D9, false)).is_ok());
-            assert!(pos.make_move(Move::new(A4, H4, false)).is_ok());
+            assert!(pos.make_move(Move::new(D9, I9)).is_ok());
+            assert!(pos.make_move(Move::new(H4, A4)).is_ok());
+            assert!(pos.make_move(Move::new(I9, D9)).is_ok());
+            assert!(pos.make_move(Move::new(A4, H4)).is_ok());
             if i == 1 {
-                assert!(pos.make_move(Move::new(A4, H4, false)).is_err());
+                assert!(pos.make_move(Move::new(A4, H4)).is_err());
                 break;
             }
         }
@@ -998,11 +993,7 @@ pub mod position_tests {
             let mut pos = P12::new();
             pos.set_sfen(base_sfen)
                 .expect("failed to parse SFEN string");
-            let move_ = Move::Normal {
-                from: case.0,
-                to: case.1,
-                promote: case.2,
-            };
+            let move_ = Move::new(case.0, case.1);
             assert_eq!(case.3, pos.make_move(move_).is_ok());
             assert_eq!(case.4, pos.generate_sfen());
         }
@@ -1011,20 +1002,12 @@ pub mod position_tests {
         // Leaving the checked king is illegal.
         pos.set_sfen("57/1K8RR/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
             .expect("failed to parse SFEN string");
-        let move_ = Move::Normal {
-            from: A6,
-            to: A1,
-            promote: false,
-        };
+        let move_ = Move::new(A6, A1);
         assert!(pos.make_move(move_).is_err());
 
         pos.set_sfen("7K4/1RR9/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
             .expect("failed to parse SFEN string");
-        let move_ = Move::Normal {
-            from: K6,
-            to: K5,
-            promote: false,
-        };
+        let move_ = Move::new(K6, K5);
         assert!(pos.make_move(move_).is_ok());
     }
 
@@ -1044,21 +1027,9 @@ pub mod position_tests {
         let mut pos = P12::new();
         pos.set_sfen("6K5/57/57/6k5/57/PL055/57/p56/57/57/57/57 w - 1")
             .expect("err");
-        let m = Move::Normal {
-            from: G1,
-            to: G2,
-            promote: false,
-        };
-        let m2 = Move::Normal {
-            from: G4,
-            to: G5,
-            promote: false,
-        };
-        let m3 = Move::Normal {
-            from: G5,
-            to: G4,
-            promote: false,
-        };
+        let m = Move::new(G1, G2);
+        let m2 = Move::new(G4, G5);
+        let m3 = Move::new(G5, G4);
         assert!(pos.make_move(m).is_ok());
         assert!(pos.make_move(m2).is_ok());
         assert!(pos.make_move(m3).is_err());

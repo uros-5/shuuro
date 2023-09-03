@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 use crate::{
     attacks::Attacks, bitboard::BitBoard, Color, Hand, Move, MoveData,
-    MoveError, MoveRecord, Piece, PieceType, SfenError, Square, Variant,
+    MoveError, Piece, PieceType, SfenError, Square, Variant,
 };
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -194,17 +194,24 @@ where
     /// Changing to other variant.
     fn update_variant(&mut self, variant: Variant);
     /// Insert new sfen to sfen history.
-    fn insert_sfen(&mut self, sfen: &str);
-    /// Insert new MoveRecord to move_history.
-    fn insert_move(&mut self, m: MoveRecord<S>);
+    fn insert_sfen(&mut self, sfen: Move<S>);
+    /// Insert new Move2 to move_history.
+    fn insert_move(&mut self, m: Move<S>);
     /// Clear sfen_history
     fn clear_sfen_history(&mut self);
     /// Set sfen history.
-    fn set_sfen_history(&mut self, history: Vec<String>);
+    fn set_sfen_history(&mut self, history: Vec<String>) {
+        for i in history {
+            let m: Result<Move<S>, ()> = Move::try_from(i);
+            if let Ok(m) = m {
+                self.insert_sfen(m);
+            }
+        }
+    }
     /// Set history of previous moves.
-    fn set_move_history(&mut self, history: Vec<MoveRecord<S>>);
-    /// Returns history of all moves in `MoveRecord` format.
-    fn move_history(&self) -> &[MoveRecord<S>];
+    fn set_move_history(&mut self, history: Vec<Move<S>>);
+    /// Returns history of all moves in `Move2` format.
+    fn move_history(&self) -> &[Move<S>];
     /// Update last move.
     fn update_last_move(&mut self, m: &str);
     /// Returns history of all moves in `Vec` format.
@@ -654,7 +661,7 @@ where
         } else if self.hand(p) > 0 && (&self.empty_squares(p) & &sq).is_any() {
             self.update_bb(p, sq);
             self.decrement_hand(p);
-            let move_record = MoveRecord::Put {
+            let move_record = Move::Put {
                 to: sq,
                 piece: p,
                 fen: String::new(),
@@ -724,11 +731,7 @@ where
                 return Err(SfenError::IllegalPieceFound);
             }
         };
-        let m = Move::Normal {
-            from,
-            to,
-            promote: false,
-        };
+        let m = Move::new(from, to);
         let outcome = self.make_move(m);
         match outcome {
             Ok(i) => {
@@ -758,7 +761,7 @@ where
         let sfen_history = self.move_history();
         let mut h = Vec::new();
         for i in sfen_history {
-            if let MoveRecord::Normal { fen, .. } = i {
+            if let Move::Normal { fen, .. } = i {
                 h.push(fen);
                 if h.len() > 10 {
                     break;
@@ -1250,7 +1253,7 @@ where
 
             move_data =
                 self.gen_move_data(&legal_moves, (from, to), moved, move_data);
-            let move_record = MoveRecord::Normal {
+            let move_record = Move::Normal {
                 from,
                 to,
                 placed,

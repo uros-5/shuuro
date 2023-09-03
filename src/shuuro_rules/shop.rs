@@ -2,7 +2,7 @@ use crate::shuuro_rules::Square;
 use std::u8;
 
 use crate::shuuro_rules::{variant::Variant, Color, Piece, PieceType};
-use crate::shuuro_rules::{Hand, Move, MoveRecord};
+use crate::shuuro_rules::{Hand, Move};
 
 fn get_pricing() -> [(i32, u8); 10] {
     let prices = [0, 110, 70, 40, 40, 10, 130, 130, 70, 0];
@@ -22,7 +22,7 @@ pub struct Shop<S: Square> {
     hand: Hand,
     confirmed: [bool; 2],
     pricing: [(i32, u8); 10],
-    move_history: Vec<MoveRecord<S>>,
+    move_history: Vec<Move<S>>,
     sfen_history: Vec<(String, u8)>,
     variant: Variant,
 }
@@ -64,7 +64,7 @@ impl<S: Square> Shop<S> {
                         self.hand.increment(piece);
                         self.credit[piece.color.index()] =
                             self.credit(piece.color) - piece_price;
-                        let move_record = MoveRecord::Buy { piece };
+                        let move_record = Move::Buy { piece };
                         self.sfen_history.push((
                             move_record.to_string(),
                             self.hand.get(piece),
@@ -135,7 +135,7 @@ impl<S: Square> Shop<S> {
         self.sfen_history.extend(history);
     }
 
-    pub fn set_move_history(&mut self, history: Vec<MoveRecord<S>>) {
+    pub fn set_move_history(&mut self, history: Vec<Move<S>>) {
         self.move_history.clear();
         self.move_history.extend(history);
     }
