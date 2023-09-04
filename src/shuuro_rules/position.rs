@@ -215,7 +215,13 @@ where
     /// Update last move.
     fn update_last_move(&mut self, m: &str);
     /// Returns history of all moves in `Vec` format.
-    fn get_sfen_history(&self) -> &Vec<String>;
+    fn get_sfen_history(&self) -> Vec<String> {
+        let mut v = Vec::new();
+        for i in self.move_history() {
+            v.push(i.to_fen());
+        }
+        v
+    }
     /// Get hand count for Piece.
     fn hand(&self, p: Piece) -> u8;
     /// Get hand in form of String

@@ -132,9 +132,3 @@ impl From<&str> for Hand {
         hand
     }
 }
-
-// impl ToString for Hand {
-//     fn to_string(&self) -> String {
-//         todo!()
-//     }
-// }

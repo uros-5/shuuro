@@ -190,11 +190,6 @@ impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         }
     }
 
-    fn get_sfen_history(&self) -> &Vec<String> {
-        todo!()
-        // &self.sfen_history
-    }
-
     fn hand(&self, p: Piece) -> u8 {
         self.hand.get(p)
     }

@@ -171,11 +171,6 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         }
     }
 
-    fn get_sfen_history(&self) -> &Vec<String> {
-        // &self.sfen_history
-        todo!()
-    }
-
     fn hand(&self, p: Piece) -> u8 {
         self.hand.get(p)
     }

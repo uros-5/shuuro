@@ -7,7 +7,7 @@ A library for implementing Shuuro application.
 
 ## Features
 
-- Shuuro shop - buying pieces:
+- Shuuro shop - selecting pieces:
 
 ```rust
 use shuuro::{Shop, PieceType, Piece, Color, Move};
@@ -49,3 +49,5 @@ pos.make_move(move_);
 // Move can be made also with: pos.play("b1", "a1");
 assert_eq!(pos.generate_sfen(), "K3RR6/PPP9/57/57/57/57/57/57/L05L05/pppppp6/1k55/57 b - 2");
 ```
+
+Same API is available for standard chess(8x8).

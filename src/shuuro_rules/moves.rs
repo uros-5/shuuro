@@ -111,11 +111,11 @@ impl<S: Square> Move<S> {
         None
     }
 
-    pub fn to_fen(&self) -> Option<String> {
+    pub fn to_fen(&self) -> String {
         match &self {
-            Move::Put { fen, .. } => Some(String::from(fen)),
-            Move::Normal { fen, .. } => Some(String::from(fen)),
-            Move::Buy { .. } => None,
+            Move::Put { fen, .. } => String::from(fen),
+            Move::Normal { fen, .. } => String::from(fen),
+            Move::Buy { .. } => self.to_string(),
         }
     }
 
