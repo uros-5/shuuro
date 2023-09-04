@@ -135,12 +135,13 @@ impl fmt::Display for BB8<Square8> {
         for rank in (0..8).rev() {
             write!(f, "|")?;
             for file in 0..8 {
-                let sq = Square8::new(file, rank).unwrap();
-                write!(
-                    f,
-                    " {} |",
-                    if (self & &sq).is_empty() { " " } else { "X" }
-                )?;
+                if let Some(sq) = Square8::new(file, rank) {
+                    write!(
+                        f,
+                        " {} |",
+                        if (self & &sq).is_empty() { " " } else { "X" }
+                    )?;
+                }
             }
             //writeln!(f, " {}", (b'a' + rank) as char)?;
             writeln!(f, "\n+---+---+---+---+---+---+---+---+")?;
@@ -154,6 +155,11 @@ impl BitBoard<Square8> for BB8<Square8> {
     #[inline(always)]
     fn empty() -> Self {
         BB8::new(0)
+    }
+
+    #[inline(always)]
+    fn full() -> Self {
+        BB8::new(1)
     }
 
     #[inline(always)]
@@ -177,7 +183,7 @@ impl BitBoard<Square8> for BB8<Square8> {
     }
 
     #[inline(always)]
-    fn count(&self) -> u32 {
+    fn len(&self) -> u32 {
         self.0.count_ones()
     }
 
@@ -205,7 +211,9 @@ impl BitBoard<Square8> for BB8<Square8> {
         } else {
             let calc = 63 - self.0.leading_zeros() as u64;
             let sq = Square8::from_index(calc as u8);
-            self.clear_at(sq.unwrap());
+            if let Some(sq) = sq {
+                self.clear_at(sq);
+            }
             sq
         }
     }

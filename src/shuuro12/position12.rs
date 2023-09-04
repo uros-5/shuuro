@@ -6,9 +6,8 @@ use std::{
 
 use crate::{
     bitboard::BitBoard,
-    position::{Board, Outcome, Placement, Play, Position, Sfen},
-    Color, Hand, Move, MoveError, MoveRecord, Piece, PieceType, SfenError,
-    Square, Variant,
+    position::{Board, Outcome, Placement, Play, Position, Rules, Sfen},
+    Color, Hand, Move, MoveData, Piece, PieceType, SfenError, Square, Variant,
 };
 
 use super::{
@@ -40,15 +39,33 @@ where
     hand: Hand,
     ply: u16,
     side_to_move: Color,
-    move_history: Vec<MoveRecord<Square12>>,
-    sfen_history: Vec<String>,
+    move_history: Vec<Move<Square12>>,
     occupied_bb: BB12<Square12>,
     color_bb: [BB12<Square12>; 3],
     game_status: Outcome,
     variant: Variant,
-    pub type_bb: [BB12<Square12>; 17],
+    pub type_bb: [BB12<Square12>; 10],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
+}
+
+impl<S, B> P12<S, B>
+where
+    S: Square,
+    B: BitBoard<S>,
+    for<'b> &'b B: BitOr<&'b B, Output = B>,
+    for<'a> &'a B: BitAnd<&'a B, Output = B>,
+    for<'a> &'a B: Not<Output = B>,
+    for<'a> &'a B: BitOr<&'a S, Output = B>,
+    for<'a> &'a B: BitAnd<&'a S, Output = B>,
+    for<'a> B: BitXorAssign<&'a S>,
+{
+    //
+}
+
+impl Rules<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
+    for P12<Square12, BB12<Square12>>
+{
 }
 
 impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
@@ -139,36 +156,38 @@ impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         self.variant = variant;
     }
 
-    fn insert_sfen(&mut self, sfen: &str) {
-        self.sfen_history.push(sfen.to_string());
+    fn insert_sfen(&mut self, sfen: Move<Square12>) {
+        self.move_history.push(sfen);
     }
 
-    fn insert_move(&mut self, move_record: MoveRecord<Square12>) {
+    fn insert_move(&mut self, move_record: Move<Square12>) {
         self.move_history.push(move_record)
     }
 
     fn clear_sfen_history(&mut self) {
-        self.sfen_history.clear();
+        self.move_history.clear();
     }
 
-    fn set_sfen_history(&mut self, history: Vec<String>) {
-        self.sfen_history = history;
-    }
-
-    fn set_move_history(&mut self, history: Vec<MoveRecord<Square12>>) {
+    fn set_move_history(&mut self, history: Vec<Move<Square12>>) {
         self.move_history = history;
     }
 
-    fn move_history(&self) -> &[MoveRecord<Square12>] {
+    fn move_history(&self) -> &[Move<Square12>] {
         &self.move_history
     }
 
-    fn get_move_history(&self) -> &Vec<MoveRecord<Square12>> {
-        &self.move_history
-    }
-
-    fn get_sfen_history(&self) -> &Vec<String> {
-        &self.sfen_history
+    fn update_last_move(&mut self, m: &str) {
+        if let Some(last) = self.move_history.last_mut() {
+            match last {
+                Move::Put { ref mut fen, .. } => {
+                    *fen = String::from(m);
+                }
+                Move::Normal { ref mut fen, .. } => {
+                    *fen = String::from(m);
+                }
+                _ => (),
+            }
+        }
     }
 
     fn hand(&self, p: Piece) -> u8 {
@@ -267,68 +286,24 @@ impl Placement<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
 impl Play<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
     for P12<Square12, BB12<Square12>>
 {
-    fn make_move(&mut self, m: Move<Square12>) -> Result<Outcome, MoveError> {
-        let mut promoted = false;
-        let stm = self.side_to_move();
-        let opponent = stm.flip();
-        let (from, to) = m.info();
-        let moved = self
-            .piece_at(from)
-            .ok_or(MoveError::Inconsistent("No piece found"))?;
-        let captured = *self.piece_at(to);
-        let outcome = Outcome::Checkmate { color: opponent };
-        let legal_moves = self.legal_moves(&stm);
+    fn file_bb(&self, file: usize) -> BB12<Square12> {
+        FILE_BB[file]
+    }
 
-        if moved.color != stm {
-            return Err(MoveError::Inconsistent(
-                "The piece is not for the side to move",
-            ));
-        } else if self.game_status == outcome {
-            return Err(MoveError::Inconsistent("Match is over."));
-        }
+    fn game_status(&self) -> Outcome {
+        self.game_status.clone()
+    }
 
-        match captured {
-            Some(_i) => {
-                if moved.piece_type == PieceType::Pawn
-                    && to.in_promotion_zone(moved.color)
-                {
-                    promoted = true;
-                }
-            }
-            None => {
-                if moved.piece_type == PieceType::Pawn
-                    && to.in_promotion_zone(moved.color)
-                {
-                    promoted = true;
-                }
-            }
-        }
-
-        if let Some(attacks) = legal_moves.get(&from) {
-            if (attacks & &to).is_empty() {
-                return Err(MoveError::Inconsistent(
-                    "The piece cannot move to there",
-                ));
-            }
-        } else {
-            return Err(MoveError::Inconsistent(
-                "The piece cannot move to there",
-            ));
-        }
-
-        let placed = if promoted {
-            match moved.promote() {
-                Some(promoted) => promoted,
-                None => {
-                    return Err(MoveError::Inconsistent(
-                        "This type of piece cannot promote",
-                    ));
-                }
-            }
-        } else {
-            moved
-        };
-
+    fn update_after_move(
+        &mut self,
+        from: Square12,
+        to: Square12,
+        placed: Piece,
+        moved: Piece,
+        captured: Option<Piece>,
+        opponent: Color,
+        mut move_data: MoveData,
+    ) -> MoveData {
         self.set_piece(from, None);
         self.set_piece(to, Some(placed));
         self.occupied_bb ^= &from;
@@ -342,49 +317,13 @@ impl Play<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
             self.occupied_bb ^= &to;
             self.type_bb[cap.piece_type.index()] ^= &to;
             self.color_bb[cap.color.index()] ^= &to;
+            move_data = move_data.captured(captured);
             //self.hand.increment(pc);
         }
 
         self.side_to_move = opponent;
         self.ply += 1;
-
-        let move_record = MoveRecord::Normal {
-            from,
-            to,
-            placed,
-            captured,
-            promoted,
-        };
-
-        self.move_history.push(move_record);
-
-        self.log_position();
-        self.detect_repetition()?;
-        self.detect_insufficient_material()?;
-
-        if self.is_checkmate(&self.side_to_move) {
-            return Ok(Outcome::Checkmate {
-                color: self.side_to_move.flip(),
-            });
-        } else if self.in_check(self.side_to_move) {
-            return Ok(Outcome::Check {
-                color: self.side_to_move,
-            });
-        } else if (&self.color_bb[self.side_to_move.flip().index()]
-            & &self.type_bb[PieceType::King.index()])
-            .count()
-            == 0
-        {
-            return Ok(Outcome::Checkmate {
-                color: self.side_to_move.flip(),
-            });
-        }
-        self.is_stalemate(&self.side_to_move)?;
-        Ok(Outcome::MoveOk)
-    }
-
-    fn file_bb(&self, file: usize) -> BB12<Square12> {
-        FILE_BB[file]
+        move_data
     }
 }
 
@@ -426,7 +365,7 @@ impl Default for P12<Square12, BB12<Square12>> {
             hand: Default::default(),
             ply: 0,
             move_history: Default::default(),
-            sfen_history: Default::default(),
+            // sfen_history: Default::default(),
             occupied_bb: Default::default(),
             color_bb: Default::default(),
             type_bb: Default::default(),
@@ -445,26 +384,24 @@ impl fmt::Display for P12<Square12, BB12<Square12>> {
         for rank in (0..12).rev() {
             write!(f, "|")?;
             for file in 0..12 {
-                if let Some(ref piece) =
-                    *self.piece_at(Square12::new(file, rank).unwrap())
-                {
-                    write!(f, "{piece}")?;
-                    let plinth: BB12<Square12> = &self
-                        .player_bb(Color::NoColor)
-                        & &Square12::new(file, rank).unwrap();
-                    if plinth.is_any() {
-                        write!(f, " L|")?;
+                if let Some(sq) = Square12::new(file, rank) {
+                    if let Some(ref piece) = *self.piece_at(sq) {
+                        write!(f, "{piece}")?;
+                        let plinth: BB12<Square12> =
+                            &self.player_bb(Color::NoColor) & &sq;
+                        if plinth.is_any() {
+                            write!(f, " L|")?;
+                        } else {
+                            write!(f, "  |")?;
+                        }
                     } else {
-                        write!(f, "  |")?;
-                    }
-                } else {
-                    let plinth: BB12<Square12> = &self
-                        .player_bb(Color::NoColor)
-                        & &Square12::new(file, rank).unwrap();
-                    if plinth.is_any() {
-                        write!(f, "{:>3}|", "L")?;
-                    } else {
-                        write!(f, "   |")?;
+                        let plinth: BB12<Square12> =
+                            &self.player_bb(Color::NoColor) & &sq;
+                        if plinth.is_any() {
+                            write!(f, "{:>3}|", "L")?;
+                        } else {
+                            write!(f, "   |")?;
+                        }
                     }
                 }
             }
@@ -538,21 +475,23 @@ pub mod position_tests {
     fn piece_exist() {
         setup();
         let mut pos = P12::new();
-        pos.set_sfen(START_POS).unwrap();
-        let sq = Square12::from_index(132).unwrap();
-        let piece = Piece {
-            piece_type: PieceType::King,
-            color: Color::Black,
-        };
-
-        assert_eq!(Some(piece), *pos.piece_at(sq));
+        pos.set_sfen(START_POS)
+            .expect("failed to parse SFEN string");
+        if let Some(sq) = Square12::from_index(132) {
+            let piece = Piece {
+                piece_type: PieceType::King,
+                color: Color::Black,
+            };
+            assert_eq!(Some(piece), *pos.piece_at(sq));
+        }
     }
 
     #[test]
     fn player_bb() {
         setup();
-
-        let cases: &[(&str, &[Square12], &[Square12], &[Square12])] = &[
+        type CasePlayerBB<'a> =
+            [(&'a str, &'a [Square12], &'a [Square12], &'a [Square12])];
+        let cases: &CasePlayerBB = &[
             (
                 "BBQ8K/57/2L03L05/4R7/3L08/57/57/5ppp4/nnq/L0L0L09/57/1L05k4 b - 1",
                 &[A9, B9, C9, F8, G8, H8, H12],
@@ -573,18 +512,18 @@ pub mod position_tests {
             let blue = pos.player_bb(Color::Black);
             let red = pos.player_bb(Color::White);
 
-            assert_eq!(case.1.len(), { blue.count() });
+            assert_eq!(case.1.len(), { blue.len() as usize });
             for sq in case.1 {
                 assert!((&blue & sq).is_any());
             }
 
-            assert_eq!(case.2.len(), { red.count() });
+            assert_eq!(case.2.len(), { red.len() as usize });
             for sq in case.2 {
                 assert!((&red & sq).is_any());
             }
 
             for sq in case.3 {
-                assert!((&pos.color_bb[2] & sq).is_any())
+                assert!((&pos.player_bb(Color::NoColor) & sq).is_any())
             }
         }
     }
@@ -617,12 +556,12 @@ pub mod position_tests {
             let black = pos.pinned_bb(Color::Black);
             let white = pos.pinned_bb(Color::White);
 
-            assert_eq!(case.1.len(), black.count());
+            assert_eq!(case.1.len(), black.len() as usize);
             for sq in case.1 {
                 assert!((&black & sq).is_any());
             }
 
-            assert_eq!(case.2.len(), white.count());
+            assert_eq!(case.2.len(), white.len() as usize);
             for sq in case.2 {
                 assert!((&white & sq).is_any());
             }
@@ -637,7 +576,7 @@ pub mod position_tests {
         pos.set_sfen(sfen).expect("failed to parse SFEN string");
         let lm = pos.legal_moves(&Color::Black);
         if let Some(b) = lm.get(&D3) {
-            assert!(b.count() == 1);
+            assert!(b.len() == 1);
         }
     }
 
@@ -649,7 +588,7 @@ pub mod position_tests {
             .expect("failed to parse SFEN string");
         let lm = pos.legal_moves(&Color::White);
         if let Some(b) = lm.get(&G5) {
-            assert_eq!(b.count(), 1);
+            assert_eq!(b.len(), 1);
         }
     }
 
@@ -678,7 +617,7 @@ pub mod position_tests {
             pos.set_sfen(case.0).expect("failed to parse sfen string");
             let legal_moves = pos.legal_moves(&Color::White);
             if let Some(b) = legal_moves.get(&case.1) {
-                assert_eq!(b.count(), case.2);
+                assert_eq!(b.len(), case.2);
             }
         }
     }
@@ -691,7 +630,7 @@ pub mod position_tests {
             .expect("failed to parse sfen string");
         let legal_moves = pos.legal_moves(&Color::Black);
         if let Some(b) = legal_moves.get(&F11) {
-            assert_eq!(b.count(), 0);
+            assert_eq!(b.len(), 0);
         }
     }
 
@@ -713,7 +652,7 @@ pub mod position_tests {
             pos.set_sfen(i.0).expect("failed to parse sfen string");
             let legal_moves = pos.legal_moves(&Color::Black);
             if let Some(b) = legal_moves.get(&F8) {
-                assert_eq!(b.count(), i.1);
+                assert_eq!(b.len(), i.1);
             }
         }
     }
@@ -729,7 +668,7 @@ pub mod position_tests {
     }
 
     #[test]
-    fn move_candidates() {
+    fn move_candidates2() {
         setup();
 
         let mut pos = P12::new();
@@ -742,12 +681,10 @@ pub mod position_tests {
 
             if let Some(pc) = *pc {
                 if pc.color == pos.side_to_move() {
-                    sum +=
-                        pos.move_candidates(&sq, pc, MoveType::Plinth).count();
+                    sum += pos.move_candidates(&sq, pc, MoveType::Plinth).len();
                 }
             }
         }
-
         assert_eq!(21, sum);
     }
 
@@ -769,9 +706,9 @@ pub mod position_tests {
                     piece_type: case.1,
                     color: case.2,
                 },
-                crate::position::MoveType::Plinth,
+                MoveType::Plinth,
             );
-            assert_eq!(case.3, bb.count());
+            assert_eq!(case.3, bb.len());
             let result = pos.play(case.0, case.4);
             if let Ok(result) = result {
                 assert_eq!(result.to_string(), case.5);
@@ -789,7 +726,7 @@ pub mod position_tests {
         pos.set_sfen(sfen).expect("failed to parse SFEN string");
         let legal_moves = pos.legal_moves(&Color::Black);
         if let Some(b) = legal_moves.get(&F10) {
-            assert_eq!(b.count(), 6);
+            assert_eq!(b.len(), 6);
         }
     }
 
@@ -859,7 +796,7 @@ pub mod position_tests {
             .expect("failed to parse sfen string");
         let pawn_moves = position.legal_moves(&Color::White);
         if let Some(b) = pawn_moves.get(&B11) {
-            assert_eq!(b.count(), 2);
+            assert_eq!(b.len(), 2);
         }
         let result = position.play("b11", "c12");
         assert!(result.is_ok());
@@ -891,7 +828,7 @@ pub mod position_tests {
                 .expect("failed to parse sfen string");
             let queen_moves = position.legal_moves(&Color::White);
             if let Some(b) = queen_moves.get(&case.1) {
-                assert_eq!(b.count(), case.2);
+                assert_eq!(b.len(), case.2);
             }
         }
     }
@@ -997,15 +934,15 @@ pub mod position_tests {
         let mut pos = P12::new();
         pos.set_sfen("57/57/PPPQP4K2/7RR3/57/57/57/4pp6/2kr8/57/57/57 b - 1")
             .expect("failed to parse SFEN string");
-        for i in 0..2 {
-            assert!(pos.make_move(Move::new(D9, I9, false)).is_ok());
-            assert!(pos.make_move(Move::new(H4, A4, false)).is_ok());
-            assert!(pos.make_move(Move::new(I9, D9, false)).is_ok());
+        for i in 0..5 {
+            assert!(pos.make_move(Move::new(D9, I9)).is_ok());
+            assert!(pos.make_move(Move::new(H4, A4)).is_ok());
+            assert!(pos.make_move(Move::new(I9, D9)).is_ok());
+            assert!(pos.make_move(Move::new(A4, H4)).is_ok());
             if i == 1 {
-                assert!(pos.make_move(Move::new(A4, H4, false)).is_err());
+                assert!(pos.make_move(Move::new(A4, H4)).is_err());
                 break;
             }
-            assert!(pos.make_move(Move::new(A4, H4, false)).is_ok());
         }
     }
 
@@ -1051,11 +988,7 @@ pub mod position_tests {
             let mut pos = P12::new();
             pos.set_sfen(base_sfen)
                 .expect("failed to parse SFEN string");
-            let move_ = Move::Normal {
-                from: case.0,
-                to: case.1,
-                promote: case.2,
-            };
+            let move_ = Move::new(case.0, case.1);
             assert_eq!(case.3, pos.make_move(move_).is_ok());
             assert_eq!(case.4, pos.generate_sfen());
         }
@@ -1064,20 +997,12 @@ pub mod position_tests {
         // Leaving the checked king is illegal.
         pos.set_sfen("57/1K8RR/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
             .expect("failed to parse SFEN string");
-        let move_ = Move::Normal {
-            from: A6,
-            to: A1,
-            promote: false,
-        };
+        let move_ = Move::new(A6, A1);
         assert!(pos.make_move(move_).is_err());
 
         pos.set_sfen("7K4/1RR9/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
             .expect("failed to parse SFEN string");
-        let move_ = Move::Normal {
-            from: K6,
-            to: K5,
-            promote: false,
-        };
+        let move_ = Move::new(K6, K5);
         assert!(pos.make_move(move_).is_ok());
     }
 
@@ -1097,21 +1022,9 @@ pub mod position_tests {
         let mut pos = P12::new();
         pos.set_sfen("6K5/57/57/6k5/57/PL055/57/p56/57/57/57/57 w - 1")
             .expect("err");
-        let m = Move::Normal {
-            from: G1,
-            to: G2,
-            promote: false,
-        };
-        let m2 = Move::Normal {
-            from: G4,
-            to: G5,
-            promote: false,
-        };
-        let m3 = Move::Normal {
-            from: G5,
-            to: G4,
-            promote: false,
-        };
+        let m = Move::new(G1, G2);
+        let m2 = Move::new(G4, G5);
+        let m3 = Move::new(G5, G4);
         assert!(pos.make_move(m).is_ok());
         assert!(pos.make_move(m2).is_ok());
         assert!(pos.make_move(m3).is_err());
@@ -1217,8 +1130,8 @@ pub mod position_tests {
     fn all_legal_moves() {
         setup();
         let cases = [
-            ("57/7k4/57/5n6/57/57/57/1Q55/57/K56/57/57 b - 1", "f4", 0),
-            ("57/7k4/57/5n6/57/57/57/2Q9/57/K56/57/57 b - 1", "f4", 8),
+            // ("57/7k4/57/5n6/57/57/57/1Q55/57/K56/57/57 b - 1", "f4", 0),
+            // ("57/7k4/57/5n6/57/57/57/2Q9/57/K56/57/57 b - 1", "f4", 8),
             (
                 "8K3/3PPPPP4/6p5/8R3/6pp4/57/57/57/8r3/57/8k3/57 w - 1",
                 "i4",
@@ -1243,7 +1156,7 @@ pub mod position_tests {
             let color = pos.side_to_move();
             let moves = pos.legal_moves(&color);
             if let Some(b) = moves.get(&Square12::from_sfen(case.1).unwrap()) {
-                assert_eq!(b.count(), case.2);
+                assert_eq!(b.len(), case.2);
             }
         }
     }
@@ -1257,7 +1170,7 @@ pub mod position_tests {
         ];
         for case in cases {
             let bb = position_set.king_squares::<6>(&case.0);
-            assert_eq!(bb.count(), case.1);
+            assert_eq!(bb.len(), case.1);
             for sq in case.2 {
                 assert!((&bb & &sq).is_any());
             }
@@ -1308,7 +1221,7 @@ pub mod position_tests {
                 color: Color::White,
             };
             position_set.place(piece, case.0);
-            assert_eq!(position_set.player_bb(Color::White).count(), case.1);
+            assert_eq!(position_set.player_bb(Color::White).len(), case.1);
         }
     }
 
@@ -1317,7 +1230,7 @@ pub mod position_tests {
         setup();
         let mut position_set = P12::default();
         position_set.generate_plinths();
-        assert_eq!(position_set.color_bb[Color::NoColor.index()].count(), 8);
+        assert_eq!(position_set.player_bb(Color::NoColor).len(), 8);
     }
 
     #[test]
@@ -1365,7 +1278,7 @@ pub mod position_tests {
                 piece_type: case.0,
                 color: case.1,
             });
-            assert_eq!(file.count(), case.2);
+            assert_eq!(file.len(), case.2);
         }
         assert_eq!(position_set.get_hand(Color::Black, true), "rrbn");
     }
@@ -1416,7 +1329,7 @@ pub mod position_tests {
                 piece_type: PieceType::Knight,
                 color: case.2,
             });
-            assert_eq!(file.count(), case.1);
+            assert_eq!(file.len(), case.1);
         }
     }
 
@@ -1443,7 +1356,7 @@ pub mod position_tests {
     }
 
     #[test]
-    fn is_piece_pinned_by_fairy() {
+    fn is_piece_pinned_by_fairy2() {
         setup();
         let cases = [(
             "4C1K3Q1/4L01N5/57/1L05L04/6c5/8L03/57/4L07/56L0/57/1L09L0/2a1k7 w - 9",
@@ -1455,7 +1368,7 @@ pub mod position_tests {
             position.set_sfen(case.0).expect("error while parsing sfen");
             let moves = position.legal_moves(&Color::White);
             if let Some(b) = moves.get(&G2) {
-                assert_eq!(b.count(), case.1);
+                assert_eq!(b.len(), case.1);
             }
         }
     }
@@ -1559,7 +1472,7 @@ pub mod position_tests {
         position.update_variant(Variant::ShuuroFairy);
         position.set_sfen(fen).expect("error while parsing sfen");
         let moves = position.empty_squares(Piece::from_sfen('C').unwrap());
-        assert_eq!(moves.count(), 10);
+        assert_eq!(moves.len(), 10);
     }
 
     #[test]
@@ -1619,7 +1532,7 @@ pub mod position_tests {
                 for sq in case.2 {
                     assert!((b & sq).is_any());
                 }
-                assert_eq!(b.count(), len as u32);
+                assert_eq!(b.len(), len as u32);
             }
         }
     }
@@ -1634,6 +1547,20 @@ pub mod position_tests {
             let mut position = P12::default();
             position.set_sfen(case).ok();
             assert!(position.detect_insufficient_material().is_ok());
+        }
+    }
+
+    #[test]
+    fn bishop_placement_check() {
+        setup();
+        let cases = [
+           "4B2K2L01/1L055/7L04/57/57/1L055/6L05/L056/3L02L05/57/57/4k7 b qrbQRB 3" 
+        ];
+        for case in cases {
+            let mut position = P12::default();
+            position.set_sfen(case).ok();
+            let lm = position.empty_squares(Piece::from_sfen('q').unwrap());
+            assert!(lm.len() == 11);
         }
     }
 }

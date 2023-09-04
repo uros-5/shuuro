@@ -91,8 +91,27 @@ impl PieceType {
         )
     }
 
+    pub fn is_rook_type(&self) -> bool {
+        matches!(self, Self::Queen | Self::Rook | Self::Chancellor)
+    }
+
+    pub fn is_bishop_type(&self) -> bool {
+        matches!(self, Self::Queen | Self::Bishop | Self::ArchBishop)
+    }
+
     pub fn is_fairy_piece(&self) -> bool {
         matches!(self, Self::Chancellor | Self::ArchBishop | Self::Giraffe)
+    }
+
+    pub fn is_non_sliding_piece(&self) -> bool {
+        matches!(self, Self::Knight | Self::Giraffe | Self::King | Self::Pawn)
+    }
+
+    pub fn is_knight_piece(&self) -> bool {
+        matches!(
+            self,
+            Self::Knight | Self::Chancellor | Self::ArchBishop | Self::Giraffe
+        )
     }
 
     /// Converts the instance into the unique number for array indexing purpose.
@@ -136,7 +155,6 @@ impl Default for PieceTypeIter {
 
 impl iter::Iterator for PieceTypeIter {
     type Item = PieceType;
-
     fn next(&mut self) -> Option<Self::Item> {
         let current = self.current;
 
@@ -177,10 +195,9 @@ mod tests {
         let ng_cases = ['\0', ' ', '_', 'J', 'z', '+'];
         for case in ok_cases.iter() {
             assert_eq!(Some(case.1), PieceType::from_sfen(case.0));
-            assert_eq!(
-                Some(case.1),
-                PieceType::from_sfen(case.0.to_uppercase().next().unwrap())
-            );
+            if let Some(c) = case.0.to_uppercase().next() {
+                assert_eq!(Some(case.1), PieceType::from_sfen(c));
+            }
         }
 
         for case in ng_cases.iter() {

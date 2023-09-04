@@ -45,8 +45,8 @@ impl Color {
     ///
     /// ```
     /// use shuuro::Color;
-    /// assert_eq!(Color::White, Color::from_char('w').unwrap());
-    /// assert_eq!(Color::Black, Color::from_char('b').unwrap());
+    /// assert_eq!(Some(Color::White), Color::from_char('w'));
+    /// assert_eq!(Some(Color::Black), Color::from_char('b'));
     pub fn from_char(ch: char) -> Option<Color> {
         match ch {
             'b' => Some(Color::Black),

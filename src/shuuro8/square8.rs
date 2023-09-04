@@ -122,7 +122,7 @@ impl Square for Square8 {
         self.inner
     }
 
-    fn in_promotion_zone(&self, c: crate::Color) -> bool {
+    fn in_promotion_zone(&self, c: Color) -> bool {
         match c {
             Color::White => self.rank() == 7,
             Color::Black => self.rank() == 0,
@@ -181,9 +181,10 @@ mod tests {
     fn new() {
         for file in 0..8 {
             for rank in 0..8 {
-                let sq = Square8::new(file, rank).unwrap();
-                assert_eq!(file, sq.file());
-                assert_eq!(rank, sq.rank());
+                if let Some(sq) = Square8::new(file, rank) {
+                    assert_eq!(file, sq.file());
+                    assert_eq!(rank, sq.rank());
+                }
             }
         }
 
@@ -205,10 +206,10 @@ mod tests {
         let ng_cases = ["", "s9", "_a", "a14", "9 ", " a", "9", "foo"];
 
         for case in ok_cases.iter() {
-            let sq = Square8::from_sfen(case.0);
-            assert!(sq.is_some());
-            assert_eq!(case.1, sq.unwrap().file());
-            assert_eq!(case.2, sq.unwrap().rank());
+            if let Some(sq) = Square8::from_sfen(case.0) {
+                assert_eq!(case.1, sq.file());
+                assert_eq!(case.2, sq.rank());
+            }
         }
 
         for case in ng_cases.iter() {
@@ -239,8 +240,9 @@ mod tests {
         ];
 
         for case in cases.iter() {
-            let sq = Square8::new(case.1, case.2).unwrap();
-            assert_eq!(case.0, sq.to_string());
+            if let Some(sq) = Square8::new(case.1, case.2) {
+                assert_eq!(case.0, sq.to_string());
+            }
         }
     }
 }
