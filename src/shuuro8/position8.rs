@@ -1,8 +1,4 @@
-use std::{
-    fmt,
-    marker::PhantomData,
-    ops::{BitAnd, BitOr, BitXorAssign, Not},
-};
+use std::{fmt, marker::PhantomData};
 
 use crate::{
     bitboard::BitBoard,
@@ -28,12 +24,6 @@ pub struct P8<S, B>
 where
     S: Square,
     B: BitBoard<S>,
-    for<'b> &'b B: BitOr<&'b B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitXorAssign<&'a S>,
 {
     board: PieceGrid,
     hand: Hand,
@@ -228,11 +218,11 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     }
 
     fn white_placement_attacked_ranks(&self) -> BB8<Square8> {
-        &RANK_BB[1] | &RANK_BB[2]
+        RANK_BB[1] | &RANK_BB[2]
     }
 
     fn black_placement_attacked_ranks(&self) -> BB8<Square8> {
-        &RANK_BB[5] | &RANK_BB[6]
+        RANK_BB[5] | &RANK_BB[6]
     }
 
     fn black_ranks(&self) -> [usize; 3] {
@@ -373,7 +363,7 @@ impl fmt::Display for P8<Square8, BB8<Square8>> {
                     if let Some(ref piece) = *self.piece_at(sq) {
                         write!(f, "{piece}")?;
                         let plinth: BB8<Square8> =
-                            &self.player_bb(Color::NoColor) & &sq;
+                            self.player_bb(Color::NoColor) & &sq;
                         if plinth.is_any() {
                             write!(f, " L|")?;
                         } else {
@@ -381,7 +371,7 @@ impl fmt::Display for P8<Square8, BB8<Square8>> {
                         }
                     } else {
                         let plinth: BB8<Square8> =
-                            &self.player_bb(Color::NoColor) & &sq;
+                            self.player_bb(Color::NoColor) & &sq;
                         if plinth.is_any() {
                             write!(f, "{:>3}|", "L")?;
                         } else {

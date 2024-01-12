@@ -1,10 +1,6 @@
 use std::{
-    clone::Clone,
-    cmp::Ordering,
-    collections::HashMap,
-    hash::Hash,
+    clone::Clone, cmp::Ordering, collections::HashMap, hash::Hash,
     marker::PhantomData,
-    ops::{BitAnd, BitOr, BitOrAssign, Not},
 };
 
 use itertools::Itertools;
@@ -20,12 +16,6 @@ where
     S: Square + Hash,
     B: BitBoard<S>,
     Self: Sized,
-    for<'a> &'a B: BitOr<&'a B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitOrAssign<&'a S>,
 {
     pub check: Option<B>,
     pub double_check: bool,
@@ -38,12 +28,6 @@ where
     S: Square + Hash,
     B: BitBoard<S>,
     Self: Sized,
-    for<'a> &'a B: BitOr<&'a B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitOrAssign<&'a S>,
 {
     fn add_enemy_moves(self, enemy_moves: B) -> Option<Self> {
         Some(Self {
@@ -129,12 +113,6 @@ where
         + Placement<S, B, A>
         + Play<S, B, A>
         + Rules<S, B, A>,
-    for<'a> &'a B: BitOr<&'a B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitOrAssign<&'a S>,
 {
 }
 
@@ -144,12 +122,6 @@ where
     B: BitBoard<S>,
     Self: Sized + Clone,
     A: Attacks<S, B>,
-    for<'a> &'a B: BitOr<&'a B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitOrAssign<&'a S>,
 {
     //
 
@@ -234,7 +206,7 @@ where
     fn dimensions(&self) -> u8;
     /// Returns `Square` if King is available.
     fn find_king(&self, c: &Color) -> Option<S> {
-        let mut bb = &self.type_bb(&PieceType::King) & &self.player_bb(*c);
+        let mut bb = self.type_bb(&PieceType::King) & &self.player_bb(*c);
         if bb.is_any() {
             bb.pop_reverse()
         } else {
@@ -249,12 +221,6 @@ where
     B: BitBoard<S>,
     A: Attacks<S, B>,
     Self: Sized + Clone + Board<S, B, A>,
-    for<'a> &'a B: BitOr<&'a B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitOrAssign<&'a S>,
 {
     // SFEN PART
     /// Convert current position to sfen.
@@ -302,7 +268,7 @@ where
                         }
                     }
                     None => {
-                        if (&self.player_bb(Color::NoColor) & &sq).is_any() {
+                        if (self.player_bb(Color::NoColor) & &sq).is_any() {
                             s = self.add_space(space, s);
                             space = 0;
                             is_plinth = true;
@@ -487,12 +453,6 @@ where
     B: BitBoard<S>,
     A: Attacks<S, B>,
     Self: Sized + Clone + Board<S, B, A> + Sfen<S, B, A>,
-    for<'a> &'a B: BitOr<&'a B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitOrAssign<&'a S>,
 {
     // PLACEMENT PART
 
@@ -516,7 +476,7 @@ where
 
     /// Check if king is placed.
     fn is_king_placed(&self, c: Color) -> bool {
-        let king = &self.player_bb(c) & &self.type_bb(&PieceType::King);
+        let king = self.player_bb(c) & &self.type_bb(&PieceType::King);
         if king.len() == 1 {
             return true;
         }
@@ -532,7 +492,7 @@ where
             for file in files {
                 bb |= &S::from_sfen(&format!("{file}{num}")[..]).unwrap();
             }
-            bb &= &!&plinths;
+            bb &= &!plinths;
             bb
         };
         match *c {
@@ -550,7 +510,7 @@ where
         let calc = |p: Piece, ranks: [usize; 3]| -> B {
             for rank in ranks {
                 let mut bb = self.rank_bb(rank);
-                bb &= &!&self.player_bb(p.color);
+                bb &= &!self.player_bb(p.color);
                 let plinths = self.player_bb(Color::NoColor);
                 if bb.is_empty() {
                     continue;
@@ -566,7 +526,7 @@ where
                         return self.king_squares::<6>(&p.color);
                     }
                     PieceType::Pawn => {
-                        bb &= &!&plinths;
+                        bb &= &!plinths;
                         if bb.is_empty() {
                             continue;
                         } else if self.can_pawn_move(p) {
@@ -579,7 +539,7 @@ where
                         }
                     }
                     _ => {
-                        bb &= &!&plinths;
+                        bb &= &!plinths;
                         if bb.is_empty() {
                             continue;
                         }
@@ -606,12 +566,12 @@ where
 
     fn checks(&self, attacked_color: &Color) -> B {
         let king =
-            &self.type_bb(&PieceType::King) & &self.player_bb(*attacked_color);
+            self.type_bb(&PieceType::King) & &self.player_bb(*attacked_color);
         if king.is_empty() {
             return B::empty();
         }
-        let occupied_bb = &self.occupied_bb() | &self.player_bb(Color::NoColor);
-        let king_sq = (&king | &B::empty()).pop().unwrap();
+        let occupied_bb = self.occupied_bb() | &self.player_bb(Color::NoColor);
+        let king_sq = (king | &B::empty()).pop().unwrap();
 
         for pt in [PieceType::Rook, PieceType::Bishop] {
             let king_attacks =
@@ -635,18 +595,18 @@ where
                 }
 
                 let them =
-                    &self.type_bb(&p) & &self.player_bb(attacked_color.flip());
+                    self.type_bb(&p) & &self.player_bb(attacked_color.flip());
 
-                if (&them & &king_attacks).is_any() {
+                if (them & &king_attacks).is_any() {
                     match *attacked_color {
                         Color::White => {
                             let ranks = self.white_placement_attacked_ranks();
-                            let attacks = &(&ranks & &king_attacks) & &!&king;
+                            let attacks = (ranks & &king_attacks) & &!king;
                             return attacks;
                         }
                         Color::Black => {
                             let ranks = self.black_placement_attacked_ranks();
-                            let attacks = &(&ranks & &king_attacks) & &!&king;
+                            let attacks = (ranks & &king_attacks) & &!king;
                             return attacks;
                         }
                         Color::NoColor => {
@@ -664,7 +624,7 @@ where
     fn place(&mut self, p: Piece, sq: S) -> Option<String> {
         if p.color != self.side_to_move() {
             return None;
-        } else if self.hand(p) > 0 && (&self.empty_squares(p) & &sq).is_any() {
+        } else if self.hand(p) > 0 && (self.empty_squares(p) & &sq).is_any() {
             self.update_bb(p, sq);
             self.decrement_hand(p);
             let move_record = Move::Put {
@@ -714,12 +674,6 @@ where
     B: BitBoard<S>,
     A: Attacks<S, B>,
     Self: Sized + Clone + Board<S, B, A> + Sfen<S, B, A> + Rules<S, B, A>,
-    for<'a> &'a B: BitOr<&'a B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitOrAssign<&'a S>,
 {
     // Play part.
 
@@ -778,7 +732,7 @@ where
         let cur = sfen_history.last().unwrap();
         let last_sfen = cur.split_whitespace().rev().last().unwrap();
         let mut cnt = 0;
-        for (_i, entry) in sfen_history.iter().rev().enumerate() {
+        for entry in sfen_history.iter().rev() {
             let s = entry.split_whitespace().rev().last().unwrap();
             if s == last_sfen {
                 cnt += 1;
@@ -808,23 +762,23 @@ where
             }
             let mut bb = B::empty();
             for i in major {
-                bb |= &(&self.player_bb(c) & &self.type_bb(&i));
+                bb |= &(self.player_bb(c) & &self.type_bb(&i));
             }
             if bb.is_any() {
                 return Ok(());
             }
             for i in minor {
-                bb |= &(&self.player_bb(c) & &self.type_bb(&i));
+                bb |= &(self.player_bb(c) & &self.type_bb(&i));
             }
             let minor_count = bb.len();
             if minor_count >= 3 {
                 return Ok(());
             }
-            for pawn in &self.player_bb(c) & &self.type_bb(&PieceType::Pawn) {
+            for pawn in self.player_bb(c) & &self.type_bb(&PieceType::Pawn) {
                 let file = pawn.file();
                 let file = self.file_bb(file as usize);
                 let mut file_with_plinths =
-                    &file & &self.player_bb(Color::NoColor);
+                    file & &self.player_bb(Color::NoColor);
                 if file_with_plinths.is_empty() {
                     return Ok(());
                 } else if c == Color::White {
@@ -866,7 +820,7 @@ where
             let my_moves = self.non_legal_moves(&sq);
             if check_moves.check.is_some() {
                 if king == sq {
-                    map.insert(king, &my_moves & &!&enemy_moves);
+                    map.insert(king, my_moves & &!enemy_moves);
                 } else {
                     let moves =
                         self.fix_pin(&sq, &pinned_moves, move_task, my_moves);
@@ -920,7 +874,7 @@ where
     //         let mut my_moves = my_moves;
     //         let enemy_moves = self.enemy_moves(&piece.color);
     //         if piece.piece_type == PieceType::King {
-    //             my_moves = &my_moves & &!&enemy_moves;
+    //             my_moves = my_moves & &!enemy_moves;
     //             return my_moves;
     //         } else if checks.len() > 1 {
     //             return B::empty();
@@ -939,7 +893,7 @@ where
                 let mut all = B::empty();
                 let enemy = color.flip();
                 let blockers =
-                    &self.occupied_bb() | &self.player_bb(Color::NoColor);
+                    self.occupied_bb() | &self.player_bb(Color::NoColor);
                 let king = self.find_king(color).unwrap();
                 let blockers = blockers ^ &B::from_square(&king);
                 for sq in self.player_bb(enemy).into_iter() {
@@ -947,14 +901,14 @@ where
                     if let Some(piece) = piece {
                         if piece.piece_type == PieceType::Pawn {
                             let moves =
-                                self.get_moves(&sq, piece, &blockers | &king);
+                                self.get_moves(&sq, piece, blockers | &king);
                             all |= &moves;
                         }
                         let moves = self.get_moves(&sq, piece, blockers);
                         all |= &moves;
                     }
                 }
-                all &= &!&self.player_bb(Color::NoColor);
+                all &= &!self.player_bb(Color::NoColor);
                 all
             }
             Color::NoColor => B::empty(),
@@ -996,16 +950,16 @@ where
             }
             let piece_attacks = A::get_sliding_attacks(*s, &ksq, plinths);
             // this is enemy
-            let enemy_bb = &(&self.type_bb(s) & &self.player_bb(color.flip()))
+            let enemy_bb = (self.type_bb(s) & &self.player_bb(color.flip()))
                 & &piece_attacks;
             for psq in enemy_bb {
                 // this piece is pinned
-                let mut pinned = &(&A::between(ksq, psq) & &self.occupied_bb())
-                    & &!&self.player_bb(Color::NoColor);
+                let mut pinned = (A::between(ksq, psq) & &self.occupied_bb())
+                    & &!self.player_bb(Color::NoColor);
                 // this is unpin
-                let my_piece = &pinned & &self.player_bb(color);
+                let my_piece = pinned & &self.player_bb(color);
                 if pinned.len() == 1 && my_piece.is_any() {
-                    let fix = &(&A::between(psq, ksq) & &!&pinned) | &enemy_bb;
+                    let fix = (A::between(psq, ksq) & &!pinned) | &enemy_bb;
                     let my_square = pinned.pop_reverse();
                     pins.insert(my_square.unwrap(), fix);
                 }
@@ -1060,7 +1014,7 @@ where
         let king = &self.find_king(&c);
         if let Some(k) = king {
             let check_moves = self.enemy_moves(&c);
-            return (&check_moves & k).is_any();
+            return (check_moves & k).is_any();
             // if let MoveTask::Checks { check, .. } = check_moves {
             //     if let Some(check) = check {
             //         return !check.is_empty();
@@ -1106,11 +1060,11 @@ where
     ) -> MoveData {
         let color = self.player_bb(piece.color);
         let pieces = self.type_bb(&piece.piece_type);
-        let all = &color & &pieces;
+        let all = color & &pieces;
         let (mut same_file, mut same_rank) = (false, false);
         for p in all {
             if let Some(targets) = legal_moves.get(&p) {
-                if (targets & &to).is_any() {
+                if (*targets & &to).is_any() {
                     if from.rank() == p.rank() {
                         same_rank = true;
                     } else if from.file() == p.file() {
@@ -1150,6 +1104,7 @@ where
     /// Returns BitBoard with rank. Panics if file is bigger than expected.
     fn file_bb(&self, rank: usize) -> B;
 
+    #[allow(clippy::too_many_arguments)]
     fn update_after_move(
         &mut self,
         from: S,
@@ -1204,7 +1159,7 @@ where
             }
 
             if let Some(attacks) = legal_moves.get(&from) {
-                if (attacks & &to).is_empty() {
+                if (*attacks & &to).is_empty() {
                     return Err(MoveError::Inconsistent(
                         "The piece cannot move to there",
                     ));
@@ -1245,7 +1200,7 @@ where
                 } else if self.in_check(stm) {
                     move_data = move_data.checks(true, false);
                     Outcome::Check { color: stm }
-                } else if (&self.player_bb(stm.flip())
+                } else if (self.player_bb(stm.flip())
                     & &self.type_bb(&PieceType::King))
                     .len()
                     == 0
@@ -1298,24 +1253,16 @@ where
         &self,
         position: &P,
         c: &Color,
-    ) -> B
-    where
-        for<'b> &'b B: BitOr<&'b B, Output = B>,
-        for<'b> &'b B: BitAnd<&'b B, Output = B>,
-        for<'a> &'a B: Not<Output = B>,
-        for<'a> &'a B: BitOr<&'a S, Output = B>,
-        for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    {
+    ) -> B {
         match self {
             MoveType::Empty => B::empty(),
             MoveType::Plinth => {
-                &position.occupied_bb() | &position.player_bb(Color::NoColor)
+                position.occupied_bb() | &position.player_bb(Color::NoColor)
             }
             MoveType::NoKing { king } => {
                 let king = B::from_square(king);
-                &(&(&position.occupied_bb()
-                    | &position.player_bb(Color::NoColor))
-                    & &!&king)
+                ((position.occupied_bb() | &position.player_bb(Color::NoColor))
+                    & &!king)
                     | &position.player_bb(*c)
             }
         }
@@ -1327,16 +1274,9 @@ where
         attacks: &B,
         piece: Piece,
         current_sq: S,
-    ) -> B
-    where
-        for<'b> &'b B: BitOr<&'b B, Output = B>,
-        for<'b> &'b B: BitAnd<&'b B, Output = B>,
-        for<'a> &'a B: Not<Output = B>,
-        for<'a> &'a B: BitOr<&'a S, Output = B>,
-        for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    {
+    ) -> B {
         let my_color = piece.color;
-        let without_main_color = attacks & &!&position.player_bb(my_color);
+        let without_main_color = *attacks & &!position.player_bb(my_color);
         let knights = [
             PieceType::Knight,
             PieceType::ArchBishop,
@@ -1347,12 +1287,12 @@ where
             MoveType::Empty => B::empty(),
             MoveType::Plinth => {
                 if !knights.contains(&piece.piece_type) {
-                    let mut without_plinth = &(without_main_color)
-                        & &!&position.player_bb(Color::NoColor);
+                    let mut without_plinth = (without_main_color)
+                        & &!position.player_bb(Color::NoColor);
                     if piece.piece_type == PieceType::Pawn {
                         without_plinth &=
                             &position.player_bb(piece.color.flip());
-                        let up_sq = &!&position.player_bb(piece.color.flip())
+                        let up_sq = !position.player_bb(piece.color.flip())
                             & &self.pawn_move::<B, A, P>(
                                 current_sq,
                                 &piece.color,
@@ -1360,8 +1300,8 @@ where
                             );
 
                         without_plinth |=
-                            &(&up_sq & &!&position.player_bb(my_color));
-                        without_plinth &= &!&position.player_bb(Color::NoColor);
+                            &(up_sq & &!position.player_bb(my_color));
+                        without_plinth &= &!position.player_bb(Color::NoColor);
 
                         without_plinth
                     } else {
@@ -1379,12 +1319,12 @@ where
                             &piece.color,
                             position,
                         );
-                        return attacks & &!&up_sq;
+                        return *attacks & &!up_sq;
                     }
-                    &((attacks) & &!&position.player_bb(Color::NoColor))
-                        | &(attacks & &B::from_square(&king.to_owned()))
+                    ((*attacks) & &!position.player_bb(Color::NoColor))
+                        | &(*attacks & &B::from_square(&king.to_owned()))
                 } else {
-                    attacks | &(attacks & &B::from_square(&king.to_owned()))
+                    *attacks | &(*attacks & &B::from_square(&king.to_owned()))
                 }
             }
         }
@@ -1395,14 +1335,7 @@ where
         sq: S,
         color: &Color,
         position: &P,
-    ) -> B
-    where
-        for<'b> &'b B: BitOr<&'b B, Output = B>,
-        for<'b> &'b B: BitAnd<&'b B, Output = B>,
-        for<'a> &'a B: Not<Output = B>,
-        for<'a> &'a B: BitOr<&'a S, Output = B>,
-        for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    {
+    ) -> B {
         let pop_sq = |sq: S, mut blocked: B, color: &Color| -> B {
             let old = blocked;
             let deleted = {
@@ -1420,11 +1353,11 @@ where
         };
 
         let occupied =
-            &position.occupied_bb() | &position.player_bb(Color::NoColor);
+            position.occupied_bb() | &position.player_bb(Color::NoColor);
         match color {
             &Color::White | &Color::Black => {
                 let moves = A::get_pawn_moves(sq.index(), *color);
-                let blocked = &moves & &occupied;
+                let blocked = moves & &occupied;
                 if blocked.len() == 2 {
                     B::empty()
                 } else if blocked.len() == 0 && moves.len() == 2 {
@@ -1446,12 +1379,6 @@ where
     B: BitBoard<S>,
     A: Attacks<S, B>,
     Self: Sized + Clone + Board<S, B, A>,
-    for<'a> &'a B: BitOr<&'a B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitOrAssign<&'a S>,
 {
     fn get_moves(&self, current_sq: &S, piece: &Piece, blockers: B) -> B {
         match piece.piece_type {
@@ -1483,7 +1410,7 @@ where
                 blockers,
             ),
             PieceType::Chancellor => {
-                &A::get_non_sliding_attacks(
+                A::get_non_sliding_attacks(
                     PieceType::Knight,
                     current_sq,
                     piece.color,
@@ -1495,7 +1422,7 @@ where
                 )
             }
             PieceType::ArchBishop => {
-                &A::get_non_sliding_attacks(
+                A::get_non_sliding_attacks(
                     PieceType::Knight,
                     current_sq,
                     piece.color,
@@ -1513,11 +1440,11 @@ where
 
     fn check_moves(&self, attacked_color: Color) -> Checks<S, B> {
         let mut king =
-            &self.type_bb(&PieceType::King) & &self.player_bb(attacked_color);
+            self.type_bb(&PieceType::King) & &self.player_bb(attacked_color);
         if king.is_empty() {
             return Checks::new(None, false, None);
         }
-        let occupied_bb = &self.occupied_bb() | &self.player_bb(Color::NoColor);
+        let occupied_bb = self.occupied_bb() | &self.player_bb(Color::NoColor);
         let king = king.pop().unwrap();
         let mut double_check = false;
         let mut check = None;
@@ -1538,9 +1465,9 @@ where
                         },
                         occupied_bb,
                     );
-                    let them = &self.type_bb(&pt)
+                    let them = self.type_bb(&pt)
                         & &self.player_bb(attacked_color.flip());
-                    let mut attackers = &(&them & &moves) & &them;
+                    let mut attackers = (them & &moves) & &them;
                     let len = attackers.len();
                     match &len.cmp(&1) {
                         Ordering::Equal => {
@@ -1552,11 +1479,11 @@ where
                                 double_check = false;
                             } else if let Some(attacker) = attackers.pop() {
                                 let between = A::between(attacker, king);
-                                let between = &between | &attacker;
+                                let between = between | &attacker;
                                 if between.len() == 0 {
                                     check = Some(moves);
                                 } else {
-                                    check = Some(&between | &attacker);
+                                    check = Some(between | &attacker);
                                 }
                             }
                         }
@@ -1595,18 +1522,17 @@ where
             }
             let attacks = A::get_sliding_attacks(pt, &ksq, plinths);
             // enemies
-            let enemy_bb = &(&self.type_bb(&pt)
-                & &self.player_bb(color.flip()))
-                & &attacks;
+            let enemy_bb =
+                (self.type_bb(&pt) & &self.player_bb(color.flip())) & &attacks;
             for enemy_sq in enemy_bb {
                 // this piece is pinned
-                let mut pinned = &(&A::between(ksq, enemy_sq)
+                let mut pinned = (A::between(ksq, enemy_sq)
                     & &self.occupied_bb())
-                    & &!&self.player_bb(Color::NoColor);
-                let my_piece = &pinned & &self.player_bb(*color);
+                    & &!self.player_bb(Color::NoColor);
+                let my_piece = pinned & &self.player_bb(*color);
                 if pinned.len() == 1 && my_piece.is_any() {
                     let unpin =
-                        &(&A::between(enemy_sq, ksq) & &!&pinned) | &enemy_bb;
+                        (A::between(enemy_sq, ksq) & &!pinned) | &enemy_bb;
                     let my_square = pinned.pop_reverse();
                     pins.insert(my_square.unwrap(), unpin);
                 }
@@ -1634,15 +1560,15 @@ where
             Some(piece) => {
                 if let Some(pin) = pins.get(sq) {
                     if let Some(check) = checks.check {
-                        &(&check & pin) & &my_moves
+                        (check & pin) & &my_moves
                     } else {
-                        pin & &my_moves
+                        *pin & &my_moves
                     }
                 } else {
                     let mut my_moves = my_moves;
                     if piece.piece_type == PieceType::King {
                         if let Some(enemy_moves) = checks.enemy_moves {
-                            my_moves = &my_moves & &!&enemy_moves;
+                            my_moves &= &!enemy_moves;
                             return my_moves;
                         }
                     } else if checks.double_check {

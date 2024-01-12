@@ -17,7 +17,7 @@ impl BB8<Square8> {
     }
 }
 
-impl BitAnd<&BB8<Square8>> for &BB8<Square8> {
+impl BitAnd<&BB8<Square8>> for BB8<Square8> {
     type Output = BB8<Square8>;
 
     #[inline(always)]
@@ -34,7 +34,7 @@ impl BitXor<&BB8<Square8>> for BB8<Square8> {
         BB8::new(self.0 ^ rhs.0)
     }
 }
-impl BitOr<&BB8<Square8>> for &BB8<Square8> {
+impl BitOr<&BB8<Square8>> for BB8<Square8> {
     type Output = BB8<Square8>;
 
     #[inline(always)]
@@ -61,7 +61,7 @@ impl Not for &BB8<Square8> {
     }
 }
 
-impl BitOr<&Square8> for &BB8<Square8> {
+impl BitOr<&Square8> for BB8<Square8> {
     type Output = BB8<Square8>;
 
     #[inline(always)]
@@ -120,7 +120,7 @@ impl BitOrAssign<&Square8> for BB8<Square8> {
     }
 }
 
-impl BitAnd<&Square8> for &BB8<Square8> {
+impl BitAnd<&Square8> for BB8<Square8> {
     type Output = BB8<Square8>;
 
     #[inline(always)]
@@ -139,7 +139,7 @@ impl fmt::Display for BB8<Square8> {
                     write!(
                         f,
                         " {} |",
-                        if (self & &sq).is_empty() { " " } else { "X" }
+                        if (*self & &sq).is_empty() { " " } else { "X" }
                     )?;
                 }
             }

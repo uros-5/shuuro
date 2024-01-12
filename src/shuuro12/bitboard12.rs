@@ -17,7 +17,7 @@ impl BB12<Square12> {
     }
 }
 
-impl BitAnd<&BB12<Square12>> for &BB12<Square12> {
+impl BitAnd<&BB12<Square12>> for BB12<Square12> {
     type Output = BB12<Square12>;
 
     #[inline(always)]
@@ -35,7 +35,7 @@ impl BitXor<&BB12<Square12>> for BB12<Square12> {
     }
 }
 
-impl BitOr<&BB12<Square12>> for &BB12<Square12> {
+impl BitOr<&BB12<Square12>> for BB12<Square12> {
     type Output = BB12<Square12>;
 
     #[inline(always)]
@@ -62,7 +62,7 @@ impl Not for &BB12<Square12> {
     }
 }
 
-impl BitOr<&Square12> for &BB12<Square12> {
+impl BitOr<&Square12> for BB12<Square12> {
     type Output = BB12<Square12>;
 
     #[inline(always)]
@@ -72,7 +72,7 @@ impl BitOr<&Square12> for &BB12<Square12> {
     }
 }
 
-impl BitAnd<&Square12> for &BB12<Square12> {
+impl BitAnd<&Square12> for BB12<Square12> {
     type Output = BB12<Square12>;
 
     #[inline(always)]
@@ -235,7 +235,7 @@ impl fmt::Display for BB12<Square12> {
                     write!(
                         f,
                         " {} |",
-                        if (self & &sq).is_empty() { " " } else { "X" }
+                        if (*self & &sq).is_empty() { " " } else { "X" }
                     )?;
                 }
             }

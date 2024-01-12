@@ -3,20 +3,12 @@ use crate::{
 };
 
 use super::{attacks12::Attacks12, bitboard12::BB12, square12::Square12};
-use std::{
-    marker::PhantomData,
-    ops::{BitAnd, BitOr, Not},
-};
+use std::marker::PhantomData;
 
 pub struct PlinthGen12<S, B>
 where
     S: Square,
     B: BitBoard<S>,
-    for<'b> &'b B: BitOr<&'b B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
 {
     _a: PhantomData<B>,
     _s: PhantomData<S>,
