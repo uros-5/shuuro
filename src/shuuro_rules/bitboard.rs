@@ -19,14 +19,13 @@ pub trait BitBoard<S: Square>:
     + for<'a> BitOrAssign<&'a Self>
     + for<'a> BitXor<&'a Self, Output = Self>
     + for<'a> BitXorAssign<&'a Self>
+    + for<'a> BitOr<&'a Self, Output = Self>
+    + for<'a> BitAnd<&'a Self, Output = Self>
+    + for<'a> Not<Output = Self>
+    + for<'a> BitOr<&'a S, Output = Self>
+    + for<'a> BitAnd<&'a S, Output = Self>
+    + for<'a> BitOrAssign<&'a S>
     + Iterator<Item = S>
-where
-    for<'a> &'a Self: BitOr<&'a Self, Output = Self>,
-    for<'a> &'a Self: BitAnd<&'a Self, Output = Self>,
-    for<'a> &'a Self: Not<Output = Self>,
-    for<'a> &'a Self: BitOr<&'a S, Output = Self>,
-    for<'a> &'a Self: BitAnd<&'a S, Output = Self>,
-    for<'a> Self: BitOrAssign<&'a S>,
 {
     fn empty() -> Self;
     fn full() -> Self;

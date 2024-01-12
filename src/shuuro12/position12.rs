@@ -1,8 +1,4 @@
-use std::{
-    fmt,
-    marker::PhantomData,
-    ops::{BitAnd, BitOr, BitXorAssign, Not},
-};
+use std::{fmt, marker::PhantomData};
 
 use crate::{
     bitboard::BitBoard,
@@ -28,12 +24,6 @@ pub struct P12<S, B>
 where
     S: Square,
     B: BitBoard<S>,
-    for<'b> &'b B: BitOr<&'b B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitXorAssign<&'a S>,
 {
     board: PieceGrid,
     hand: Hand,
@@ -53,12 +43,6 @@ impl<S, B> P12<S, B>
 where
     S: Square,
     B: BitBoard<S>,
-    for<'b> &'b B: BitOr<&'b B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> B: BitXorAssign<&'a S>,
 {
     //
 }
@@ -247,11 +231,11 @@ impl Placement<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
     }
 
     fn white_placement_attacked_ranks(&self) -> BB12<Square12> {
-        &RANK_BB[1] | &RANK_BB[2]
+        RANK_BB[1] | &RANK_BB[2]
     }
 
     fn black_placement_attacked_ranks(&self) -> BB12<Square12> {
-        &RANK_BB[9] | &RANK_BB[10]
+        RANK_BB[9] | &RANK_BB[10]
     }
 
     fn black_ranks(&self) -> [usize; 3] {
@@ -388,7 +372,7 @@ impl fmt::Display for P12<Square12, BB12<Square12>> {
                     if let Some(ref piece) = *self.piece_at(sq) {
                         write!(f, "{piece}")?;
                         let plinth: BB12<Square12> =
-                            &self.player_bb(Color::NoColor) & &sq;
+                            self.player_bb(Color::NoColor) & &sq;
                         if plinth.is_any() {
                             write!(f, " L|")?;
                         } else {
@@ -396,7 +380,7 @@ impl fmt::Display for P12<Square12, BB12<Square12>> {
                         }
                     } else {
                         let plinth: BB12<Square12> =
-                            &self.player_bb(Color::NoColor) & &sq;
+                            self.player_bb(Color::NoColor) & &sq;
                         if plinth.is_any() {
                             write!(f, "{:>3}|", "L")?;
                         } else {
@@ -514,16 +498,16 @@ pub mod position_tests {
 
             assert_eq!(case.1.len(), { blue.len() as usize });
             for sq in case.1 {
-                assert!((&blue & sq).is_any());
+                assert!((blue & sq).is_any());
             }
 
             assert_eq!(case.2.len(), { red.len() as usize });
             for sq in case.2 {
-                assert!((&red & sq).is_any());
+                assert!((red & sq).is_any());
             }
 
             for sq in case.3 {
-                assert!((&pos.player_bb(Color::NoColor) & sq).is_any())
+                assert!((pos.player_bb(Color::NoColor) & sq).is_any())
             }
         }
     }
@@ -558,12 +542,12 @@ pub mod position_tests {
 
             assert_eq!(case.1.len(), black.len() as usize);
             for sq in case.1 {
-                assert!((&black & sq).is_any());
+                assert!((black & sq).is_any());
             }
 
             assert_eq!(case.2.len(), white.len() as usize);
             for sq in case.2 {
-                assert!((&white & sq).is_any());
+                assert!((white & sq).is_any());
             }
         }
     }
@@ -1172,7 +1156,7 @@ pub mod position_tests {
             let bb = position_set.king_squares::<6>(&case.0);
             assert_eq!(bb.len(), case.1);
             for sq in case.2 {
-                assert!((&bb & &sq).is_any());
+                assert!((bb & &sq).is_any());
             }
         }
     }
@@ -1530,7 +1514,7 @@ pub mod position_tests {
             if let Some(b) = legal_moves.get(case.1) {
                 let len = case.2.len();
                 for sq in case.2 {
-                    assert!((b & sq).is_any());
+                    assert!((*b & sq).is_any());
                 }
                 assert_eq!(b.len(), len as u32);
             }

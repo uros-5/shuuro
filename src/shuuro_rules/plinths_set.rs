@@ -1,19 +1,10 @@
-use std::ops::{BitAnd, BitOr, Not};
-
 use rand::prelude::*;
 
 use crate::{bitboard::BitBoard, Square};
 
 type Section = (u8, u8, u8, u8, u8);
 
-pub trait PlinthGen<S: Square, B: BitBoard<S>>
-where
-    for<'b> &'b B: BitOr<&'b B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a B, Output = B>,
-    for<'a> &'a B: BitAnd<&'a S, Output = B>,
-    for<'a> &'a B: Not<Output = B>,
-    for<'a> &'a B: BitOr<&'a S, Output = B>,
-{
+pub trait PlinthGen<S: Square, B: BitBoard<S>> {
     fn king_moves(&self, sq: S) -> B;
 
     fn y(&self) -> u8;
@@ -30,9 +21,9 @@ where
                 let x = rang.gen_range(section.2..section.3);
                 let sq = (y * rank) + x;
                 if let Some(sq) = S::from_index(sq) {
-                    if (&plinths & &sq).is_empty() && (&bb & &sq).is_empty() {
+                    if (plinths & &sq).is_empty() && (bb & &sq).is_empty() {
                         let king_moves = self.king_moves(sq);
-                        if (&bb & &king_moves).is_empty() {
+                        if (bb & &king_moves).is_empty() {
                             bb |= &sq;
                             i += 1;
                         }
