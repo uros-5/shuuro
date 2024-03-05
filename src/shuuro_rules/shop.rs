@@ -90,10 +90,33 @@ impl<S: Square> Shop<S> {
 
     /// Set hand from string. Panics if wrong piece is found.
     pub fn set_hand(&mut self, s: &str) {
-        for i in s.chars() {
-            if let Some(piece) = Piece::from_sfen(i) {
-                self.play(Move::Buy { piece });
+        let mut selected = vec![];
+        self.hand.set_hand(s);
+        for color in Color::iter() {
+            if color == Color::NoColor {
+                continue;
             }
+            for piece_type in PieceType::iter() {
+                if piece_type == PieceType::Plinth {
+                    continue;
+                }
+                let piece = Piece { piece_type, color };
+                let mut count = self.hand.get(piece);
+                let allowed_count = self.pricing[piece_type as usize];
+                if count > allowed_count.1 {
+                    count = allowed_count.1;
+                    self.hand.just_set(piece, count);
+                } else if piece_type == PieceType::King {
+                    count = 1;
+                }
+                for _ in 0..count {
+                    selected.push(Move::<S>::Buy { piece });
+                }
+            }
+        }
+        self.hand = Hand::default();
+        for m in selected {
+            self.play(m);
         }
     }
     /// Converts entire hand by color to string.

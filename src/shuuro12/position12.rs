@@ -1363,9 +1363,9 @@ pub mod position_tests {
             ("knnaaacqGKCCCQQPPP", [3, 0, 1], [1, 3, 0], [160, 160]),
             (
                 "KCAAAAACCCRRRQQkccppaaaaagg",
-                [3, 3, 0],
+                [3, 0, 0],
                 [2, 3, 2],
-                [20, 60],
+                [50, 60],
             ),
             (
                 "KRRRRRNNNNBBBCAkcrrrrbnggggg",

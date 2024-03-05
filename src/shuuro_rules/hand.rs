@@ -19,13 +19,19 @@ use crate::shuuro_rules::{Color, Piece, PieceType};
 
 #[derive(Debug, Clone, Default)]
 pub struct Hand {
-    inner: [u8; 18],
+    pub inner: [u8; 18],
 }
 
 impl Hand {
     /// Returns a number of the given piece.
     pub fn get(&self, p: Piece) -> u8 {
         Hand::index(p).map(|i| self.inner[i]).unwrap_or(0)
+    }
+
+    pub fn just_set(&mut self, p: Piece, num: u8) {
+        if let Some(index) = Hand::index(p) {
+            self.inner[index] = num;
+        }
     }
 
     /// Sets a number of the given piece.

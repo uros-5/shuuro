@@ -166,9 +166,9 @@ impl iter::Iterator for PieceTypeIter {
                 PieceType::Bishop => Some(PieceType::Knight),
                 PieceType::Knight => Some(PieceType::Pawn),
                 PieceType::Pawn => Some(PieceType::Plinth),
-                PieceType::Plinth => Some(PieceType::ArchBishop),
-                PieceType::ArchBishop => Some(PieceType::Chancellor),
-                PieceType::Chancellor => Some(PieceType::Giraffe),
+                PieceType::Plinth => Some(PieceType::Chancellor),
+                PieceType::Chancellor => Some(PieceType::ArchBishop),
+                PieceType::ArchBishop => Some(PieceType::Giraffe),
                 PieceType::Giraffe => None,
             };
         }
