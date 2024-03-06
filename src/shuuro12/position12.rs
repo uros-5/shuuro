@@ -1549,4 +1549,17 @@ pub mod position_tests {
             assert!(lm.len() == 11);
         }
     }
+
+    #[test]
+    fn generate_sfen() {
+        setup();
+        for _ in 0..10 {
+            let mut position = P12::default();
+            position.generate_plinths();
+            let fen = position.generate_sfen();
+            let mut position = P12::default();
+            let correct_position = position.set_sfen(&fen);
+            assert!(correct_position.is_ok());
+        }
+    }
 }

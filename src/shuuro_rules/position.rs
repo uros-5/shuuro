@@ -318,6 +318,7 @@ where
             10 => s.push_str("55"),
             11 => s.push_str("56"),
             12 => s.push_str("57"),
+            0 => s.push_str(""),
             _ => s.push_str(&n.to_string()),
         }
         s
