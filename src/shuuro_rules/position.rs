@@ -247,7 +247,6 @@ where
         let mut fen = String::new();
         let mut is_plinth = false;
         for rank in 0..dimension {
-            dbg!(rank, dimension);
             let mut row_item = String::from("");
             let mut space = 0;
             for file in 0..dimension {
