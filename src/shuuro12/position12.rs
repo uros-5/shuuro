@@ -227,7 +227,9 @@ impl Placement<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
     for P12<Square12, BB12<Square12>>
 {
     fn generate_plinths(&mut self) {
-        self.color_bb[Color::NoColor.index()] = PlinthGen12::default().start();
+        let bb = PlinthGen12::default().start();
+        println!("{bb}");
+        self.color_bb[Color::NoColor.index()] = bb;
     }
 
     fn white_placement_attacked_ranks(&self) -> BB12<Square12> {

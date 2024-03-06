@@ -247,35 +247,36 @@ where
         let mut fen = String::new();
         let mut is_plinth = false;
         for rank in 0..dimension {
-            let mut s = String::from("");
+            dbg!(rank, dimension);
+            let mut row_item = String::from("");
             let mut space = 0;
             for file in 0..dimension {
                 let sq = S::new(file, rank).unwrap();
                 match *self.piece_at(sq) {
                     Some(piece) => {
                         if space > 0 {
-                            s = self.add_space(space, s);
+                            row_item = self.add_space(space, row_item);
                             space = 0;
                         }
                         if is_plinth {
                             if piece.piece_type.is_knight_piece() {
-                                s.push_str(&piece.to_string());
+                                row_item.push_str(&piece.to_string());
                             }
                             is_plinth = false;
                         } else {
-                            s.push_str(&piece.to_string());
+                            row_item.push_str(&piece.to_string());
                             space = 0;
                         }
                     }
                     None => {
                         if (self.player_bb(Color::NoColor) & &sq).is_any() {
-                            s = self.add_space(space, s);
+                            row_item = self.add_space(space, row_item);
                             space = 0;
                             is_plinth = true;
-                            s.push('L');
+                            row_item.push('L');
                         } else if is_plinth {
-                            s.push('0');
-                            space = 0;
+                            row_item.push('0');
+                            space = 1;
                             is_plinth = false;
                         } else {
                             space += 1;
@@ -284,10 +285,14 @@ where
                 }
             }
             if space > 0 {
-                s = self.add_space(space, s);
+                row_item = self.add_space(space, row_item);
             }
-            fen.push_str(&s);
+            fen.push_str(&row_item);
             if rank < dimension - 1 {
+                if is_plinth {
+                    fen.push('0');
+                    is_plinth = false;
+                }
                 fen.push('/');
             }
         }
