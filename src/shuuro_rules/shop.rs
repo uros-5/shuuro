@@ -60,21 +60,28 @@ impl<S: Square> Shop<S> {
                 let (piece_price, piece_count) =
                     self.pricing[piece.piece_type.index()];
                 if self.credit[piece.color.index()] >= piece_price {
-                    if self.hand.get(piece) < piece_count {
-                        self.hand.increment(piece);
-                        self.credit[piece.color.index()] =
-                            self.credit(piece.color) - piece_price;
-                        let move_record = Move::Buy { piece };
-                        self.sfen_history.push((
-                            move_record.to_string(),
-                            self.hand.get(piece),
-                        ));
-                        self.move_history.push(move_record);
+                    let current_hand = self.hand.get(piece);
+                    match current_hand.cmp(&piece_count) {
+                        std::cmp::Ordering::Less => {
+                            self.hand.increment(piece);
+                            self.credit[piece.color.index()] =
+                                self.credit(piece.color) - piece_price;
+                            let move_record = Move::Buy { piece };
+                            self.sfen_history.push((
+                                move_record.to_string(),
+                                self.hand.get(piece),
+                            ));
+                            self.move_history.push(move_record);
+                            if self.credit[piece.color.index()] == 0 {
+                                self.confirm(piece.color);
+                            }
+                            return Some(self.confirmed);
+                        }
+                        std::cmp::Ordering::Equal => {
+                            return None;
+                        }
+                        std::cmp::Ordering::Greater => return None,
                     }
-                    if self.credit[piece.color.index()] == 0 {
-                        self.confirm(piece.color);
-                    }
-                    return Some(self.confirmed);
                 }
             }
         }
