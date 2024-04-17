@@ -1552,6 +1552,7 @@ pub mod position_tests {
     #[test]
     fn generate_sfen() {
         setup();
+        // let fen = "9L0"
         for _ in 0..10 {
             let mut position = P12::default();
             position.generate_plinths();
