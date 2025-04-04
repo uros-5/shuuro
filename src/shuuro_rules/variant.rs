@@ -27,7 +27,7 @@ impl Variant {
         Variant::from(variant)
     }
 
-    pub fn can_buy(&self, piece: &PieceType) -> bool {
+    pub fn can_select(&self, piece: &PieceType) -> bool {
         if piece == &PieceType::Plinth {
             return false;
         }

@@ -2,7 +2,7 @@
 mod tests {
 
     use crate::{
-        shuuro12::square12::Square12, Color, Move, Piece, PieceType, Shop,
+        shuuro12::square12::Square12, Color, Move, Piece, PieceType, Selection,
     };
 
     #[test]
@@ -15,14 +15,14 @@ mod tests {
             (PieceType::Queen, Color::Black, 3),
             (PieceType::Pawn, Color::Black, 3),
         ];
-        let mut shop = Shop::<Square12>::default();
+        let mut shop = Selection::<Square12>::default();
         for case in cases.iter() {
             let piece: Piece = Piece {
                 piece_type: case.0,
                 color: case.1,
             };
             for _i in 0..case.2 {
-                shop.play(Move::Buy { piece });
+                shop.play(Move::Select { piece });
             }
             assert_eq!(shop.get(piece), case.2);
         }
@@ -40,7 +40,7 @@ mod tests {
             ("nQrrPnNQqqqqqbbr", Color::Black, 700, "kqqqrrrbbnn"),
         ];
         for case in cases {
-            let mut shop = Shop::<Square12>::default();
+            let mut shop = Selection::<Square12>::default();
             shop.set_hand(case.0);
             assert_eq!(shop.credit(case.1), 800 - case.2);
             assert_eq!(shop.to_sfen(case.1, true), case.3);

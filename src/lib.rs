@@ -6,14 +6,14 @@
 ////!
 ////! Generics in Shop have to implement `Square` trait.
 ////!
-////! Shuuro shop - buying pieces:
+////! Shuuro select - selecting pieces:
 ////! ```
 ////! use shuuro::{Shop, PieceType, Piece, Color, Move};
 ////! use shuuro::shuuro12::Square12;
 ////! let mut shop = Shop::<Square12>::default();
 ////! for i in 0..5 {
 ////!     let piece = Piece{piece_type: PieceType::Queen, color: Color::Black};
-////!     shop.play(Move::Buy { piece });
+////!     shop.play(Move::Select { piece });
 ////! }
 ////! assert_ne!(shop.to_sfen(Color::Black), "kqqqq");
 ////! assert_eq!(shop.credit(Color::Black), 800 - 110 * 3);

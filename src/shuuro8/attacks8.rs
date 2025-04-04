@@ -184,9 +184,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_north_east_ray() {
-        let delta = &[13];
+        let delta = &[9];
         for sq in Square8::iter() {
-            let bb = diagonal_ray(sq.index() as i32, delta, 13);
+            let bb = diagonal_ray(sq.index() as i32, delta, 9);
             unsafe {
                 RAYS[Ray::NorthEast as usize][sq.index()] = bb;
             }
@@ -194,9 +194,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_north_west_ray() {
-        let delta = &[11];
+        let delta = &[7];
         for sq in Square8::iter() {
-            let bb = diagonal_ray(sq.index() as i32, delta, 11);
+            let bb = diagonal_ray(sq.index() as i32, delta, 7);
             unsafe {
                 RAYS[Ray::NorthWest as usize][sq.index()] = bb;
             }
@@ -204,9 +204,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_south_east_ray() {
-        let delta = &[-11];
+        let delta = &[-7];
         for sq in Square8::iter() {
-            let bb = diagonal_ray(sq.index() as i32, delta, 11);
+            let bb = diagonal_ray(sq.index() as i32, delta, -7);
             unsafe {
                 RAYS[Ray::SouthEast as usize][sq.index()] = bb;
             }
@@ -214,9 +214,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_south_west_ray() {
-        let delta = &[-11];
+        let delta = &[-9];
         for sq in Square8::iter() {
-            let bb = diagonal_ray(sq.index() as i32, delta, 11);
+            let bb = diagonal_ray(sq.index() as i32, delta, -9);
             unsafe {
                 RAYS[Ray::SouthWest as usize][sq.index()] = bb;
             }
@@ -263,15 +263,15 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
         piece_type: PieceType,
         square: &Square8,
         color: Color,
-        blockers: BB8<Square8>,
+        _blockers: BB8<Square8>,
     ) -> BB8<Square8> {
         match piece_type {
             PieceType::King => KING_MOVES[square.index()],
             PieceType::Knight => KNIGHT_ATTACKS[square.index()],
             PieceType::Giraffe => GIRAFFE_ATTACKS[square.index()],
             PieceType::Pawn => match color {
-                Color::Black => BLACK_PAWN_ATTACKS[square.index()] & &blockers,
-                Color::White => WHITE_PAWN_ATTACKS[square.index()] & &blockers,
+                Color::Black => BLACK_PAWN_ATTACKS[square.index()],
+                Color::White => WHITE_PAWN_ATTACKS[square.index()],
                 Color::NoColor => BB8::empty(),
             },
             _ => BB8::empty(),

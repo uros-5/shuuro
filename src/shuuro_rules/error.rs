@@ -29,6 +29,9 @@ pub enum SfenError {
 
     #[error("plinths can contain only knights")]
     IllegalPieceTypeOnPlynth,
+
+    #[error("board size is bigger")]
+    UnknownFile,
 }
 
 /// Represents an error occurred during making a move.
@@ -57,4 +60,7 @@ pub enum MoveError {
 
     #[error("repetition detected")]
     RepetitionDraw,
+
+    #[error("first move error")]
+    FirstMoveError,
 }

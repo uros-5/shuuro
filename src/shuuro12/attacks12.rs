@@ -227,15 +227,15 @@ impl Attacks<Square12, BB12<Square12>> for Attacks12<Square12, BB12<Square12>> {
         piece_type: PieceType,
         square: &Square12,
         color: Color,
-        blockers: BB12<Square12>,
+        _blockers: BB12<Square12>,
     ) -> BB12<Square12> {
         match piece_type {
             PieceType::King => KING_MOVES[square.index()],
             PieceType::Knight => KNIGHT_ATTACKS[square.index()],
             PieceType::Giraffe => GIRAFFE_ATTACKS[square.index()],
             PieceType::Pawn => match color {
-                Color::Black => BLACK_PAWN_ATTACKS[square.index()] & &blockers,
-                Color::White => WHITE_PAWN_ATTACKS[square.index()] & &blockers,
+                Color::Black => BLACK_PAWN_ATTACKS[square.index()], // & &blockers,
+                Color::White => WHITE_PAWN_ATTACKS[square.index()], // & &blockers,
                 Color::NoColor => BB12::empty(),
             },
             _ => BB12::empty(),

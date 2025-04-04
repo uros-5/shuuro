@@ -1,6 +1,7 @@
 use std::{fmt, marker::PhantomData};
 
 use crate::{
+    attacks::Attacks,
     bitboard::BitBoard,
     position::{Board, Outcome, Placement, Play, Position, Rules, Sfen},
     Color, Hand, Move, MoveData, Piece, PieceType, SfenError, Square, Variant,
@@ -11,7 +12,10 @@ use super::{
     bitboard8::BB8,
     board_defs::{FILE_BB, RANK_BB},
     plinths_set8::PlinthGen8,
-    square8::Square8,
+    square8::{
+        consts::{A1, A8, H1, H8},
+        Square8,
+    },
 };
 
 impl Position<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
@@ -217,27 +221,6 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.color_bb[Color::NoColor.index()] = PlinthGen8::default().start();
     }
 
-    fn white_placement_attacked_ranks(&self) -> BB8<Square8> {
-        RANK_BB[1] | &RANK_BB[2]
-    }
-
-    fn black_placement_attacked_ranks(&self) -> BB8<Square8> {
-        RANK_BB[5] | &RANK_BB[6]
-    }
-
-    fn black_ranks(&self) -> [usize; 3] {
-        [7, 6, 5]
-    }
-
-    fn king_files<const K: usize>(&self) -> [&str; K] {
-        let temp: [&str; 6] = ["b", "c", "d", "e", "f", "g"];
-        let mut files: [&str; K] = [""; K];
-        for (i, v) in temp.iter().enumerate() {
-            files[i] = v;
-        }
-        files
-    }
-
     fn rank_bb(&self, file: usize) -> BB8<Square8> {
         RANK_BB[file]
     }
@@ -251,6 +234,14 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
 
     fn empty_placement_board() -> String {
         String::from("8/8/8/8/8/8/8/8 w")
+    }
+
+    fn king_files(&self, c: &Color) -> BB8<Square8> {
+        match c {
+            Color::Black => Attacks8::between(A8, H8),
+            Color::White => Attacks8::between(A1, H1),
+            Color::NoColor => BB8::empty(),
+        }
     }
 }
 impl Rules<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
@@ -420,5 +411,99 @@ impl fmt::Display for P8<Square8, BB8<Square8>> {
         write!(f, "Ply: {}", self.ply)?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use crate::{
+        attacks::Attacks,
+        bitboard::BitBoard,
+        position::{Board, Play},
+        shuuro8::{
+            attacks8::Attacks8,
+            square8::{
+                consts::{B4, D6, E7, F4, F5, F6, F8},
+                Square8,
+            },
+        },
+        Color, Variant,
+    };
+
+    use super::P8;
+
+    fn setup() {
+        Attacks8::init();
+    }
+
+    #[test]
+    fn legal_moves_bishop() {
+        setup();
+        let cases = [(
+            "n1rnkb2/3p1p1p/4pn_.1/ppp1_n3/3_.1P2/1_NP1PN2/PP1P2PP/1KQ1NN2 b - 1",
+            F8,
+            4,
+        )];
+        for case in cases {
+            let mut pos = P8::default();
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
+            let legal_moves = pos.legal_moves(&Color::Black);
+            if let Some(b) = legal_moves.get(&case.1) {
+                assert_eq!(b.len(), case.2);
+            }
+        }
+    }
+
+    #[test]
+    fn pinned_bb() {
+        setup();
+
+        let cases: &[(&str, &[Square8], &[Square8])] = &[
+            ("q4k1n/8/3R1q2/6Q1/2b5/5Q2/8/1Q2K3 w - 1", &[F6], &[]),
+            ("q4k1n/5_.2/3R1q2/6Q1/2b5/5Q2/8/1Q2K3 w - 1", &[], &[]),
+            ("5k1n/4q3/8/q1R3Q1/1Qb5/8/8/1Q2K3 b - 1", &[], &[B4]),
+            ("5k1n/2R1r3/8/7Q/1Qb2q2/5Q2/7q/3K4 b - 1", &[E7, F4], &[]),
+            ("5k1n/2R1r3/_.2_.4/7Q/1Qb2q2/5Q2/7q/3K4 b - 1", &[F4], &[]),
+            ("5k1n/2RP4/3p4/7Q/1Qb2q2/5Q2/7q/3K4 b - 1", &[D6, F4], &[]),
+        ];
+
+        let mut pos = P8::new();
+        for case in cases {
+            pos.set_sfen(case.0).expect("faled to parse SFEN string");
+            let black = pos.pinned_bb(Color::Black);
+            let white = pos.pinned_bb(Color::White);
+
+            assert_eq!(case.1.len(), black.len() as usize);
+            for sq in case.1 {
+                assert!((black & sq).is_any());
+            }
+
+            assert_eq!(case.2.len(), white.len() as usize);
+            for sq in case.2 {
+                assert!((white & sq).is_any());
+            }
+        }
+    }
+
+    #[test]
+    fn pinned_and_in_check() {
+        setup();
+
+        let cases = [
+            ("5k1n/2RP4/3p2N1/5q2/1Qb4Q/5Q2/7q/3K4 b - 1", F5, 0, false),
+            ("5k1n/2RP4/3p2A1/5q2/1Qb4Q/5Q2/7q/3K4 b - 1", F5, 0, true),
+            ("5k1n/2RP4/3p2C1/5q2/1Qb4Q/5Q2/7q/3K4 b - 1", F5, 0, true),
+        ];
+        let mut pos = P8::new();
+        for case in cases {
+            pos.set_sfen(case.0).expect("faled to parse SFEN string");
+            if case.3 {
+                pos.update_variant(Variant::StandardFairy);
+            }
+            let moves = pos.legal_moves(&Color::Black);
+            if let Some(moves) = moves.get(&case.1) {
+                assert_eq!(moves.len(), case.2);
+            }
+        }
     }
 }

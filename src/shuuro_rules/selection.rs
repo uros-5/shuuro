@@ -15,9 +15,9 @@ fn get_pricing() -> [(i32, u8); 10] {
     pricing
 }
 
-/// Used for buying pieces.
+/// Used for selecting pieces.
 #[derive(Clone, Debug)]
-pub struct Shop<S: Square> {
+pub struct Selection<S: Square> {
     credit: [i32; 2],
     hand: Hand,
     confirmed: [bool; 2],
@@ -27,7 +27,7 @@ pub struct Shop<S: Square> {
     variant: Variant,
 }
 
-impl<S: Square> Shop<S> {
+impl<S: Square> Selection<S> {
     /// Change variant
     pub fn update_variant(&mut self, variant: Variant) {
         self.variant = variant;
@@ -51,8 +51,8 @@ impl<S: Square> Shop<S> {
 
     /// Buying piece with specific color.
     pub fn play(&mut self, mv: Move<S>) -> Option<[bool; 2]> {
-        if let Move::Buy { piece } = mv {
-            if !self.variant.can_buy(&piece.piece_type)
+        if let Move::Select { piece } = mv {
+            if !self.variant.can_select(&piece.piece_type)
                 || piece.color == Color::NoColor
             {
                 return None;
@@ -66,7 +66,7 @@ impl<S: Square> Shop<S> {
                             self.hand.increment(piece);
                             self.credit[piece.color.index()] =
                                 self.credit(piece.color) - piece_price;
-                            let move_record = Move::Buy { piece };
+                            let move_record = Move::Select { piece };
                             self.sfen_history.push((
                                 move_record.to_string(),
                                 self.hand.get(piece),
@@ -117,7 +117,7 @@ impl<S: Square> Shop<S> {
                     count = 1;
                 }
                 for _ in 0..count {
-                    selected.push(Move::<S>::Buy { piece });
+                    selected.push(Move::<S>::Select { piece });
                 }
             }
         }
@@ -150,7 +150,7 @@ impl<S: Square> Shop<S> {
     fn set_kings(&mut self) {
         for c in Color::iter() {
             if c != Color::NoColor {
-                self.play(Move::Buy {
+                self.play(Move::Select {
                     piece: Piece {
                         piece_type: PieceType::King,
                         color: c,
@@ -176,9 +176,9 @@ impl<S: Square> Shop<S> {
     }
 }
 
-impl<S: Square> Default for Shop<S> {
+impl<S: Square> Default for Selection<S> {
     fn default() -> Self {
-        let mut shop = Shop {
+        let mut shop = Selection {
             credit: [800; 2],
             hand: Hand::default(),
             confirmed: [false, false],

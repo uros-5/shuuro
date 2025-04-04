@@ -33,7 +33,7 @@ impl PieceType {
             'c' | 'C' => PieceType::Chancellor,
             'a' | 'A' => PieceType::ArchBishop,
             'g' | 'G' => PieceType::Giraffe,
-            'L' => PieceType::Plinth,
+            '_' => PieceType::Plinth,
             _ => return None,
         })
     }
@@ -120,6 +120,26 @@ impl PieceType {
     }
 }
 
+impl TryFrom<usize> for PieceType {
+    type Error = ();
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(PieceType::King),
+            1 => Ok(PieceType::Queen),
+            2 => Ok(PieceType::Rook),
+            3 => Ok(PieceType::Bishop),
+            4 => Ok(PieceType::Knight),
+            5 => Ok(PieceType::Pawn),
+            6 => Ok(PieceType::Chancellor),
+            7 => Ok(PieceType::ArchBishop),
+            8 => Ok(PieceType::Giraffe),
+            9 => Ok(PieceType::Plinth),
+            _ => Err(()),
+        }
+    }
+}
+
 impl fmt::Display for PieceType {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
@@ -132,7 +152,7 @@ impl fmt::Display for PieceType {
                 PieceType::Pawn => "p",
                 PieceType::Rook => "r",
                 PieceType::Queen => "q",
-                PieceType::Plinth => "L",
+                PieceType::Plinth => "_",
                 PieceType::Chancellor => "c",
                 PieceType::ArchBishop => "a",
                 PieceType::Giraffe => "g",
@@ -156,24 +176,22 @@ impl Default for PieceTypeIter {
 impl iter::Iterator for PieceTypeIter {
     type Item = PieceType;
     fn next(&mut self) -> Option<Self::Item> {
-        let current = self.current;
+        let current = self.current?;
 
-        if let Some(current) = self.current {
-            self.current = match current {
-                PieceType::King => Some(PieceType::Queen),
-                PieceType::Queen => Some(PieceType::Rook),
-                PieceType::Rook => Some(PieceType::Bishop),
-                PieceType::Bishop => Some(PieceType::Knight),
-                PieceType::Knight => Some(PieceType::Pawn),
-                PieceType::Pawn => Some(PieceType::Plinth),
-                PieceType::Plinth => Some(PieceType::Chancellor),
-                PieceType::Chancellor => Some(PieceType::ArchBishop),
-                PieceType::ArchBishop => Some(PieceType::Giraffe),
-                PieceType::Giraffe => None,
-            };
-        }
+        self.current = match current {
+            PieceType::King => Some(PieceType::Queen),
+            PieceType::Queen => Some(PieceType::Rook),
+            PieceType::Rook => Some(PieceType::Bishop),
+            PieceType::Bishop => Some(PieceType::Knight),
+            PieceType::Knight => Some(PieceType::Pawn),
+            PieceType::Pawn => Some(PieceType::Plinth),
+            PieceType::Plinth => Some(PieceType::Chancellor),
+            PieceType::Chancellor => Some(PieceType::ArchBishop),
+            PieceType::ArchBishop => Some(PieceType::Giraffe),
+            PieceType::Giraffe => None,
+        };
 
-        current
+        Some(current)
     }
 }
 
@@ -192,7 +210,7 @@ mod tests {
             ('p', PieceType::Pawn),
             ('g', PieceType::Giraffe),
         ];
-        let ng_cases = ['\0', ' ', '_', 'J', 'z', '+'];
+        let ng_cases = ['\0', ' ', '+', 'J', 'z', '+'];
         for case in ok_cases.iter() {
             assert_eq!(Some(case.1), PieceType::from_sfen(case.0));
             if let Some(c) = case.0.to_uppercase().next() {

@@ -1,6 +1,7 @@
 use std::{fmt, marker::PhantomData};
 
 use crate::{
+    attacks::Attacks,
     bitboard::BitBoard,
     position::{Board, Outcome, Placement, Play, Position, Rules, Sfen},
     Color, Hand, Move, MoveData, Piece, PieceType, SfenError, Square, Variant,
@@ -11,7 +12,10 @@ use super::{
     bitboard12::BB12,
     board_defs::{FILE_BB, RANK_BB},
     plinths_set12::PlinthGen12,
-    square12::Square12,
+    square12::{
+        consts::{C1, C12, J1, J12},
+        Square12,
+    },
 };
 
 impl Position<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
@@ -231,25 +235,12 @@ impl Placement<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         self.color_bb[Color::NoColor.index()] = bb;
     }
 
-    fn white_placement_attacked_ranks(&self) -> BB12<Square12> {
-        RANK_BB[1] | &RANK_BB[2]
-    }
-
-    fn black_placement_attacked_ranks(&self) -> BB12<Square12> {
-        RANK_BB[9] | &RANK_BB[10]
-    }
-
-    fn black_ranks(&self) -> [usize; 3] {
-        [11, 10, 9]
-    }
-
-    fn king_files<const K: usize>(&self) -> [&str; K] {
-        let temp: [&str; 6] = ["d", "e", "f", "g", "h", "i"];
-        let mut files: [&str; K] = [""; K];
-        for (i, v) in temp.iter().enumerate() {
-            files[i] = v;
+    fn king_files(&self, c: &Color) -> BB12<Square12> {
+        match c {
+            Color::Black => Attacks12::between(C12, J12),
+            Color::White => Attacks12::between(C1, J1),
+            Color::NoColor => BB12::empty(),
         }
-        files
     }
 
     fn rank_bb(&self, file: usize) -> BB12<Square12> {
@@ -447,10 +438,10 @@ pub mod position_tests {
             square12::{consts::*, Square12},
         },
         square::Square,
-        Color, Move, Piece, Shop, Variant,
+        Color, Move, Piece, Selection, Variant,
     };
 
-    pub const START_POS: &str = "KR55/57/57/57/57/57/57/57/57/57/57/kr55 b - 1";
+    pub const START_POS: &str = "kr10/12/12/12/12/12/12/12/12/12/12/KR10 b - 1";
 
     fn setup() {
         Attacks12::init();
@@ -478,13 +469,13 @@ pub mod position_tests {
             [(&'a str, &'a [Square12], &'a [Square12], &'a [Square12])];
         let cases: &CasePlayerBB = &[
             (
-                "BBQ8K/57/2L03L05/4R7/3L08/57/57/5ppp4/nnq/L0L0L09/57/1L05k4 b - 1",
+                "1_.5k4/12/_._._.9/nnq9/5ppp4/12/12/3_.8/4R7/2_.3_.5/12/BBQ8K b - 1",
                 &[A9, B9, C9, F8, G8, H8, H12],
                 &[A1, B1, C1, L1, E4],
                 &[G3, B12, C3, D5],
             ),
             (
-                "9K2/57/6PPPP2/3Q6N1/57/57/57/5ppp4/7qk3/57/57/57 b P 1",
+                "12/12/12/7qk3/5ppp4/12/12/12/3Q6N1/6PPPP2/12/9K2 b P 1",
                 &[H9, I9, F8, G8, H8],
                 &[G3, H3, I3, J3, D4, K4, J1],
                 &[],
@@ -519,17 +510,18 @@ pub mod position_tests {
 
         let cases: &[(&str, &[Square12], &[Square12])] = &[
             (
-                "5NNQK3/8B3/57/57/57/8r3/57/57/pp55/1k55/57/57 w - 1",
+                "12/12/1k10/pp10/12/12/8r3/12/12/12/8B3/5NNQK3 w - 1",
                 &[],
+                // &[],
                 &[I2],
             ),
             (
-                "5NNQK3/8B3/8R3/57/57/8r3/57/57/pp55/1k55/57/57 w - 1",
+                "12/12/1k10/pp10/12/12/8r3/12/12/8R3/8B3/5NNQK3 w - 1",
                 &[],
                 &[],
             ),
             (
-                "12/57/2K9/PPPPPP/57/57/2R2B6/57/2rn8/2k3q2R2/57/57 b - 1",
+                "12/12/2k3q2R2/2rn8/12/2R2B6/12/12/PPPPPP/2K9/12/12 b - 1",
                 &[C9, D9, G10],
                 &[],
             ),
@@ -556,7 +548,7 @@ pub mod position_tests {
     #[test]
     fn pawn_vs_knight() {
         setup();
-        let sfen = "6L03B1/2LN2K3P2/3pPL04L01/57/57/57/7L04/3L08/8L03/q56/L056/3kqbr5 b - 38";
+        let sfen = "3kqbr5/_.11/q11/8_.3/3_.8/7_.4/12/12/12/3pP_.4_.1/2_N2K3P2/6_.3B1 b - 38";
         let mut pos = P12::new();
         pos.set_sfen(sfen).expect("failed to parse SFEN string");
         let lm = pos.legal_moves(&Color::Black);
@@ -569,7 +561,7 @@ pub mod position_tests {
     fn pawn_not_pinned() {
         setup();
         let mut pos = P12::new();
-        pos.set_sfen("57/9K2/8L0Q2/4P6L0/6P5/L03L07/55L01/1L055/2q9/57/L056/6kL04 w - 55")
+        pos.set_sfen("6k_.4/_.11/12/2q9/1_.10/10_.1/_.3_.7/6P5/4P6_./8_.Q2/9K2/12 w - 55")
             .expect("failed to parse SFEN string");
         let lm = pos.legal_moves(&Color::White);
         if let Some(b) = lm.get(&G5) {
@@ -582,7 +574,7 @@ pub mod position_tests {
         setup();
         let mut pos = P12::new();
         pos.set_sfen(
-            "57/9K2/8L03/56L0/5Q6/L03L07/55L01/1L055/5P6/4k7/L056/7L04 b - 72",
+            "7_.4/_.11/4k7/5P6/1_.10/10_.1/_.3_.7/5Q6/11_./8_.3/9K2/12 b - 72",
         )
         .expect("failed to parse SFEN string");
         let in_check = pos.in_check(Color::Black);
@@ -593,7 +585,7 @@ pub mod position_tests {
     fn legal_moves_pawn() {
         setup();
         let cases = [(
-            "4K1Q4LN/4L07/2L09/6P5/6q5/55L01/57/9L02/6L05/L01L09/5p6/6k5 w - 11",
+            "6k5/5p6/_.1_.9/6_.5/9_.2/12/10_.1/6q5/6P5/2_.9/4_.7/4K1Q4_N w - 11",
             G4,
             0,
         )];
@@ -611,7 +603,7 @@ pub mod position_tests {
     fn check_while_pinned() {
         setup();
         let mut pos = P12::default();
-        pos.set_sfen("5K6/55PL0/3N8/2L09/5L06/8nL02/1L03Q4L01/7L04/57/57/L03pr6/5k1Q4 b - 50")
+        pos.set_sfen("5k1Q4/_.3pr6/7B4/12/7_.4/1_.3Q4_.1/8n_.2/5_.6/2_.9/3N8/10P_./5K6 b - 50")
             .expect("failed to parse sfen string");
         let legal_moves = pos.legal_moves(&Color::Black);
         if let Some(b) = legal_moves.get(&F11) {
@@ -624,11 +616,11 @@ pub mod position_tests {
         setup();
         let cases = [
             (
-                "4K6LN/4L07/2L09/57/57/6Q3L01/6P5/5k3L02/6L05/L01L09/5p6/57 b - 19",
+                "12/5p6/_.1_.9/6_.5/5k3_.2/6P5/6Q3_.1/12/12/2_.9/4_.7/4K6_N b - 19",
                 4,
             ),
             (
-                "4K6LN/4L07/2L09/57/57/6Q3L01/6P5/R4k3L02/6L05/L01L09/5p6/57 b - 19",
+                "12/5p6/_.1_.9/6_.5/R4k3_.2/6P5/6Q3_.1/12/12/2_.9/4_.7/4K6_N b - 19",
                 3,
             ),
         ];
@@ -646,7 +638,7 @@ pub mod position_tests {
     fn parse_sfen_hand() {
         setup();
         let mut pos = P12::new();
-        pos.set_sfen("6KL04/3L08/57/57/9L02/4L07/6L04L0/3L08/57/57/1L055/57 b kr12pQ9P 1")
+        pos.set_sfen("12/1_.10/12/12/3_.8/6_.4_./4_.7/9_.2/12/12/3_.8/6K_.4 b kr12pQ9P 1")
             .expect("failed to parse sfen string");
         assert_eq!(pos.hand(Piece::from_sfen('p').unwrap()), 12);
         assert_eq!(pos.hand(Piece::from_sfen('P').unwrap()), 9);
@@ -657,7 +649,7 @@ pub mod position_tests {
         setup();
 
         let mut pos = P12::new();
-        pos.set_sfen("R3N7/4K7/57/57/57/57/57/bppp8/4k7/57/57/57 b - 1")
+        pos.set_sfen("12/12/12/4k7/bppp8/12/12/12/12/12/4K7/R3N7 b - 1")
             .expect("failed to parse SFEN string");
 
         let mut sum = 0;
@@ -682,7 +674,7 @@ pub mod position_tests {
             ("f6", PieceType::Pawn, Color::Black, 0, "f7", ""),
         ];
         let mut pos = P12::new();
-        pos.set_sfen("57/5R5K/57/57/3b1L04k1/5p4b1/4n7/57/55R1/57/57/57 w - 1")
+        pos.set_sfen("12/12/12/10R1/12/4n7/5p4b1/3b1_.4k1/12/12/5R5K/12 w - 1")
             .expect("failed to parse SFEN string");
         for case in cases {
             let bb = pos.move_candidates(
@@ -706,7 +698,7 @@ pub mod position_tests {
     #[test]
     fn check_while_knight_on_plinth() {
         setup();
-        let sfen = "4K5B1/5P2L03/57/2L02Q6/4L04L02/57/56L0/1L055/57/5Ln5L0/3p8/1q3kn5 b - 11";
+        let sfen = "1q3kn5/3p8/5_n5_./12/1_.10/11_./12/4_.4_.2/2_.2Q6/12/5P2_.3/4K5B1 b - 11";
         let mut pos = P12::new();
         pos.set_sfen(sfen).expect("failed to parse SFEN string");
         let legal_moves = pos.legal_moves(&Color::Black);
@@ -720,31 +712,31 @@ pub mod position_tests {
         setup();
         let cases = [
             (
-                "4K1Q4LN/4L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 b - 12",
+                "6k5/5p6/_.1_.9/6_.5/9_.2/12/10_.1/6P5/12/2_.9/4_.7/4K1Q4_N b - 12",
                 "f11",
                 "f10",
             ),
             (
-                "2N1L0QKRL01N1/2P4P3P/55L01/57/57/L056/57/57/3L08/8L03/2pp2L05/4qLnk2r1b b - 15",
+                "4q_nk2r1b/2pp2_.5/8_.3/3_.8/12/12/_.11/12/12/10_.1/2P4P3P/2N1_.QKR_.1N1 b - 15",
                 "c11",
                 "c10",
             ),
             (
-                "2N1L0QKRL01N1/2P4P3P/55L01/57/57/L056/57/57/3L08/8L03/2pp2L05/4qLnk2r1b b - 15",
+                "4q_nk2r1b/2pp2_.5/8_.3/3_.8/12/12/_.11/12/12/10_.1/2P4P3P/2N1_.QKR_.1N1 b - 15",
                 "d11",
                 "d10",
             ),
             (
-                "4KN1Q4/4L0P1P1PP1/1P55/3L08/56L0/6L05/4L01L05/57/57/6L05/p7ppp1/L02q1k3r2 b - 16",
+                "_.2q1k3r2/p7ppp1/6_.5/12/12/4_.1_.5/6_.5/11_./3_.8/1P10/4_.P1P1PP1/4KN1Q4 b - 16",
                 "a11",
                 "a10",
             ),
-            ("2LNN2KNBB2/6L03P1/57/7L04/1L055/57/9L02/57/6L05/ppp2p2pQ2/pppL0p1ppp1pp/L02kq7 b - 29",
+            ("_.2kq7/ppp_.p1ppp1pp/ppp2p2pQ2/6_.5/12/9_.2/12/1_.10/7_.4/12/6_.3P1/2_NN2KNBB2 b - 29",
              "i11",
              "j10")
         ];
         let ng_cases = [(
-            "4K1Q4LN/2P1L07/2L09/57/6P5/55L01/57/9L02/6L05/L01L09/5p6/6k5 w - 12",
+            "6k5/5p6/_.1_.9/6_.5/9_.2/12/10_.1/6P5/12/2_.9/2P1_.7/4K1Q4_N w - 12",
             "c2",
             "c3",
         )];
@@ -774,7 +766,7 @@ pub mod position_tests {
     fn pawn_captures_last_rank() {
         setup();
         let sfen =
-            "4KN1Q4/4L0P1P1PP1/8r3/3L08/56L0/6L05/4L01L01q3/57/57/6L05/pP3k2ppp1/L01r9 w - 33";
+            "_.1r9/pP3k2ppp1/6_.5/12/12/4_.1_.1q3/6_.5/11_./3_.8/8r3/4_.P1P1PP1/4KN1Q4 w - 33";
         let mut position = P12::new();
         position
             .set_sfen(sfen)
@@ -796,12 +788,12 @@ pub mod position_tests {
         setup();
         let cases = [
             (
-                "2q1L0QKRL01N1/2P8P/7P2L01/57/57/L056/57/57/3L08/8L03/2pp2L05/5Lnk2r1b b - 20",
+                "5_nk2r1b/2pp2_.5/8_.3/3_.8/12/12/_.11/12/12/7P2_.1/2P8P/2q1_.QKR_.1N1 b - 20",
                 C1,
                 15,
             ),
             (
-                "2B2KQ5/5R3P2/L06LN4/57/57/2L06L02/57/3L06L01/6L05/3p8/L04p1pp3/2n1rqk3b1 b - 17",
+                "2n1rqk3b1/_.4p1pp3/3p8/6_.5/3_.6_.1/12/2_.6_.2/12/12/_.6_N4/5R3P2/2B2KQ5 b - 17",
                 F12,
                 7,
             ),
@@ -822,7 +814,7 @@ pub mod position_tests {
     fn knight_jumps_move() {
         setup();
         let sfen =
-            "4K1Q4LN/4L07/2L09/57/57/55L01/6P5/9L02/5kL05/L01L09/5p6/57 w - 17";
+            "12/5p6/_.1_.9/5k_.5/9_.2/6P5/10_.1/12/12/2_.9/4_.7/4K1Q4_N w - 17";
         let mut position = P12::new();
         position
             .set_sfen(sfen)
@@ -838,26 +830,26 @@ pub mod position_tests {
 
         let test_cases = [
             (
-                "KQR9/1PPP8/57/57/57/57/57/57/57/57/1ppp8/qkb9 w - 1",
+                "qkb9/1ppp8/12/12/12/12/12/12/12/12/1PPP8/KQR9 w - 1",
                 false,
                 true,
             ),
             (
-                "5QR5/1K55/57/57/57/57/57/57/57/57/57/5k6 b - 1",
+                "5k6/12/12/12/12/12/12/12/12/12/1K10/5QR5 b - 1",
                 true,
                 false,
             ),
             (
-                "2RNBKQBNR2/57/2PPPPPPPP2/57/57/57/57/57/57/2pppppppp2/57/2rnbkqbnr2 b - 1",
+                "2rnbkqbnr2/12/2pppppppp2/12/12/12/12/12/12/2PPPPPPPP2/12/2RNBKQBNR2 b - 1",
                 false,
                 false,
             ),
             (
-                "RR5K4/7L04/QP55/7L04/57/57/57/nbq9/7q4/57/57/56k w - 1",
+                "11k/12/12/7q4/nbq9/12/12/12/7_.4/QP10/7_.4/RR5K4 w - 1",
                 false,
                 false,
             ),
-            ("KQP8/2n8/57/57/57/57/57/k11/57/57/57/57 w - 1", false, true),
+            ("12/12/12/12/k11/12/12/12/12/12/2n8/KQP8 w - 1", false, true),
         ];
 
         let mut pos = P12::new();
@@ -871,7 +863,7 @@ pub mod position_tests {
     #[test]
     fn is_stalemate() {
         setup();
-        let sfen = "57/2r9/K56/3q8/57/57/57/57/56k/57/57/57 b - 1";
+        let sfen = "12/12/12/11k/12/12/12/12/3q8/K11/2r9/12 b - 1";
         let mut pos = P12::new();
         pos.set_sfen(sfen).expect("failed to parse sfen string");
         let res = pos.play("d4", "c4");
@@ -885,22 +877,22 @@ pub mod position_tests {
         setup();
         let cases = [
             (
-                "1K8r1/9rr1/57/57/57/57/57/57/57/k11/57/57 b - 1",
+                "12/12/k11/12/12/12/12/12/12/12/9rr1/1K8r1 b - 1",
                 true,
                 Color::White,
             ),
             (
-                "5RNB4/5K4r1/6B5/57/57/57/57/57/ppppp7/57/57/9k2 w - 1",
+                "9k2/12/12/ppppp7/12/12/12/12/12/6B5/5K4r1/5RNB4 w - 1",
                 false,
                 Color::Black,
             ),
             (
-                "12/57/7k3Q/57/57/KRn9/57/57/57/57/57/57 b - 1",
+                "12/12/12/12/12/12/KRn9/12/12/7k3Q/12/12 b - 1",
                 false,
                 Color::White,
             ),
             (
-                "57/9K2/L06L04/57/57/2L06L02/57/3L05BL01/6LN5/4Qk6/L056/6n5 b - 69",
+                "6n5/_.11/4Qk6/6_N5/3_.5B_.1/12/2_.6_.2/12/12/_.6_.4/9K2/12 b - 69",
                 true,
                 Color::Black,
             ),
@@ -917,7 +909,7 @@ pub mod position_tests {
         setup();
 
         let mut pos = P12::new();
-        pos.set_sfen("57/57/PPPQP4K2/7RR3/57/57/57/4pp6/2kr8/57/57/57 b - 1")
+        pos.set_sfen("12/12/12/2kr8/4pp6/12/12/12/7RR3/PPPQP4K2/12/12 b - 1")
             .expect("failed to parse SFEN string");
         for i in 0..5 {
             assert!(pos.make_move(Move::new(D9, I9)).is_ok());
@@ -936,35 +928,35 @@ pub mod position_tests {
         setup();
 
         let base_sfen =
-            "57/3KRRB5/5PP5/57/57/57/57/qbbn8/57/6k5/57/57 w K2RB2P 1";
+            "12/12/6k5/12/qbbn8/12/12/12/12/5PP5/3KRRB5/12 w K2RB2P 1";
         let test_cases = [
             (
                 D2,
                 E1,
                 false,
                 true,
-                "4K7/4RRB5/5PP5/57/57/57/57/qbbn8/57/6k5/57/57 b K2RB2P 2",
+                "12/12/6k5/12/qbbn8/12/12/12/12/5PP5/4RRB5/4K7 b K2RB2P 2",
             ),
             (
                 E2,
                 E7,
                 false,
                 true,
-                "57/3K1RB5/5PP5/57/57/57/4R7/qbbn8/57/6k5/57/57 b K2RB2P 2",
+                "12/12/6k5/12/qbbn8/4R7/12/12/12/5PP5/3K1RB5/12 b K2RB2P 2",
             ),
             (
                 G2,
                 I4,
                 false,
                 true,
-                "57/3KRR6/5PP5/8B3/57/57/57/qbbn8/57/6k5/57/57 b K2RB2P 2",
+                "12/12/6k5/12/qbbn8/12/12/12/8B3/5PP5/3KRR6/12 b K2RB2P 2",
             ),
             (
                 F2,
                 F1,
                 false,
                 true,
-                "5R6/3KR1B5/5PP5/57/57/57/57/qbbn8/57/6k5/57/57 b K2RB2P 2",
+                "12/12/6k5/12/qbbn8/12/12/12/12/5PP5/3KR1B5/5R6 b K2RB2P 2",
             ),
             (G3, H3, false, false, base_sfen),
         ];
@@ -980,12 +972,12 @@ pub mod position_tests {
 
         let mut pos = P12::new();
         // Leaving the checked king is illegal.
-        pos.set_sfen("57/1K8RR/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
+        pos.set_sfen("12/12/12/12/12/12/r9k1/12/12/12/1K8RR/12 b kr 1")
             .expect("failed to parse SFEN string");
         let move_ = Move::new(A6, A1);
         assert!(pos.make_move(move_).is_err());
 
-        pos.set_sfen("7K4/1RR9/57/57/57/r9k1/57/57/57/57/57/57 b kr 1")
+        pos.set_sfen("12/12/12/12/12/12/r9k1/12/12/12/1RR9/7K4 b kr 1")
             .expect("failed to parse SFEN string");
         let move_ = Move::new(K6, K5);
         assert!(pos.make_move(move_).is_ok());
@@ -995,7 +987,7 @@ pub mod position_tests {
     fn pawn_promoted() {
         setup();
         let mut pos = P12::new();
-        pos.set_sfen("7K4/1L01p1N6/57/5R2B3/1L05L04/9L02/57/5L06/57/7L04/5L04L01/2r2k1n4 b - 28")
+        pos.set_sfen("2r2k1n4/5_.4_.1/7_.4/12/5_.6/12/9_.2/1_.5_.4/5R2B3/12/1_.1p1N6/7K4 b - 28")
             .expect("failed to parse SFEN string");
         let move_ = Move::from_sfen("d2_d1").unwrap();
         assert!(pos.make_move(move_).is_ok());
@@ -1005,7 +997,7 @@ pub mod position_tests {
     fn make_moves() {
         setup();
         let mut pos = P12::new();
-        pos.set_sfen("6K5/57/57/6k5/57/PL055/57/p56/57/57/57/57 w - 1")
+        pos.set_sfen("12/12/12/12/p11/12/P_.10/12/6k5/12/12/6K5 w - 1")
             .expect("err");
         let m = Move::new(G1, G2);
         let m2 = Move::new(G4, G5);
@@ -1021,7 +1013,7 @@ pub mod position_tests {
 
         let mut pos = P12::new();
 
-        pos.set_sfen("2RNBKQBNR2/57/2PPPPPPPP2/57/57/57/57/57/57/2pppppppp2/57/2rnbkqbnr2 b - 1")
+        pos.set_sfen("2rnbkqbnr2/12/2pppppppp2/12/12/12/12/12/12/2PPPPPPPP2/12/2RNBKQBNR2 b - 1")
             .expect("failed to parse SFEN string");
         let filled_squares = [
             (0, 2, PieceType::Rook, Color::White),
@@ -1115,22 +1107,22 @@ pub mod position_tests {
     fn all_legal_moves() {
         setup();
         let cases = [
-            // ("57/7k4/57/5n6/57/57/57/1Q55/57/K56/57/57 b - 1", "f4", 0),
-            // ("57/7k4/57/5n6/57/57/57/2Q9/57/K56/57/57 b - 1", "f4", 8),
+            ("12/7k4/12/5n6/12/12/12/1Q10/12/K11/12/12 b - 1", "f4", 0),
+            ("12/7k4/12/5n6/12/12/12/2Q9/12/K11/12/12 b - 1", "f4", 8),
             (
-                "8K3/3PPPPP4/6p5/8R3/6pp4/57/57/57/8r3/57/8k3/57 w - 1",
+                "12/8k3/12/8r3/12/12/12/6pp4/8R3/6p5/3PPPPP4/8K3 w - 1",
                 "i4",
                 7,
             ),
             (
-                "8K3/3PPPPP4/6p5/55R1/6pp4/57/57/57/8r3/57/8k3/57 w - 1",
+                "12/8k3/12/8r3/12/12/12/6pp4/10R1/6p5/3PPPPP4/8K3 w - 1",
                 "k4",
                 1,
             ),
-            ("1K55/1qq9/57/57/57/57/57/1R55/57/2k9/57/57 w - 1", "b8", 0),
-            ("1K55/q1q9/57/57/57/57/57/1R55/57/2k9/57/57 w - 1", "b8", 0),
+            ("12/12/2k9/12/1R10/12/12/12/12/12/1qq9/1K10 w - 1", "b8", 0),
+            ("12/12/2k9/12/1R10/12/12/12/12/12/q1q9/1K10 w - 1", "b8", 0),
             (
-                "L056/2K3L03P1/1n3q3L02/57/4L07/57/57/L09L01/57/5L01k4/8L03/57 b - 48",
+                "12/8_.3/5_.1k4/12/_.9_.1/12/12/4_.7/12/1n3q3_.2/2K3_.3P1/_.11 b - 48",
                 "b3",
                 6,
             ),
@@ -1154,7 +1146,7 @@ pub mod position_tests {
             (Color::White, 6, [D1, E1, F1, G1, H1, I1]),
         ];
         for case in cases {
-            let bb = position_set.king_squares::<6>(&case.0);
+            let bb = position_set.king_squares(&case.0);
             assert_eq!(bb.len(), case.1);
             for sq in case.2 {
                 assert!((bb & &sq).is_any());
@@ -1167,7 +1159,7 @@ pub mod position_tests {
         setup();
         let mut position_set = P12::default();
         position_set
-            .parse_sfen_board("6K5/57/57/57/57/57/57/57/57/57/57/7k4")
+            .parse_sfen_board("7k4/12/12/12/12/12/12/12/12/12/12/6K5")
             .expect("error while parsing sfen");
         position_set.set_hand("rrRqNqq");
         let cases = [
@@ -1197,7 +1189,7 @@ pub mod position_tests {
         setup();
         let mut position_set = P12::default();
         position_set
-            .set_sfen("7L04/57/57/57/57/57/57/57/57/57/57/57 w K 1")
+            .set_sfen("12/12/12/12/12/12/12/12/12/12/12/7_.4 w K 1")
             .expect("error");
         let cases = [(A1, 0), (B3, 0), (H1, 0), (G1, 1)];
         for case in cases {
@@ -1222,7 +1214,7 @@ pub mod position_tests {
     fn flip_empty_side() {
         setup();
         let mut position = P12::default();
-        position.set_sfen("6K5/57/57/L01L05L03/6L05/57/57/57/57/4L02L01L02/2L09/57 b krqpR2N3BQ 1").expect("sfen has wrong data");
+        position.set_sfen("12/2_.9/4_.2_.1_.2/12/12/12/12/6_.5/_.1_.5_.3/12/12/6K5 b krqpR2N3BQ 1").expect("sfen has wrong data");
         let moves = [
             (Color::Black, PieceType::King, H12),
             (Color::White, PieceType::Queen, A1),
@@ -1250,7 +1242,7 @@ pub mod position_tests {
         let mut position_set = P12::default();
         position_set
             .parse_sfen_board(
-                "5KRRR3/4PPPP4/57/5L06/57/57/57/57/57/57/57/L04kqqLn3",
+                "_.4kqq_n3/12/12/12/12/12/12/12/5_.6/12/4PPPP4/5KRRR3",
             )
             .expect("error while parsing sfen");
         position_set.set_hand("NrNNbrn");
@@ -1263,7 +1255,7 @@ pub mod position_tests {
                 piece_type: case.0,
                 color: case.1,
             });
-            assert_eq!(file.len(), case.2);
+            assert_eq!(file.unwrap_or_default().len(), case.2);
         }
         assert_eq!(position_set.get_hand(Color::Black, true), "rrbn");
     }
@@ -1271,7 +1263,7 @@ pub mod position_tests {
     #[test]
     fn place_in_check() {
         setup();
-        let black_fen = "5KQ2L02/9L02/57/57/3L08/5L06/2L09/2L09/8L03/57/9L02/6k5 b qrn2pN2P 3";
+        let black_fen = "6k5/9_.2/12/8_.3/2_.9/2_.9/5_.6/3_.8/12/12/9_.2/5KQ2_.2 b qrn2pN2P 3";
         let cases = [PieceType::Queen, PieceType::Pawn];
         for case in cases {
             let mut position_set = P12::default();
@@ -1295,14 +1287,19 @@ pub mod position_tests {
         setup();
         let cases = [
             (
-                "5K1Q4/L056/5L05L0/57/57/7L04/57/2L09/57/8L03/4L02L04/7k4 b q2rb4n3pQ2R3BN3P 3",
+                "7k4/4_.2_.4/8_.3/12/2_.9/12/7_.4/12/12/5_.5_./_.11/5K1Q4 b q2rb4n3pQ2R3BN3P 3",
                 11,
                 Color::Black,
             ),
             (
-                "4LN2K4/5L06/9L02/57/55L01/57/57/57/1L01L02L05/57/57/6kq3L0 w rnQNRBP 4",
-                2,
+                "6kq3_./12/12/1_.1_.2_.5/12/12/12/10_.1/12/9_.2/5_.6/4_N2K4 w rnQNRBP 4",
+                1,
                 Color::White,
+            ),
+            (
+                "6qk3_./12/12/1_.1_.2_.5/12/12/12/10_.1/12/9_.2/5_.6/4_N2RK3 b rnQNRBP 4",
+                1,
+                Color::Black,
             ),
         ];
         for case in cases {
@@ -1314,7 +1311,7 @@ pub mod position_tests {
                 piece_type: PieceType::Knight,
                 color: case.2,
             });
-            assert_eq!(file.len(), case.1);
+            assert_eq!(file.unwrap_or_default().len(), case.1);
         }
     }
 
@@ -1323,11 +1320,11 @@ pub mod position_tests {
         setup();
         let cases = [
             (
-                "7K2Q1/2C1L01N5/6c5/1L05L04/57/8La3/57/4L07/56L0/57/1L09L0/3k8 w - 1",
+                "3k8/1_.9_./12/11_./4_.7/12/8_a3/12/1_.5_.4/6c5/2C1_.1N5/7K2Q1 w - 1",
                 Color::White,
             ),
             (
-                "55Q1/2C1L01NK4/6c5/1L05L01a2/57/8L03/57/4L07/56L0/57/1L09L0/3k8 w - 1",
+                "3k8/1_.9_./12/11_./4_.7/12/8_.3/12/1_.5_.1a2/6c5/2C1_.1NK4/10Q1 w - 1",
                 Color::White,
             ),
         ];
@@ -1344,7 +1341,7 @@ pub mod position_tests {
     fn is_piece_pinned_by_fairy2() {
         setup();
         let cases = [(
-            "4C1K3Q1/4L01N5/57/1L05L04/6c5/8L03/57/4L07/56L0/57/1L09L0/2a1k7 w - 9",
+            "2a1k7/1_.9_./12/11_./4_.7/12/8_.3/6c5/1_.5_.4/12/4_.1N5/4C1K3Q1 w - 9",
             0,
         )];
         for case in cases {
@@ -1377,7 +1374,7 @@ pub mod position_tests {
             ("k", [0, 0, 0], [0, 0, 0], [870, 870]),
         ];
         for case in cases {
-            let mut shop = Shop::<Square12>::default();
+            let mut shop = Selection::<Square12>::default();
             shop.update_variant(Variant::ShuuroFairy);
             shop.set_hand(case.0);
 
@@ -1433,7 +1430,7 @@ pub mod position_tests {
     fn check_in_fairy_deploy() {
         setup();
         let cases = [(
-            "4C1K5/4L07/57/1L05L04/57/8L03/57/4L07/56L0/57/1L09L0/4k1c5 w aQN 4",
+            "4k1c5/1_.9_./12/11_./4_.7/12/8_.3/12/1_.5_.4/12/4_.7/4C1K5 w aQN 4",
             Color::White,
             G1,
             true,
@@ -1452,18 +1449,18 @@ pub mod position_tests {
     fn deploy_fairy_on_plinth() {
         setup();
         let fen =
-            "3KL0L0L0L0L0L0L0R/57/57/57/57/57/57/57/57/57/57/5k6 w 3C2P 4";
+            "5k6/12/12/12/12/12/12/12/12/12/12/3K_._._._._._._.R w 3C2P 4";
         let mut position = P12::default();
         position.update_variant(Variant::ShuuroFairy);
         position.set_sfen(fen).expect("error while parsing sfen");
         let moves = position.empty_squares(Piece::from_sfen('C').unwrap());
-        assert_eq!(moves.len(), 10);
+        assert_eq!(moves.unwrap_or_default().len(), 10);
     }
 
     #[test]
     fn is_fairy_mate() {
         setup();
-        let cases = ["2LN3KQ4/L09L01/57/8L03/57/57/5L03AL01/2A3L05/1L055/3n2a5/2p9/3cqkC5 b - 24"];
+        let cases = ["3cqkC5/2p9/3n2a5/1_.10/2A3_.5/5_.3A_.1/12/12/8_.3/12/_.9_.1/2_N3KQ4 b - 24"];
         for case in cases {
             let mut position = P12::default();
             position.update_variant(Variant::ShuuroFairy);
@@ -1475,7 +1472,7 @@ pub mod position_tests {
     #[test]
     fn make_fairy_mate() {
         setup();
-        let cases = ["2LN3KQ4/L09L01/57/8L03/57/57/5L03AL01/2A3L05/1L055/3n2aC4/2p9/3cqk6 w - 24"];
+        let cases = ["3cqk6/2p9/3n2aC4/1_.10/2A3_.5/5_.3A_.1/12/12/8_.3/12/_.9_.1/2_N3KQ4 w - 24"];
         for case in cases {
             let mut position = P12::default();
             position.update_variant(Variant::ShuuroFairy);
@@ -1497,12 +1494,12 @@ pub mod position_tests {
         setup();
         let cases = [
             (
-                "G55K/57/57/57/57/57/57/57/57/57/57/1r1k8 w - 1",
+                "1r1k8/12/12/12/12/12/12/12/12/12/12/G10K w - 1",
                 &A1,
                 vec![&B5, &E2],
             ),
             (
-                "5L01L04/1K55/57/2L07L01/6g5/55L01/57/57/7L04/57/5k6/57 b - 1",
+                "12/5k6/12/7_.4/12/12/10_.1/6g5/2_.7_.1/12/1K10/5_.1_.4 b - 1",
                 &G5,
                 vec![&F9, &H9, &C6, &K6, &C4, &K4, &F1, &H1],
             ),
@@ -1526,8 +1523,8 @@ pub mod position_tests {
     fn detect_insufficient_material() {
         setup();
         let cases = [
-            "57/57/2K9/4L0N6/7L04/3L07L0/9L02/7L04/57/57/5L0p5/Ln4k6 b - 34",
-            "6GKGGG1/57/57/57/1L09L0/3L03L04/57/1L055/8L03/2L09/57/4ggLggk3 - b 1"];
+            "_n4k6/5_.p5/12/12/7_.4/9_.2/3_.7_./7_.4/4_.N6/2K9/12/12 b - 34",
+            "4gg_ggk3/12/2_.9/8_.3/1_.10/12/3_.3_.4/1_.9_./12/12/12/6GKGGG1 - b 1"];
         for case in cases {
             let mut position = P12::default();
             position.set_sfen(case).ok();
@@ -1539,20 +1536,19 @@ pub mod position_tests {
     fn bishop_placement_check() {
         setup();
         let cases = [
-           "4B2K2L01/1L055/7L04/57/57/1L055/6L05/L056/3L02L05/57/57/4k7 b qrbQRB 3" 
+           "4k7/12/12/3_.2_.5/_.11/6_.5/1_.10/12/12/7_.4/1_.10/4B2K2_.1 b qrbQRB 3" 
         ];
         for case in cases {
             let mut position = P12::default();
             position.set_sfen(case).ok();
             let lm = position.empty_squares(Piece::from_sfen('q').unwrap());
-            assert!(lm.len() == 11);
+            assert!(lm.unwrap_or_default().len() == 11);
         }
     }
 
     #[test]
     fn generate_sfen() {
         setup();
-        // let fen = "9L0"
         for _ in 0..10 {
             let mut position = P12::default();
             position.generate_plinths();

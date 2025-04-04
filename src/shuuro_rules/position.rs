@@ -1,56 +1,11 @@
-use std::{
-    clone::Clone, cmp::Ordering, collections::HashMap, hash::Hash,
-    marker::PhantomData,
-};
-
-use itertools::Itertools;
+use std::{clone::Clone, collections::HashMap, hash::Hash};
 
 use crate::{
     attacks::Attacks, bitboard::BitBoard, Color, Hand, Move, MoveData,
     MoveError, Piece, PieceType, SfenError, Square, Variant,
 };
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Checks<S, B>
-where
-    S: Square + Hash,
-    B: BitBoard<S>,
-    Self: Sized,
-{
-    pub check: Option<B>,
-    pub double_check: bool,
-    pub enemy_moves: Option<B>,
-    _0: PhantomData<S>,
-}
-
-impl<S, B> Checks<S, B>
-where
-    S: Square + Hash,
-    B: BitBoard<S>,
-    Self: Sized,
-{
-    fn add_enemy_moves(self, enemy_moves: B) -> Option<Self> {
-        Some(Self {
-            check: self.check,
-            double_check: self.double_check,
-            enemy_moves: Some(enemy_moves),
-            _0: self._0,
-        })
-    }
-
-    fn new(
-        check: Option<B>,
-        double_check: bool,
-        enemy_moves: Option<B>,
-    ) -> Self {
-        Self {
-            check,
-            double_check,
-            enemy_moves,
-            _0: PhantomData,
-        }
-    }
-}
+use super::piece_type::PieceTypeIter;
 
 /// Outcome stores information about outcome after move.
 #[derive(Debug, Clone, PartialEq)]
@@ -58,7 +13,6 @@ pub enum Outcome {
     Check { color: Color },
     Checkmate { color: Color },
     Draw,
-    Nothing,
     DrawByRepetition,
     DrawByMaterial,
     Stalemate,
@@ -74,7 +28,6 @@ impl ToString for Outcome {
                 format!("Checkmate_{}", color.to_string())
             }
             Outcome::Draw => "Draw".to_string(),
-            Outcome::Nothing => "Live".to_string(),
             Outcome::DrawByRepetition => "RepetitionDraw".to_string(),
             Outcome::DrawByMaterial => "MaterialDraw".to_string(),
             Outcome::Stalemate => "Stalemate".to_string(),
@@ -90,7 +43,6 @@ impl Into<i32> for Outcome {
         match self {
             Outcome::MoveNotOk => -2,
             Outcome::MoveOk => -1,
-            Outcome::Nothing => -1,
             Outcome::Check { color: _ } => -1,
             Outcome::Checkmate { color: _ } => 1,
             Outcome::Stalemate => 3,
@@ -232,7 +184,7 @@ where
             return self.generate_sfen();
         }
         if move_history.is_empty() {
-            format!("{} {}", sfen_history.first().unwrap(), ply);
+            return format!("{} {}", sfen_history.first().unwrap(), ply);
         }
         format!(
             "{} {}",
@@ -245,7 +197,7 @@ where
     fn generate_sfen(&self) -> String {
         let dimension = self.dimensions();
         let mut fen = String::new();
-        for rank in 0..dimension {
+        for rank in (0..dimension).rev() {
             let mut row_item = String::from("");
             let mut space = 0;
             for file in 0..dimension {
@@ -256,7 +208,7 @@ where
                         space = 0;
                         if piece.piece_type.is_knight_piece() {
                             if (self.player_bb(Color::NoColor) & &sq).is_any() {
-                                row_item.push('L');
+                                row_item.push('_');
                                 space = 0;
                             }
                         } else {
@@ -268,7 +220,7 @@ where
                         if (self.player_bb(Color::NoColor) & &sq).is_any() {
                             row_item = self.add_space(space, row_item);
                             space = 0;
-                            row_item.push_str("L0");
+                            row_item.push_str("_.");
                         } else {
                             space += 1;
                         }
@@ -277,7 +229,7 @@ where
             }
             row_item = self.add_space(space, row_item);
             fen.push_str(&row_item);
-            if rank < dimension - 1 {
+            if rank < dimension && rank > 0 {
                 fen.push('/');
             }
         }
@@ -299,13 +251,14 @@ where
     }
 
     fn add_space(&self, n: u8, mut s: String) -> String {
-        match n {
-            10 => s.push_str("55"),
-            11 => s.push_str("56"),
-            12 => s.push_str("57"),
-            0 => (),
-            _ => s.push_str(&n.to_string()),
-        }
+        let space = {
+            if n == 0 {
+                ""
+            } else {
+                &n.to_string()
+            }
+        };
+        s.push_str(space);
         s
     }
 
@@ -329,70 +282,96 @@ where
         Ok(())
     }
 
+    fn parse_space(
+        &mut self,
+        number: &mut String,
+        mut current_file: u8,
+        rank: u8,
+    ) -> Result<u8, SfenError> {
+        if number == "" {
+            return Ok(current_file);
+        }
+        let n = number.parse::<u8>()?;
+        if n != 0 {
+            for _ in 0..n {
+                if current_file >= self.dimensions() {
+                    return Err(SfenError::UnknownFile);
+                }
+                let sq = S::new(current_file, rank as u8)
+                    .ok_or(SfenError::IllegalBoardState)?;
+
+                self.set_piece(sq, None);
+                current_file += 1;
+            }
+        }
+        number.clear();
+        number.push('0');
+        Ok(current_file)
+    }
+
     fn parse_sfen_board(&mut self, fen: &str) -> Result<(), SfenError> {
         let ranks = fen.split('/');
         let dimension = self.dimensions();
+        let mut rank = dimension;
         self.empty_all_bb();
-        for (rank, file) in ranks.enumerate() {
-            if rank >= dimension as usize {
+        for file in ranks {
+            rank -= 1;
+            if rank >= dimension {
                 return Err(SfenError::IllegalBoardState);
             }
             let mut current_file = 0;
+            let mut current_number = String::new();
             let mut is_plinth = false;
-
             for ch in file.chars() {
                 match ch {
-                    n if n.is_numeric() => {
-                        if let Some(n) = n.to_digit(10) {
-                            if n != 0 {
-                                for _ in 0..n {
-                                    if current_file >= dimension {
-                                        return Err(
-                                            SfenError::IllegalBoardState,
-                                        );
-                                    }
-                                    let sq = S::new(current_file, rank as u8)
-                                        .unwrap();
+                    number if number.is_numeric() => {
+                        current_number.push(number);
+                        let n = current_number.parse::<u8>()?;
 
-                                    self.set_piece(sq, None);
-                                    current_file += 1;
-                                }
-                            } else if n == 0 {
-                                if is_plinth {
-                                    is_plinth = false;
-                                    let sq = S::new(current_file, rank as u8)
-                                        .unwrap();
-                                    self.set_piece(sq, None);
-                                    current_file += 1;
-                                } else {
-                                    return Err(SfenError::IllegalBoardState);
-                                }
-                            }
-                            //
+                        if n > dimension {
+                            return Err(SfenError::UnknownFile);
                         }
                     }
-                    s => {
-                        if let Some(piece) = Piece::from_sfen(s) {
-                            if current_file >= dimension {
-                                return Err(SfenError::IllegalBoardState);
+
+                    _ if ch == '.' => {
+                        if !is_plinth {
+                            return Err(SfenError::IllegalBoardState);
+                        }
+                        is_plinth = false;
+                        current_file += 1;
+                    }
+
+                    piece => {
+                        let piece = Piece::from_sfen(piece)
+                            .ok_or(SfenError::IllegalPieceType)?;
+                        if current_file > dimension {
+                            return Err(SfenError::UnknownFile);
+                        }
+                        current_file = self.parse_space(
+                            &mut current_number,
+                            current_file,
+                            rank,
+                        )?;
+                        let sq = S::new(current_file, rank as u8)
+                            .ok_or(SfenError::IllegalBoardState)?;
+                        match piece.piece_type {
+                            PieceType::Plinth => {
+                                self.update_player(piece, &sq);
+                                is_plinth = true;
                             }
-                            let sq = S::new(current_file, rank as u8).unwrap();
-                            match piece.piece_type {
-                                PieceType::Plinth => {
-                                    self.update_player(piece, &sq);
-                                    is_plinth = true;
-                                    continue;
-                                }
-                                _ => {
-                                    self.sfen_to_bb(piece, &sq);
-                                    current_file += 1;
-                                }
+                            _ => {
+                                self.update_player(piece, &sq);
+                                current_file += 1;
                             }
-                        } else {
-                            return Err(SfenError::IllegalPieceType);
                         }
                     }
                 }
+            }
+
+            current_file =
+                self.parse_space(&mut current_number, current_file, rank)?;
+            if current_file > self.dimensions() {
+                return Err(SfenError::UnknownFile);
             }
         }
         Ok(())
@@ -410,12 +389,10 @@ where
     }
 
     /// Saves position in sfen_history.
-    fn log_position(&mut self) {
-        let mut sfen = self.generate_sfen().split(' ').take(3).join(" ");
+    fn save_position(&mut self) {
+        let mut sfen = self.generate_sfen();
         let move_history = self.move_history();
         if let Some(last) = move_history.last() {
-            sfen.push_str(format!(" {} ", self.ply()).as_str());
-            sfen.push_str(&last.to_string());
             sfen.push_str(&format!(" {}", &last.format()));
         }
         self.update_last_move(&sfen);
@@ -438,6 +415,13 @@ where
     }
 }
 
+pub enum PlacementError {
+    NoKing,
+    KingNotPlaced,
+    FairyPieceError,
+    EarlyPawnPlacement,
+}
+
 pub trait Placement<S, B, A>
 where
     S: Square + Hash,
@@ -449,18 +433,6 @@ where
 
     /// Generate random plinths.
     fn generate_plinths(&mut self);
-
-    /// BitBoard with all available squares for white.
-    fn white_placement_attacked_ranks(&self) -> B;
-
-    /// BitBoard with all available squares for black.
-    fn black_placement_attacked_ranks(&self) -> B;
-
-    /// All ranks for black. White rank is 0,1,2.
-    fn black_ranks(&self) -> [usize; 3];
-
-    /// Returns array of files where king can be placed.
-    fn king_files<const K: usize>(&self) -> [&str; K];
 
     /// Returns BitBoard with file. Panics if file is bigger than expected.
     fn rank_bb(&self, file: usize) -> B;
@@ -474,90 +446,116 @@ where
         false
     }
 
+    /// Returns BitBoard with king placement.
+    fn king_files(&self, c: &Color) -> B;
+
     /// Returns BitBoard with all empty squares.
-    fn king_squares<const K: usize>(&self, c: &Color) -> B {
-        let files: [&str; K] = self.king_files();
-        let mut bb = B::empty();
+    fn king_squares(&self, c: &Color) -> B {
+        let files = self.king_files(c);
         let plinths = self.player_bb(Color::NoColor);
-        let mut all = |num: usize| -> B {
-            for file in files {
-                bb |= &S::from_sfen(&format!("{file}{num}")[..]).unwrap();
-            }
-            bb &= &!plinths;
-            bb
-        };
-        match *c {
-            Color::Black => all(self.dimensions() as usize),
-            Color::White => all(1),
-            Color::NoColor => B::empty(),
-        }
+        files & &!plinths
     }
 
     fn can_pawn_move(&self, p: Piece) -> bool {
         self.is_hand_empty(p.color, PieceType::Pawn)
     }
 
-    fn empty_squares(&self, p: Piece) -> B {
-        let calc = |p: Piece, ranks: [usize; 3]| -> B {
-            for rank in ranks {
-                let mut bb = self.rank_bb(rank);
-                bb &= &!self.player_bb(p.color);
-                let plinths = self.player_bb(Color::NoColor);
-                if bb.is_empty() {
-                    continue;
-                }
-                match p.piece_type {
-                    PieceType::Knight
-                    | PieceType::Chancellor
-                    | PieceType::ArchBishop
-                    | PieceType::Giraffe => {
-                        return bb;
-                    }
-                    PieceType::King => {
-                        return self.king_squares::<6>(&p.color);
-                    }
-                    PieceType::Pawn => {
-                        bb &= &!plinths;
-                        if bb.is_empty() {
-                            continue;
-                        } else if self.can_pawn_move(p) {
-                            if rank == 0 || rank == self.black_ranks()[0] {
-                                continue;
-                            }
-                            return bb;
-                        } else {
-                            return B::empty();
-                        }
-                    }
-                    _ => {
-                        bb &= &!plinths;
-                        if bb.is_empty() {
-                            continue;
-                        }
-                        return bb;
-                    }
-                }
+    /// All squares for current `Color`.
+    fn placement_squares(&self, color: Color) -> HashMap<usize, B> {
+        let mut placement = HashMap::new();
+        let pieces = PieceTypeIter::default();
+
+        for pt in pieces {
+            let bb = self.empty_squares(Piece {
+                piece_type: pt,
+                color,
+            });
+            if let Ok(bb) = bb {
+                placement.insert(pt as usize, bb);
             }
-            B::empty()
+        }
+        placement
+    }
+
+    fn empty_squares(&self, p: Piece) -> Result<B, PlacementError> {
+        let color = &p.color;
+        if color == &Color::NoColor {
+            return Err(PlacementError::NoKing);
+        }
+        let delta = {
+            if color == &Color::White {
+                1
+            } else {
+                -1
+            }
         };
+        let mut rank = {
+            if color == &Color::White {
+                -1
+            } else {
+                self.dimensions() as i8
+            }
+        };
+        let me = self.player_bb(*color);
+        let plinths = self.player_bb(Color::NoColor);
+
         let checks = self.checks(&p.color);
         if checks.is_any() {
-            return checks;
+            return Ok(checks);
         } else if !self.is_king_placed(p.color)
             && p.piece_type != PieceType::King
         {
-            return B::empty();
+            return Err(PlacementError::KingNotPlaced);
         }
-        match p.color {
-            Color::White => calc(p, [0, 1, 2]),
-            Color::Black => calc(p, self.black_ranks()),
-            Color::NoColor => B::empty(),
+
+        loop {
+            rank += delta;
+            let mut bb = self.rank_bb(rank as usize);
+            bb &= &!me;
+            if bb.is_empty() {
+                continue;
+            }
+
+            match p.piece_type {
+                PieceType::Knight
+                | PieceType::Chancellor
+                | PieceType::ArchBishop
+                | PieceType::Giraffe => {
+                    if !self.variant().can_select(&p.piece_type) {
+                        return Err(PlacementError::FairyPieceError);
+                    }
+
+                    return Ok(bb);
+                }
+                PieceType::King => {
+                    return Ok(self.king_squares(&p.color));
+                }
+                PieceType::Pawn => {
+                    bb &= &!plinths;
+                    if bb.is_empty() {
+                        continue;
+                    } else if self.can_pawn_move(p) {
+                        if rank == 0 || rank == self.dimensions() as i8 - 1 {
+                            continue;
+                        }
+                        return Ok(bb);
+                    } else {
+                        return Err(PlacementError::EarlyPawnPlacement);
+                    }
+                }
+                _ => {
+                    bb &= &!plinths;
+                    if bb.is_empty() {
+                        continue;
+                    }
+                    return Ok(bb);
+                }
+            }
         }
     }
 
-    fn checks(&self, attacked_color: &Color) -> B {
-        let king =
-            self.type_bb(&PieceType::King) & &self.player_bb(*attacked_color);
+    fn checks(&self, me: &Color) -> B {
+        let king = self.type_bb(&PieceType::King) & &self.player_bb(*me);
         if king.is_empty() {
             return B::empty();
         }
@@ -575,7 +573,7 @@ where
                 PieceType::Bishop,
                 PieceType::ArchBishop,
             ] {
-                if !self.variant().can_buy(&p) {
+                if !self.variant().can_select(&p) {
                     continue;
                 }
                 if pt == PieceType::Rook && !p.is_rook_type() {
@@ -585,20 +583,18 @@ where
                     continue;
                 }
 
-                let them =
-                    self.type_bb(&p) & &self.player_bb(attacked_color.flip());
+                let mut them = self.type_bb(&p) & &self.player_bb(me.flip());
 
                 if (them & &king_attacks).is_any() {
-                    match *attacked_color {
+                    let mut between = A::between(king_sq, them.pop().unwrap());
+                    match *me {
                         Color::White => {
-                            let ranks = self.white_placement_attacked_ranks();
-                            let attacks = (ranks & &king_attacks) & &!king;
-                            return attacks;
+                            let sq = between.pop().unwrap();
+                            return B::from_square(&sq);
                         }
                         Color::Black => {
-                            let ranks = self.black_placement_attacked_ranks();
-                            let attacks = (ranks & &king_attacks) & &!king;
-                            return attacks;
+                            let sq = between.pop_reverse().unwrap();
+                            return B::from_square(&sq);
                         }
                         Color::NoColor => {
                             return B::empty();
@@ -615,7 +611,9 @@ where
     fn place(&mut self, p: Piece, sq: S) -> Option<String> {
         if p.color != self.side_to_move() {
             return None;
-        } else if self.hand(p) > 0 && (self.empty_squares(p) & &sq).is_any() {
+        } else if self.hand(p) > 0
+            && (self.empty_squares(p).unwrap_or_default() & &sq).is_any()
+        {
             self.update_bb(p, sq);
             self.decrement_hand(p);
             let move_record = Move::Put {
@@ -642,12 +640,12 @@ where
                 self.update_side_to_move(p.color.flip());
             }
             let record = format!(
-                "{}_{}_{}_{}_{}",
-                &move_record.to_string(),
+                "{} {} {} {} {}",
                 &sfen,
-                hand,
                 self.side_to_move().to_string(),
-                ply
+                hand,
+                ply,
+                &move_record.to_string(),
             );
             self.update_last_move(&record);
             // self.insert_sfen(&record);
@@ -670,18 +668,9 @@ where
 
     /// Create move from `&str`.
     fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError> {
-        let from = match S::from_sfen(from) {
-            Some(i) => i,
-            None => {
-                return Err(SfenError::IllegalPieceFound);
-            }
-        };
-        let to = match S::from_sfen(to) {
-            Some(i) => i,
-            None => {
-                return Err(SfenError::IllegalPieceFound);
-            }
-        };
+        let from = S::from_sfen(from).ok_or(SfenError::IllegalPieceFound)?;
+        let to = S::from_sfen(to).ok_or(SfenError::IllegalPieceFound)?;
+
         let m = Move::new(from, to);
         let outcome = self.make_move(m);
         match outcome {
@@ -799,28 +788,65 @@ where
         Err(MoveError::DrawByInsufficientMaterial)
     }
 
+    fn check_moves(&self, me: Color) -> Result<B, ()> {
+        let king = self.player_bb(me) & &self.type_bb(&PieceType::King);
+        if king.is_empty() {
+            return Err(());
+        }
+
+        let king_sq = &king.clone().pop().unwrap();
+
+        let pieces = PieceTypeIter::default();
+        let with_plinths = self.occupied_bb() | &self.player_bb(Color::NoColor);
+        let mut checkers = B::empty();
+        for pt in pieces {
+            if !self.variant().can_select(&pt) {
+                continue;
+            }
+
+            let moves = self.get_moves(
+                king_sq,
+                &Piece {
+                    piece_type: pt,
+                    color: me,
+                },
+                with_plinths,
+            );
+            let them = self.type_bb(&pt) & &self.player_bb(me.flip());
+            let them = moves & &them;
+            checkers |= &them;
+        }
+        Ok(checkers)
+    }
+
+    // fn my_moves(&self, me: Color) {
+    //     for sq in self.player_bb(me) {}
+    // }
+
     /// Returns all legal moves where piece can be moved.
-    fn legal_moves(&self, color: &Color) -> HashMap<S, B> {
+    fn legal_moves(&self, my_color: &Color) -> HashMap<S, B> {
         let mut map = HashMap::new();
-        let pinned_moves = self.pins(color);
-        let check_moves = self.check_moves(*color);
-        let enemy_moves = self.enemy_moves(color);
-        let move_task = check_moves.add_enemy_moves(enemy_moves).unwrap();
-        let king = self.find_king(color).unwrap();
-        for sq in self.player_bb(*color) {
-            let my_moves = self.non_legal_moves(&sq);
-            if check_moves.check.is_some() {
-                if king == sq {
-                    map.insert(king, my_moves & &!enemy_moves);
-                } else {
-                    let moves =
-                        self.fix_pin(&sq, &pinned_moves, move_task, my_moves);
-                    map.insert(sq, moves);
-                }
+        let checkers = self.check_moves(*my_color).expect("no king");
+        let enemy_moves = self.enemy_moves(my_color);
+        let king = self.find_king(my_color).expect("no king");
+        if checkers.len() > 1 {
+            let king_moves =
+                self.non_legal_moves(&king).expect("piece not found");
+            map.insert(king, king_moves & &!enemy_moves);
+            return map;
+        }
+        let pinned_moves = self.pins(my_color);
+        for sq in self.player_bb(*my_color) {
+            let my_moves = self.non_legal_moves(&sq).expect("piece not found");
+            if king == sq {
+                map.insert(king, my_moves & &!enemy_moves);
             } else {
-                let moves =
-                    self.fix_pin(&sq, &pinned_moves, move_task, my_moves);
-                map.insert(sq, moves);
+                let _ = self
+                    .unpin(&sq, &pinned_moves, my_moves, checkers)
+                    .is_some_and(|b| {
+                        map.insert(sq, b);
+                        true
+                    });
             }
         }
         map
@@ -843,78 +869,35 @@ where
         all
     }
 
-    // /// Returns  `BitBoard` of all moves after fixing pin.
-    // fn fix_pin(
-    //     &self,
-    //     sq: &S,
-    //     pins: &HashMap<S, B>,
-    //     checks: &Vec<B>,
-    //     my_moves: B,
-    // ) -> B {
-    //     let piece = self.piece_at(*sq).unwrap();
-    //     if let Some(pin) = pins.get(sq) {
-    //         match (1).cmp(&checks.len()) {
-    //             Ordering::Equal => {
-    //                 let checks = checks.get(0).unwrap();
-    //                 &(checks & pin) & &my_moves
-    //             }
-    //             Ordering::Greater => pin & &my_moves,
-    //             Ordering::Less => B::empty(),
-    //         }
-    //     } else {
-    //         let mut my_moves = my_moves;
-    //         let enemy_moves = self.enemy_moves(&piece.color);
-    //         if piece.piece_type == PieceType::King {
-    //             my_moves = my_moves & &!enemy_moves;
-    //             return my_moves;
-    //         } else if checks.len() > 1 {
-    //             return B::empty();
-    //         }
-    //         for bb in checks.iter() {
-    //             my_moves &= bb;
-    //         }
-    //         my_moves
-    //     }
-    // }
-
     /// Returns `BitBoard` of all moves by opponent.
-    fn enemy_moves(&self, color: &Color) -> B {
-        match color {
-            Color::Black | Color::White => {
-                let mut all = B::empty();
-                let enemy = color.flip();
-                let blockers =
-                    self.occupied_bb() | &self.player_bb(Color::NoColor);
-                let king = self.find_king(color).unwrap();
-                let blockers = blockers ^ &B::from_square(&king);
-                for sq in self.player_bb(enemy).into_iter() {
-                    let piece = self.piece_at(sq);
-                    if let Some(piece) = piece {
-                        if piece.piece_type == PieceType::Pawn {
-                            let moves =
-                                self.get_moves(&sq, piece, blockers | &king);
-                            all |= &moves;
-                        }
-                        let moves = self.get_moves(&sq, piece, blockers);
-                        all |= &moves;
-                    }
-                }
-                all &= &!self.player_bb(Color::NoColor);
-                all
-            }
-            Color::NoColor => B::empty(),
+    fn enemy_moves(&self, me: &Color) -> B {
+        if me == &Color::NoColor {
+            return B::empty();
         }
+        let mut all = B::empty();
+        let them = me.flip();
+        let blockers = self.occupied_bb() | &self.player_bb(Color::NoColor);
+        let king = self.find_king(me).unwrap();
+        let blockers = blockers ^ &B::from_square(&king);
+        for sq in self.player_bb(them).into_iter() {
+            let piece = self.piece_at(sq);
+            if let Some(piece) = piece {
+                let moves = self.get_moves(&sq, piece, blockers);
+                all |= &moves;
+            }
+        }
+        all &= &!self.player_bb(Color::NoColor);
+        all
     }
     /// Returns all non-legal moves.
-    fn non_legal_moves(&self, square: &S) -> B {
-        let piece = self.piece_at(*square);
-        match piece {
-            Some(i) => self.move_candidates(square, *i, MoveType::Plinth),
-            None => B::empty(),
-        }
+    fn non_legal_moves(&self, square: &S) -> Option<B> {
+        let Some(piece) = self.piece_at(*square) else {
+            return None;
+        };
+        Some(self.move_candidates(square, *piece, MoveType::Plinth))
     }
 
-    /// Returns `Pin` struct, who has unpin `BitBoard`(if pin exists).
+    /// Returns HashMap of all pinned pieces.
     fn pinned_moves(&self, color: Color) -> HashMap<S, B> {
         let mut pins = HashMap::new();
         if color == Color::NoColor {
@@ -936,23 +919,23 @@ where
         ]
         .iter()
         {
-            if !self.variant().can_buy(s) {
+            if !self.variant().can_select(s) {
                 continue;
             }
-            let piece_attacks = A::get_sliding_attacks(*s, &ksq, plinths);
+            let as_king_attacks = A::get_sliding_attacks(*s, &ksq, plinths);
             // this is enemy
             let enemy_bb = (self.type_bb(s) & &self.player_bb(color.flip()))
-                & &piece_attacks;
-            for psq in enemy_bb {
+                & &as_king_attacks;
+            for enemy in enemy_bb {
                 // this piece is pinned
-                let mut pinned = (A::between(ksq, psq) & &self.occupied_bb())
+                let mut pinned = (A::between(ksq, enemy) & &self.occupied_bb())
                     & &!self.player_bb(Color::NoColor);
                 // this is unpin
                 let my_piece = pinned & &self.player_bb(color);
                 if pinned.len() == 1 && my_piece.is_any() {
-                    let fix = (A::between(psq, ksq) & &!pinned) | &enemy_bb;
+                    let unpin = (A::between(enemy, ksq) & &!pinned) | &enemy_bb;
                     let my_square = pinned.pop_reverse();
-                    pins.insert(my_square.unwrap(), fix);
+                    pins.insert(my_square.unwrap(), unpin);
                 }
             }
         }
@@ -990,7 +973,7 @@ where
             .ok_or(SfenError::MissingDataFields)
             .and_then(|s| self.parse_sfen_ply(s))?;
         self.clear_sfen_history();
-        self.log_position();
+        self.save_position();
         if self.in_check(self.side_to_move().flip()) {
             let checkmate = Outcome::Checkmate {
                 color: self.side_to_move(),
@@ -998,7 +981,7 @@ where
             self.update_outcome(checkmate.clone());
             return Ok(checkmate);
         }
-        Ok(Outcome::Nothing)
+        Ok(Outcome::MoveOk)
     }
 
     fn in_check(&self, c: Color) -> bool {
@@ -1006,11 +989,6 @@ where
         if let Some(k) = king {
             let check_moves = self.enemy_moves(&c);
             return (check_moves & k).is_any();
-            // if let MoveTask::Checks { check, .. } = check_moves {
-            //     if let Some(check) = check {
-            //         return !check.is_empty();
-            //     }
-            // }
         }
         false
     }
@@ -1115,117 +1093,113 @@ where
         let mut promoted = false;
         let stm = self.side_to_move();
         let opponent = stm.flip();
-        if let Some((from, to)) = m.info() {
-            //
-            let moved = self
-                .piece_at(from)
-                .ok_or(MoveError::Inconsistent("No piece found"))?;
-            let captured = *self.piece_at(to);
-            let outcome = Outcome::Checkmate { color: opponent };
-            let legal_moves = self.legal_moves(&stm);
 
-            if moved.color != stm {
-                return Err(MoveError::Inconsistent(
-                    "The piece is not for the side to move",
-                ));
-            } else if self.game_status() == outcome {
-                return Err(MoveError::Inconsistent("Match is over."));
-            }
+        let (from, to) =
+            m.info().ok_or(MoveError::Inconsistent("No piece found"))?;
+        let moved = self
+            .piece_at(from)
+            .ok_or(MoveError::Inconsistent("No piece found"))?;
+        let captured = *self.piece_at(to);
+        let outcome = Outcome::Checkmate { color: opponent };
+        let legal_moves = self.legal_moves(&stm);
 
-            match captured {
-                Some(_i) => {
-                    if moved.piece_type == PieceType::Pawn
-                        && to.in_promotion_zone(moved.color)
-                    {
-                        promoted = true;
-                    }
+        if moved.color != stm {
+            return Err(MoveError::Inconsistent(
+                "The piece is not from the side to move",
+            ));
+        } else if self.game_status() == outcome {
+            return Err(MoveError::Inconsistent("Match is over."));
+        }
+
+        match captured {
+            Some(_i) => {
+                if moved.piece_type == PieceType::Pawn
+                    && to.in_promotion_zone(moved.color)
+                {
+                    promoted = true;
                 }
+            }
+            None => {
+                if moved.piece_type == PieceType::Pawn
+                    && to.in_promotion_zone(moved.color)
+                {
+                    promoted = true;
+                }
+            }
+        }
+        let attacks = legal_moves
+            .get(&from)
+            .ok_or(MoveError::Inconsistent("The piece cannot move to there"))?;
+
+        if (*attacks & &to).is_empty() {
+            return Err(MoveError::Inconsistent(
+                "The piece cannot move to there",
+            ));
+        }
+
+        let mut move_data = MoveData::default();
+
+        let placed = if promoted {
+            match moved.promote() {
+                Some(promoted) => promoted,
                 None => {
-                    if moved.piece_type == PieceType::Pawn
-                        && to.in_promotion_zone(moved.color)
-                    {
-                        promoted = true;
-                    }
-                }
-            }
-
-            if let Some(attacks) = legal_moves.get(&from) {
-                if (*attacks & &to).is_empty() {
                     return Err(MoveError::Inconsistent(
-                        "The piece cannot move to there",
+                        "This type of piece cannot promote",
                     ));
                 }
-            } else {
-                return Err(MoveError::Inconsistent(
-                    "The piece cannot move to there",
-                ));
             }
-            let mut move_data = MoveData::default();
-
-            let placed = if promoted {
-                match moved.promote() {
-                    Some(promoted) => promoted,
-                    None => {
-                        return Err(MoveError::Inconsistent(
-                            "This type of piece cannot promote",
-                        ));
-                    }
-                }
-            } else {
-                moved
-            };
-
-            move_data = move_data.promoted(promoted);
-            move_data = move_data.piece(Some(moved));
-
-            move_data = self.update_after_move(
-                from, to, placed, moved, captured, opponent, move_data,
-            );
-
-            let stm = self.side_to_move();
-
-            let outcome = {
-                if self.is_checkmate(&stm) {
-                    move_data = move_data.checks(false, true);
-                    Outcome::Checkmate { color: stm.flip() }
-                } else if self.in_check(stm) {
-                    move_data = move_data.checks(true, false);
-                    Outcome::Check { color: stm }
-                } else if (self.player_bb(stm.flip())
-                    & &self.type_bb(&PieceType::King))
-                    .len()
-                    == 0
-                {
-                    move_data = move_data.checks(false, true);
-                    Outcome::Checkmate { color: stm.flip() }
-                } else {
-                    Outcome::MoveOk
-                }
-            };
-
-            move_data =
-                self.gen_move_data(&legal_moves, (from, to), moved, move_data);
-            let move_record = Move::Normal {
-                from,
-                to,
-                placed,
-                move_data,
-                fen: String::new(),
-            };
-
-            self.insert_move(move_record);
-
-            self.log_position();
-            self.detect_repetition()?;
-            self.detect_insufficient_material()?;
-
-            if outcome == Outcome::MoveOk {
-                self.is_stalemate(&stm)?;
-            }
-            Ok(outcome)
         } else {
-            Err(MoveError::Inconsistent("No piece found"))
+            moved
+        };
+
+        move_data = move_data.promoted(promoted);
+        move_data = move_data.piece(Some(moved));
+
+        move_data = self.update_after_move(
+            from, to, placed, moved, captured, opponent, move_data,
+        );
+
+        let stm = self.side_to_move();
+
+        let outcome = {
+            if self.is_checkmate(&stm) {
+                move_data = move_data.checks(false, true);
+                Outcome::Checkmate { color: stm.flip() }
+            } else if self.in_check(stm) {
+                move_data = move_data.checks(true, false);
+                Outcome::Check { color: stm }
+            } else if (self.player_bb(stm.flip())
+                & &self.type_bb(&PieceType::King))
+                .len()
+                == 0
+            {
+                move_data = move_data.checks(false, true);
+                Outcome::Checkmate { color: stm.flip() }
+            } else {
+                Outcome::MoveOk
+            }
+        };
+
+        move_data =
+            self.gen_move_data(&legal_moves, (from, to), moved, move_data);
+        let move_record = Move::Normal {
+            from,
+            to,
+            placed,
+            move_data,
+            fen: String::new(),
+        };
+
+        self.insert_move(move_record);
+
+        self.save_position();
+        self.detect_repetition()?;
+        self.detect_insufficient_material()?;
+
+        if outcome == Outcome::MoveOk {
+            self.is_stalemate(&stm)?;
         }
+        Ok(outcome)
     }
 }
 
@@ -1429,67 +1403,6 @@ where
         }
     }
 
-    fn check_moves(&self, attacked_color: Color) -> Checks<S, B> {
-        let mut king =
-            self.type_bb(&PieceType::King) & &self.player_bb(attacked_color);
-        if king.is_empty() {
-            return Checks::new(None, false, None);
-        }
-        let occupied_bb = self.occupied_bb() | &self.player_bb(Color::NoColor);
-        let king = king.pop().unwrap();
-        let mut double_check = false;
-        let mut check = None;
-        let pt_iter = PieceType::iter();
-        for pt in pt_iter {
-            //
-            match pt {
-                PieceType::King => continue,
-                _ => {
-                    if !self.variant().can_buy(&pt) {
-                        continue;
-                    }
-                    let moves = self.get_moves(
-                        &king,
-                        &Piece {
-                            piece_type: pt,
-                            color: attacked_color,
-                        },
-                        occupied_bb,
-                    );
-                    let them = self.type_bb(&pt)
-                        & &self.player_bb(attacked_color.flip());
-                    let mut attackers = (them & &moves) & &them;
-                    let len = attackers.len();
-                    match &len.cmp(&1) {
-                        Ordering::Equal => {
-                            if check.is_some() {
-                                double_check = true;
-                                return Checks::new(None, double_check, None);
-                            } else if pt.is_non_sliding_piece() {
-                                check = Some(moves);
-                                double_check = false;
-                            } else if let Some(attacker) = attackers.pop() {
-                                let between = A::between(attacker, king);
-                                let between = between | &attacker;
-                                if between.len() == 0 {
-                                    check = Some(moves);
-                                } else {
-                                    check = Some(between | &attacker);
-                                }
-                            }
-                        }
-                        Ordering::Greater => {
-                            double_check = true;
-                            return Checks::new(None, double_check, None);
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-        Checks::new(check, double_check, None)
-    }
-
     fn pins(&self, color: &Color) -> HashMap<S, B> {
         let mut pins = HashMap::new();
         if color == &Color::NoColor {
@@ -1508,7 +1421,7 @@ where
             PieceType::Chancellor,
             PieceType::ArchBishop,
         ] {
-            if !self.variant().can_buy(&pt) {
+            if !self.variant().can_select(&pt) {
                 continue;
             }
             let attacks = A::get_sliding_attacks(pt, &ksq, plinths);
@@ -1540,38 +1453,30 @@ where
         }
     }
 
-    fn fix_pin(
+    fn unpin(
         &self,
         sq: &S,
         pins: &HashMap<S, B>,
-        checks: Checks<S, B>,
         my_moves: B,
-    ) -> B {
-        match self.piece_at(*sq) {
-            Some(piece) => {
-                if let Some(pin) = pins.get(sq) {
-                    if let Some(check) = checks.check {
-                        (check & pin) & &my_moves
-                    } else {
-                        *pin & &my_moves
-                    }
-                } else {
-                    let mut my_moves = my_moves;
-                    if piece.piece_type == PieceType::King {
-                        if let Some(enemy_moves) = checks.enemy_moves {
-                            my_moves &= &!enemy_moves;
-                            return my_moves;
-                        }
-                    } else if checks.double_check {
-                        return B::empty();
-                    }
-                    if let Some(check) = checks.check {
-                        my_moves &= &check;
-                    }
-                    my_moves
-                }
-            }
-            None => B::empty(),
+        mut checks: B,
+    ) -> Option<B> {
+        let Some(piece) = self.piece_at(*sq) else {
+            return None;
+        };
+        let king = self.find_king(&piece.color).expect("no king");
+        let mut moves = my_moves;
+        let _ = pins.get(sq).is_some_and(|pin| {
+            moves &= pin;
+            true
+        });
+
+        if checks.len() == 1 {
+            let attacker = checks.pop()?;
+            let between = A::between(attacker, king);
+            let between = between | &attacker;
+            let moves = moves & &between;
+            return Some(moves);
         }
+        return Some(moves);
     }
 }

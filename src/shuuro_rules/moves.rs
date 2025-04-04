@@ -4,10 +4,10 @@ use crate::{
 };
 use std::fmt;
 
-/// Represents a move which either is a normal move or a drop move.
+/// Represents a move which either is a select move, drop move or normal move.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Move<S: Square> {
-    Buy {
+    Select {
         piece: Piece,
     },
     Put {
@@ -68,7 +68,7 @@ impl<S: Square> Move<S> {
     pub fn get_buy_move(s: &str) -> Option<Self> {
         if s.len() == 2 && s.starts_with('+') {
             if let Some(piece) = Piece::from_sfen(s.chars().nth(1).unwrap()) {
-                return Some(Self::Buy { piece });
+                return Some(Self::Select { piece });
             }
         }
         None
@@ -77,45 +77,33 @@ impl<S: Square> Move<S> {
     /// Getting put move from str.
     pub fn get_put_move(s: &str) -> Option<Self> {
         let mut fen_parts = s.split('@');
-        if let Some(piece_str) = fen_parts.next() {
-            if let Some(piece_char) = piece_str.chars().next() {
-                if let Some(piece) = Piece::from_sfen(piece_char) {
-                    if let Some(to) = fen_parts.next() {
-                        if let Some(to) = Square::from_sfen(to) {
-                            return Some(Self::Put {
-                                piece,
-                                to,
-                                fen: String::new(),
-                            });
-                        }
-                    }
-                }
-            }
-        }
-        None
+        let piece_str = fen_parts.next()?;
+        let piece_char = piece_str.chars().next()?;
+        let piece = Piece::from_sfen(piece_char)?;
+        let to = fen_parts.next()?;
+        let to = Square::from_sfen(to)?;
+        Some(Self::Put {
+            piece,
+            to,
+            fen: String::new(),
+        })
     }
 
     /// Getting normal move from str.
     pub fn get_normal_move(s: &str) -> Option<Self> {
         let mut fen_parts = s.split('_');
-        if let Some(from) = fen_parts.next() {
-            if let Some(from) = Square::from_sfen(from) {
-                if let Some(to) = fen_parts.next() {
-                    if let Some(to) = Square::from_sfen(to) {
-                        return Some(Self::new(from, to));
-                    }
-                }
-            }
-        }
-
-        None
+        let from = fen_parts.next()?;
+        let from = Square::from_sfen(from)?;
+        let to = fen_parts.next()?;
+        let to = Square::from_sfen(to)?;
+        Some(Self::new(from, to))
     }
 
     pub fn to_fen(&self) -> String {
         match &self {
             Move::Put { fen, .. } => String::from(fen),
             Move::Normal { fen, .. } => String::from(fen),
-            Move::Buy { .. } => self.to_string(),
+            Move::Select { .. } => self.to_string(),
         }
     }
 
@@ -233,7 +221,7 @@ impl<S: Square> TryFrom<String> for Move<S> {
 impl<S: Square> fmt::Display for Move<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            Move::Buy { piece } => {
+            Move::Select { piece } => {
                 write!(f, "+{piece}")
             }
             Move::Put { to, piece, .. } => {
