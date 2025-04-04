@@ -232,7 +232,7 @@ where
             return self.generate_sfen();
         }
         if move_history.is_empty() {
-            format!("{} {}", sfen_history.first().unwrap(), ply);
+            return format!("{} {}", sfen_history.first().unwrap(), ply);
         }
         format!(
             "{} {}",

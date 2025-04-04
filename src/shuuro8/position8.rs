@@ -422,3 +422,38 @@ impl fmt::Display for P8<Square8, BB8<Square8>> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use crate::{
+        attacks::Attacks,
+        bitboard::BitBoard,
+        position::Play,
+        shuuro8::{attacks8::Attacks8, square8::consts::F8},
+        Color,
+    };
+
+    use super::P8;
+
+    fn setup() {
+        Attacks8::init();
+    }
+
+    #[test]
+    fn legal_moves_bishop() {
+        setup();
+        let cases = [(
+            "1KQ1NN2/PP1P2PP/1LNP1PN2/3L01P2/ppp1Ln3/4pnL01/3p1p1p/n1rnkb2 b - 1",
+            F8,
+            4,
+        )];
+        for case in cases {
+            let mut pos = P8::default();
+            pos.set_sfen(case.0).expect("failed to parse sfen string");
+            let legal_moves = pos.legal_moves(&Color::Black);
+            if let Some(b) = legal_moves.get(&case.1) {
+                assert_eq!(b.len(), case.2);
+            }
+        }
+    }
+}
