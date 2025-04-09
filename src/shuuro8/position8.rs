@@ -236,7 +236,7 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         String::from("8/8/8/8/8/8/8/8 w")
     }
 
-    fn king_files(&self, c: &Color) -> BB8<Square8> {
+    fn king_files(&self, c: Color) -> BB8<Square8> {
         match c {
             Color::Black => Attacks8::between(A8, H8),
             Color::White => Attacks8::between(A1, H1),
@@ -449,7 +449,7 @@ pub mod tests {
         for case in cases {
             let mut pos = P8::default();
             pos.set_sfen(case.0).expect("failed to parse sfen string");
-            let legal_moves = pos.legal_moves(&Color::Black);
+            let legal_moves = pos.legal_moves(Color::Black);
             if let Some(b) = legal_moves.get(&case.1) {
                 assert_eq!(b.len(), case.2);
             }
@@ -502,7 +502,7 @@ pub mod tests {
             if case.3 {
                 pos.update_variant(Variant::StandardFairy);
             }
-            let moves = pos.legal_moves(&Color::Black);
+            let moves = pos.legal_moves(Color::Black);
             if let Some(moves) = moves.get(&case.1) {
                 assert_eq!(moves.len(), case.2);
             }
@@ -542,7 +542,7 @@ pub mod tests {
         for case in cases {
             pos.set_sfen(case.0).expect("failed to parse SFEN string");
 
-            let moves = pos.legal_moves(&case.1);
+            let moves = pos.legal_moves(case.1);
             if let Some(moves) = moves.get(&case.2) {
                 assert_eq!(moves.len(), case.3.len() as u32);
             }

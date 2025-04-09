@@ -235,7 +235,7 @@ impl Placement<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         self.color_bb[Color::NoColor.index()] = bb;
     }
 
-    fn king_files(&self, c: &Color) -> BB12<Square12> {
+    fn king_files(&self, c: Color) -> BB12<Square12> {
         match c {
             Color::Black => Attacks12::between(C12, J12),
             Color::White => Attacks12::between(C1, J1),
@@ -551,7 +551,7 @@ pub mod position_tests {
         let sfen = "3kqbr5/_.11/q11/8_.3/3_.8/7_.4/12/12/12/3pP_.4_.1/2_N2K3P2/6_.3B1 b - 38";
         let mut pos = P12::new();
         pos.set_sfen(sfen).expect("failed to parse SFEN string");
-        let lm = pos.legal_moves(&Color::Black);
+        let lm = pos.legal_moves(Color::Black);
         if let Some(b) = lm.get(&D3) {
             assert!(b.len() == 1);
         }
@@ -563,7 +563,7 @@ pub mod position_tests {
         let mut pos = P12::new();
         pos.set_sfen("6k_.4/_.11/12/2q9/1_.10/10_.1/_.3_.7/6P5/4P6_./8_.Q2/9K2/12 w - 55")
             .expect("failed to parse SFEN string");
-        let lm = pos.legal_moves(&Color::White);
+        let lm = pos.legal_moves(Color::White);
         if let Some(b) = lm.get(&G5) {
             assert_eq!(b.len(), 1);
         }
@@ -592,7 +592,7 @@ pub mod position_tests {
         for case in cases {
             let mut pos = P12::default();
             pos.set_sfen(case.0).expect("failed to parse sfen string");
-            let legal_moves = pos.legal_moves(&Color::White);
+            let legal_moves = pos.legal_moves(Color::White);
             if let Some(b) = legal_moves.get(&case.1) {
                 assert_eq!(b.len(), case.2);
             }
@@ -605,7 +605,7 @@ pub mod position_tests {
         let mut pos = P12::default();
         pos.set_sfen("5k1Q4/_.3pr6/7B4/12/7_.4/1_.3Q4_.1/8n_.2/5_.6/2_.9/3N8/10P_./5K6 b - 50")
             .expect("failed to parse sfen string");
-        let legal_moves = pos.legal_moves(&Color::Black);
+        let legal_moves = pos.legal_moves(Color::Black);
         if let Some(b) = legal_moves.get(&F11) {
             assert_eq!(b.len(), 0);
         }
@@ -627,7 +627,7 @@ pub mod position_tests {
         for i in cases {
             let mut pos = P12::default();
             pos.set_sfen(i.0).expect("failed to parse sfen string");
-            let legal_moves = pos.legal_moves(&Color::Black);
+            let legal_moves = pos.legal_moves(Color::Black);
             if let Some(b) = legal_moves.get(&F8) {
                 assert_eq!(b.len(), i.1);
             }
@@ -700,7 +700,7 @@ pub mod position_tests {
         let sfen = "1q3kn5/3p8/5_n5_./12/1_.10/11_./12/4_.4_.2/2_.2Q6/12/5P2_.3/4K5B1 b - 11";
         let mut pos = P12::new();
         pos.set_sfen(sfen).expect("failed to parse SFEN string");
-        let legal_moves = pos.legal_moves(&Color::Black);
+        let legal_moves = pos.legal_moves(Color::Black);
         if let Some(b) = legal_moves.get(&F10) {
             assert_eq!(b.len(), 6);
         }
@@ -770,7 +770,7 @@ pub mod position_tests {
         position
             .set_sfen(sfen)
             .expect("failed to parse sfen string");
-        let pawn_moves = position.legal_moves(&Color::White);
+        let pawn_moves = position.legal_moves(Color::White);
         if let Some(b) = pawn_moves.get(&B11) {
             assert_eq!(b.len(), 2);
         }
@@ -802,7 +802,7 @@ pub mod position_tests {
             position
                 .set_sfen(case.0)
                 .expect("failed to parse sfen string");
-            let queen_moves = position.legal_moves(&Color::White);
+            let queen_moves = position.legal_moves(Color::White);
             if let Some(b) = queen_moves.get(&case.1) {
                 assert_eq!(b.len(), case.2);
             }
@@ -899,7 +899,7 @@ pub mod position_tests {
         for case in cases.iter() {
             let mut pos = P12::new();
             pos.set_sfen(case.0).expect("failed to parse SFEN string");
-            assert_eq!(case.1, pos.is_checkmate(&case.2));
+            assert_eq!(case.1, pos.is_checkmate(case.2));
         }
     }
 
@@ -1130,7 +1130,7 @@ pub mod position_tests {
             let mut pos = P12::new();
             pos.set_sfen(case.0).expect("error while parsing sfen");
             let color = pos.side_to_move();
-            let moves = pos.legal_moves(&color);
+            let moves = pos.legal_moves(color);
             if let Some(b) = moves.get(&Square12::from_sfen(case.1).unwrap()) {
                 assert_eq!(b.len(), case.2);
             }
@@ -1145,7 +1145,7 @@ pub mod position_tests {
             (Color::White, 6, [D1, E1, F1, G1, H1, I1]),
         ];
         for case in cases {
-            let bb = position_set.king_squares(&case.0);
+            let bb = position_set.king_squares(case.0);
             assert_eq!(bb.len(), case.1);
             for sq in case.2 {
                 assert!((bb & &sq).is_any());
@@ -1347,7 +1347,7 @@ pub mod position_tests {
             let mut position = P12::default();
             position.update_variant(Variant::ShuuroFairy);
             position.set_sfen(case.0).expect("error while parsing sfen");
-            let moves = position.legal_moves(&Color::White);
+            let moves = position.legal_moves(Color::White);
             if let Some(b) = moves.get(&G2) {
                 assert_eq!(b.len(), case.1);
             }
@@ -1464,7 +1464,7 @@ pub mod position_tests {
             let mut position = P12::default();
             position.update_variant(Variant::ShuuroFairy);
             position.set_sfen(case).expect("error while parsing sfen");
-            assert!(position.is_checkmate(&Color::Black));
+            assert!(position.is_checkmate(Color::Black));
         }
     }
 
@@ -1507,7 +1507,7 @@ pub mod position_tests {
             let mut position = P12::default();
             position.update_variant(Variant::ShuuroFairy);
             position.set_sfen(case.0).expect("error while parsing sfen");
-            let legal_moves = position.legal_moves(&position.side_to_move());
+            let legal_moves = position.legal_moves(position.side_to_move());
             if let Some(b) = legal_moves.get(case.1) {
                 let len = case.2.len();
                 for sq in case.2 {

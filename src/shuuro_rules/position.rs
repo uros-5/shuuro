@@ -157,8 +157,8 @@ where
     /// Dimensions of board.
     fn dimensions(&self) -> u8;
     /// Returns `Square` if King is available.
-    fn find_king(&self, c: &Color) -> Option<S> {
-        let mut bb = self.type_bb(&PieceType::King) & &self.player_bb(*c);
+    fn find_king(&self, c: Color) -> Option<S> {
+        let mut bb = self.type_bb(&PieceType::King) & &self.player_bb(c);
         if bb.is_any() {
             bb.pop_reverse()
         } else {
@@ -444,10 +444,10 @@ where
     }
 
     /// Returns BitBoard with king placement.
-    fn king_files(&self, c: &Color) -> B;
+    fn king_files(&self, c: Color) -> B;
 
     /// Returns BitBoard with all empty squares.
-    fn king_squares(&self, c: &Color) -> B {
+    fn king_squares(&self, c: Color) -> B {
         let files = self.king_files(c);
         let plinths = self.player_bb(Color::NoColor);
         files & &!plinths
@@ -475,28 +475,28 @@ where
     }
 
     fn empty_squares(&self, p: Piece) -> Result<B, PlacementError> {
-        let color = &p.color;
-        if color == &Color::NoColor {
+        let color = p.color;
+        if color == Color::NoColor {
             return Err(PlacementError::NoKing);
         }
         let delta = {
-            if color == &Color::White {
+            if color == Color::White {
                 1
             } else {
                 -1
             }
         };
         let mut rank = {
-            if color == &Color::White {
+            if color == Color::White {
                 -1
             } else {
                 self.dimensions() as i8
             }
         };
-        let me = self.player_bb(*color);
+        let me = self.player_bb(color);
         let plinths = self.player_bb(Color::NoColor);
 
-        let checks = self.checks(&p.color);
+        let checks = self.placement_checks(p.color);
         if checks.is_any() {
             return Ok(checks);
         } else if !self.is_king_placed(p.color)
@@ -525,7 +525,7 @@ where
                     return Ok(bb);
                 }
                 PieceType::King => {
-                    return Ok(self.king_squares(&p.color));
+                    return Ok(self.king_squares(p.color));
                 }
                 PieceType::Pawn => {
                     bb &= &!plinths;
@@ -551,8 +551,8 @@ where
         }
     }
 
-    fn checks(&self, me: &Color) -> B {
-        let king = self.type_bb(&PieceType::King) & &self.player_bb(*me);
+    fn placement_checks(&self, me: Color) -> B {
+        let king = self.type_bb(&PieceType::King) & &self.player_bb(me);
         if king.is_empty() {
             return B::empty();
         }
@@ -584,7 +584,7 @@ where
 
                 if (them & &king_attacks).is_any() {
                     let mut between = A::between(king_sq, them.pop().unwrap());
-                    match *me {
+                    match me {
                         Color::White => {
                             let sq = between.pop().unwrap();
                             return B::from_square(&sq);
@@ -818,9 +818,9 @@ where
     // }
 
     /// Returns all legal moves where piece can be moved.
-    fn legal_moves(&self, my_color: &Color) -> HashMap<S, B> {
+    fn legal_moves(&self, my_color: Color) -> HashMap<S, B> {
         let mut map = HashMap::new();
-        let checkers = self.check_moves(*my_color).expect("no king");
+        let checkers = self.check_moves(my_color).expect("no king");
         let enemy_moves = self.enemy_moves(my_color);
         let king = self.find_king(my_color).expect("no king");
         if checkers.len() > 1 {
@@ -830,7 +830,7 @@ where
             return map;
         }
         let pinned_moves = self.pins(my_color);
-        for sq in self.player_bb(*my_color) {
+        for sq in self.player_bb(my_color) {
             let my_moves = self.non_legal_moves(&sq).expect("piece not found");
             if king == sq {
                 map.insert(king, my_moves & &!enemy_moves);
@@ -847,8 +847,8 @@ where
     }
 
     /// Returns `BitBoard` of all moves by opponent.
-    fn enemy_moves(&self, me: &Color) -> B {
-        if me == &Color::NoColor {
+    fn enemy_moves(&self, me: Color) -> B {
+        if me == Color::NoColor {
             return B::empty();
         }
         let mut all = B::empty();
@@ -880,7 +880,7 @@ where
         if color == Color::NoColor {
             return pins;
         }
-        let ksq = self.find_king(&color);
+        let ksq = self.find_king(color);
         if ksq.is_none() {
             return pins;
         }
@@ -962,20 +962,20 @@ where
     }
 
     fn in_check(&self, c: Color) -> bool {
-        let king = &self.find_king(&c);
+        let king = &self.find_king(c);
         if let Some(k) = king {
-            let check_moves = self.enemy_moves(&c);
+            let check_moves = self.enemy_moves(c);
             return (check_moves & k).is_any();
         }
         false
     }
 
     /// Checks if given color is in checkmate.
-    fn is_checkmate(&self, c: &Color) -> bool {
+    fn is_checkmate(&self, c: Color) -> bool {
         let king = self.find_king(c);
         match king {
             Some(k) => {
-                if !self.in_check(*c) {
+                if !self.in_check(c) {
                     return false;
                 }
                 let all = self.legal_moves(c);
@@ -1023,7 +1023,7 @@ where
     }
 
     /// Check if player is in stalemate.
-    fn is_stalemate(&self, color: &Color) -> Result<(), MoveError> {
+    fn is_stalemate(&self, color: Color) -> Result<(), MoveError> {
         let moves = self.legal_moves(color);
         for m in moves {
             if m.1.len() > 0 {
@@ -1111,7 +1111,7 @@ where
             .ok_or(MoveError::Inconsistent("No piece found"))?;
         let captured = *self.piece_at(to);
         let outcome = Outcome::Checkmate { color: opponent };
-        let legal_moves = self.legal_moves(&stm);
+        let legal_moves = self.legal_moves(stm);
 
         if moved.color != stm {
             return Err(MoveError::Inconsistent(
@@ -1172,7 +1172,7 @@ where
         let stm = self.side_to_move();
 
         let outcome = {
-            if self.is_checkmate(&stm) {
+            if self.is_checkmate(stm) {
                 move_data = move_data.checks(false, true);
                 Outcome::Checkmate { color: stm.flip() }
             } else if self.in_check(stm) {
@@ -1207,7 +1207,7 @@ where
         self.detect_insufficient_material()?;
 
         if outcome == Outcome::MoveOk {
-            self.is_stalemate(&stm)?;
+            self.is_stalemate(stm)?;
         }
         Ok(outcome)
     }
@@ -1278,9 +1278,9 @@ where
         }
     }
 
-    fn pins(&self, color: &Color) -> HashMap<S, B> {
+    fn pins(&self, color: Color) -> HashMap<S, B> {
         let mut pins = HashMap::new();
-        if color == &Color::NoColor {
+        if color == Color::NoColor {
             return pins;
         }
         let ksq = self.find_king(color);
@@ -1308,7 +1308,7 @@ where
                 let mut pinned = (A::between(ksq, enemy_sq)
                     & &self.occupied_bb())
                     & &!self.player_bb(Color::NoColor);
-                let my_piece = pinned & &self.player_bb(*color);
+                let my_piece = pinned & &self.player_bb(color);
                 if pinned.len() == 1 && my_piece.is_any() {
                     let unpin =
                         (A::between(enemy_sq, ksq) & &!pinned) | &enemy_bb;
@@ -1318,14 +1318,6 @@ where
             }
         }
         pins
-    }
-
-    fn my_moves(&self, square: &S, blockers: B) -> B {
-        let piece = self.piece_at(*square);
-        match piece {
-            Some(i) => self.get_moves(square, i, blockers),
-            None => B::empty(),
-        }
     }
 
     fn unpin(
@@ -1338,7 +1330,7 @@ where
         let Some(piece) = self.piece_at(*sq) else {
             return None;
         };
-        let king = self.find_king(&piece.color).expect("no king");
+        let king = self.find_king(piece.color).expect("no king");
         let mut moves = my_moves;
         let _ = pins.get(sq).is_some_and(|pin| {
             moves &= pin;
