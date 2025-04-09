@@ -440,10 +440,7 @@ where
     /// Check if king is placed.
     fn is_king_placed(&self, c: Color) -> bool {
         let king = self.player_bb(c) & &self.type_bb(&PieceType::King);
-        if king.len() == 1 {
-            return true;
-        }
-        false
+        king.len() == 1
     }
 
     /// Returns BitBoard with king placement.
@@ -609,49 +606,48 @@ where
     fn update_bb(&mut self, p: Piece, sq: S);
 
     fn place(&mut self, p: Piece, sq: S) -> Option<String> {
-        if p.color != self.side_to_move() {
-            return None;
-        } else if self.hand(p) > 0
-            && (self.empty_squares(p).unwrap_or_default() & &sq).is_any()
+        if p.color != self.side_to_move()
+            || self.hand(p) == 0
+            || !(self.empty_squares(p).unwrap_or_default() & &sq).is_any()
         {
-            self.update_bb(p, sq);
-            self.decrement_hand(p);
-            let move_record = Move::Put {
-                to: sq,
-                piece: p,
-                fen: String::new(),
-            };
-            let sfen =
-                self.generate_sfen().split(' ').next().unwrap().to_string();
-            let hand = {
-                let s = self.get_hand(Color::White, false)
-                    + &self.get_hand(Color::Black, false);
-                if s.is_empty() {
-                    String::from(" ")
-                } else {
-                    s
-                }
-            };
-            self.increment_ply();
-            let ply = self.ply();
-
-            self.insert_move(move_record.clone());
-            if !self.is_hand_empty(p.color.flip(), PieceType::Plinth) {
-                self.update_side_to_move(p.color.flip());
-            }
-            let record = format!(
-                "{} {} {} {} {}",
-                &sfen,
-                self.side_to_move().to_string(),
-                hand,
-                ply,
-                &move_record.to_string(),
-            );
-            self.update_last_move(&record);
-            // self.insert_sfen(&record);
-            return Some(record);
+            return None;
         }
-        None
+
+        self.update_bb(p, sq);
+        self.decrement_hand(p);
+        let move_record = Move::Put {
+            to: sq,
+            piece: p,
+            fen: String::new(),
+        };
+        let sfen = self.generate_sfen().split(' ').next().unwrap().to_string();
+        let hand = {
+            let s = self.get_hand(Color::White, false)
+                + &self.get_hand(Color::Black, false);
+            if s.is_empty() {
+                String::from(" ")
+            } else {
+                s
+            }
+        };
+        self.increment_ply();
+        let ply = self.ply();
+
+        self.insert_move(move_record.clone());
+        if !self.is_hand_empty(p.color.flip(), PieceType::Plinth) {
+            self.update_side_to_move(p.color.flip());
+        }
+        let record = format!(
+            "{} {} {} {} {}",
+            &sfen,
+            self.side_to_move().to_string(),
+            hand,
+            ply,
+            &move_record.to_string(),
+        );
+        self.update_last_move(&record);
+        // self.insert_sfen(&record);
+        return Some(record);
     }
 
     fn empty_placement_board() -> String;
@@ -765,7 +761,6 @@ where
                     if let Some(sq) = file_with_plinths.pop_reverse() {
                         if sq.index() <= pawn.index() {
                             bb |= &pawn;
-                            // return Ok(());
                         }
                     }
                     continue;
@@ -773,7 +768,6 @@ where
                     if let Some(sq) = file_with_plinths.pop() {
                         if sq.index() >= pawn.index() {
                             bb |= &pawn;
-                            // return Ok(());
                         }
                     }
                     continue;
@@ -852,23 +846,6 @@ where
         map
     }
 
-    /// Returns `BitBoard` of all moves by `Color`.
-    fn color_moves(&self, c: &Color) -> B {
-        let mut all = B::empty();
-        for sq in self.player_bb(*c) {
-            let piece = self.piece_at(sq);
-            let moves = self.move_candidates(
-                &sq,
-                piece.unwrap(),
-                MoveType::NoKing {
-                    king: self.find_king(&c.flip()).unwrap(),
-                },
-            );
-            all |= &moves;
-        }
-        all
-    }
-
     /// Returns `BitBoard` of all moves by opponent.
     fn enemy_moves(&self, me: &Color) -> B {
         if me == &Color::NoColor {
@@ -894,7 +871,7 @@ where
         let Some(piece) = self.piece_at(*square) else {
             return None;
         };
-        Some(self.move_candidates(square, *piece, MoveType::Plinth))
+        Some(self.move_candidates(square, *piece))
     }
 
     /// Returns HashMap of all pinned pieces.
@@ -1057,17 +1034,50 @@ where
     }
 
     /// Returns a `BitBoard` where the given piece at the given square can move.
-    fn move_candidates(
-        &self,
-        current_sq: &S,
-        piece: Piece,
-        move_type: MoveType<S>,
-    ) -> B {
-        let blockers = move_type.blockers(self, &piece.color);
+    fn move_candidates(&self, current_sq: &S, piece: Piece) -> B {
+        let blockers = self.occupied_bb() | &self.player_bb(Color::NoColor);
 
         let attacks = self.get_moves(current_sq, &piece, blockers);
 
-        move_type.moves(self, &attacks, piece, *current_sq)
+        let me = piece.color;
+        let them = me.flip();
+        let without_me = attacks & &!self.player_bb(me);
+
+        let jumpers = [
+            PieceType::Knight,
+            PieceType::ArchBishop,
+            PieceType::Chancellor,
+            PieceType::Giraffe,
+        ];
+        if jumpers.contains(&piece.piece_type) {
+            return without_me;
+        }
+        let without_plinth = without_me & &!self.player_bb(Color::NoColor);
+        if piece.piece_type != PieceType::Pawn {
+            return without_plinth;
+        }
+        self.pawn_pushes(current_sq, without_plinth, them, me, blockers)
+    }
+
+    fn pawn_pushes(
+        &self,
+        current_sq: &S,
+        without_plinth: B,
+        them: Color,
+        me: Color,
+        blockers: B,
+    ) -> B {
+        let pawn_captures = without_plinth & &self.player_bb(them);
+        let pushes = A::get_pawn_moves(current_sq.index(), me);
+        let mut double_pushes = pushes & &blockers;
+        if double_pushes.len() == 2 {
+            return pawn_captures;
+        } else if double_pushes.len() == 0 {
+            return pawn_captures | &pushes;
+        }
+        let to = double_pushes.pop().unwrap();
+        let pushes = A::between(*current_sq, to);
+        pushes | &pawn_captures
     }
 
     /// Returns BitBoard with rank. Panics if file is bigger than expected.
@@ -1200,141 +1210,6 @@ where
             self.is_stalemate(&stm)?;
         }
         Ok(outcome)
-    }
-}
-
-#[derive(Debug)]
-pub enum MoveType<S: Square> {
-    Empty,
-    Plinth,
-    NoKing { king: S },
-}
-
-impl<S> MoveType<S>
-where
-    S: Square + Hash,
-{
-    pub fn blockers<B: BitBoard<S>, A: Attacks<S, B>, P: Play<S, B, A>>(
-        &self,
-        position: &P,
-        c: &Color,
-    ) -> B {
-        match self {
-            MoveType::Empty => B::empty(),
-            MoveType::Plinth => {
-                position.occupied_bb() | &position.player_bb(Color::NoColor)
-            }
-            MoveType::NoKing { king } => {
-                let king = B::from_square(king);
-                ((position.occupied_bb() | &position.player_bb(Color::NoColor))
-                    & &!king)
-                    | &position.player_bb(*c)
-            }
-        }
-    }
-
-    pub fn moves<B: BitBoard<S>, A: Attacks<S, B>, P: Play<S, B, A>>(
-        &self,
-        position: &P,
-        attacks: &B,
-        piece: Piece,
-        current_sq: S,
-    ) -> B {
-        let my_color = piece.color;
-        let without_main_color = *attacks & &!position.player_bb(my_color);
-        let knights = [
-            PieceType::Knight,
-            PieceType::ArchBishop,
-            PieceType::Chancellor,
-            PieceType::Giraffe,
-        ];
-        match self {
-            MoveType::Empty => B::empty(),
-            MoveType::Plinth => {
-                if !knights.contains(&piece.piece_type) {
-                    let mut without_plinth = (without_main_color)
-                        & &!position.player_bb(Color::NoColor);
-                    if piece.piece_type == PieceType::Pawn {
-                        without_plinth &=
-                            &position.player_bb(piece.color.flip());
-                        let up_sq = !position.player_bb(piece.color.flip())
-                            & &self.pawn_move::<B, A, P>(
-                                current_sq,
-                                &piece.color,
-                                position,
-                            );
-
-                        without_plinth |=
-                            &(up_sq & &!position.player_bb(my_color));
-                        without_plinth &= &!position.player_bb(Color::NoColor);
-
-                        without_plinth
-                    } else {
-                        without_plinth
-                    }
-                } else {
-                    without_main_color
-                }
-            }
-            MoveType::NoKing { king } => {
-                if !knights.contains(&piece.piece_type) {
-                    if piece.piece_type == PieceType::Pawn {
-                        let up_sq = self.pawn_move::<B, A, P>(
-                            current_sq,
-                            &piece.color,
-                            position,
-                        );
-                        return *attacks & &!up_sq;
-                    }
-                    ((*attacks) & &!position.player_bb(Color::NoColor))
-                        | &(*attacks & &B::from_square(&king.to_owned()))
-                } else {
-                    *attacks | &(*attacks & &B::from_square(&king.to_owned()))
-                }
-            }
-        }
-    }
-
-    pub fn pawn_move<B: BitBoard<S>, A: Attacks<S, B>, P: Play<S, B, A>>(
-        &self,
-        sq: S,
-        color: &Color,
-        position: &P,
-    ) -> B {
-        let pop_sq = |sq: S, mut blocked: B, color: &Color| -> B {
-            let old = blocked;
-            let deleted = {
-                if color == &Color::White {
-                    blocked.pop()
-                } else {
-                    blocked.pop_reverse()
-                }
-            };
-            if let Some(deleted) = deleted {
-                A::between(sq, deleted)
-            } else {
-                old
-            }
-        };
-
-        let occupied =
-            position.occupied_bb() | &position.player_bb(Color::NoColor);
-        match color {
-            &Color::White | &Color::Black => {
-                let moves = A::get_pawn_moves(sq.index(), *color);
-                let blocked = moves & &occupied;
-                if blocked.len() == 2 {
-                    B::empty()
-                } else if blocked.len() == 0 && moves.len() == 2 {
-                    moves
-                } else if sq.first_pawn_rank(*color) {
-                    pop_sq(sq, blocked, color)
-                } else {
-                    moves
-                }
-            }
-            _ => B::empty(),
-        }
     }
 }
 

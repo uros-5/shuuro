@@ -431,7 +431,7 @@ pub mod position_tests {
         attacks::Attacks,
         bitboard::BitBoard,
         piece_type::PieceType,
-        position::{Board, MoveType, Outcome, Placement, Play, Sfen},
+        position::{Board, Outcome, Placement, Play, Sfen},
         shuuro12::{
             attacks12::Attacks12,
             position12::P12,
@@ -658,7 +658,7 @@ pub mod position_tests {
 
             if let Some(pc) = *pc {
                 if pc.color == pos.side_to_move() {
-                    sum += pos.move_candidates(&sq, pc, MoveType::Plinth).len();
+                    sum += pos.move_candidates(&sq, pc).len();
                 }
             }
         }
@@ -683,7 +683,6 @@ pub mod position_tests {
                     piece_type: case.1,
                     color: case.2,
                 },
-                MoveType::Plinth,
             );
             assert_eq!(case.3, bb.len());
             let result = pos.play(case.0, case.4);

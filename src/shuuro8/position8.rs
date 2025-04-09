@@ -423,7 +423,9 @@ pub mod tests {
         shuuro8::{
             attacks8::Attacks8,
             square8::{
-                consts::{B4, D6, E7, F4, F5, F6, F8},
+                consts::{
+                    A6, A7, B4, B5, B6, B7, D6, E7, F4, F5, F6, F8, G2, G3,
+                },
                 Square8,
             },
         },
@@ -503,6 +505,46 @@ pub mod tests {
             let moves = pos.legal_moves(&Color::Black);
             if let Some(moves) = moves.get(&case.1) {
                 assert_eq!(moves.len(), case.2);
+            }
+        }
+    }
+
+    #[test]
+    fn pawn_moves2() {
+        setup();
+        let cases: &[(&str, Color, Square8, &[Square8])] = &[
+            (
+                "5k1n/ppRP2N1/B2p4/5q2/1Qb4Q/5Q2/7q/3K4 b - 1",
+                Color::Black,
+                B7,
+                &[B6, B5, A6],
+            ),
+            (
+                "5k1n/ppRP2N1/B2p4/5q2/1Qb4Q/5Q2/7q/3K4 b - 1",
+                Color::Black,
+                A7,
+                &[],
+            ),
+            (
+                "5k1n/ppRP2N1/B2p1p2/5q2/1Qb4Q/5Qp1/7q/3K4  b - 1",
+                Color::Black,
+                F6,
+                &[],
+            ),
+            (
+                "5k1n/ppRP2N1/B2p1p2/5q2/1Qb4Q/5Qp1/7q/3K4  b - 1",
+                Color::Black,
+                G3,
+                &[G2],
+            ),
+        ];
+        let mut pos = P8::new();
+        for case in cases {
+            pos.set_sfen(case.0).expect("failed to parse SFEN string");
+
+            let moves = pos.legal_moves(&case.1);
+            if let Some(moves) = moves.get(&case.2) {
+                assert_eq!(moves.len(), case.3.len() as u32);
             }
         }
     }
