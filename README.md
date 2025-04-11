@@ -7,7 +7,7 @@ A library for implementing Shuuro application.
 
 ## Features
 
-- Shuuro shop - selecting pieces:
+- Shuuro selection - selecting pieces:
 
 ```rust
 use shuuro::{Shop, PieceType, Piece, Color, Move};

@@ -42,6 +42,10 @@ impl<S: Square> Selection<S> {
             || self.variant == Variant::StandardFairy
         {
             self.pricing[PieceType::Pawn.index()] = (10, 12);
+        } else if self.variant == Variant::ShuuroMini
+            || self.variant == Variant::ShuuroMiniFairy
+        {
+            self.pricing[PieceType::Pawn.index()] = (10, 8);
         }
     }
 

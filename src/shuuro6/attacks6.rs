@@ -4,28 +4,28 @@ pub use crate::attacks::Attacks;
 use crate::{attacks::Ray, bitboard::BitBoard, Color, PieceType, Square};
 
 use super::{
-    bitboard8::{BB8, SQUARE_BB},
+    bitboard6::{BB6, SQUARE_BB},
     board_defs::{FILE_BB, RANK_BB},
-    square8::Square8,
+    square6::Square6,
 };
 
-const KING_DELTAS: [i32; 8] = [9, 8, 7, 1, -9, -8, -7, -1];
-const KNIGHT_DELTAS: [i32; 8] = [17, 15, 10, 6, -17, -15, -10, -6];
-const GIRAFFE_DELTAS: [i32; 8] = [33, 31, 12, 4, -33, -31, -12, -4];
-const WHITE_PAWN_DELTAS: [i32; 2] = [7, 9];
-const BLACK_PAWN_DELTAS: [i32; 2] = [-7, -9];
+const KING_DELTAS: [i32; 8] = [7, 6, 5, 1, -7, -6, -5, -1];
+const KNIGHT_DELTAS: [i32; 8] = [13, 11, 8, 4, -13, -11, -8, -4];
+const GIRAFFE_DELTAS: [i32; 8] = [25, 23, 10, 2, -25, -23, -10, -2];
+const WHITE_PAWN_DELTAS: [i32; 2] = [5, 7];
+const BLACK_PAWN_DELTAS: [i32; 2] = [-5, -7];
 
-const fn init_stepping_attacks(deltas: &[i32]) -> [BB8<Square8>; 64] {
-    let mut table = [BB8::new(0); 64];
+const fn init_stepping_attacks(deltas: &[i32]) -> [BB6<Square6>; 36] {
+    let mut table = [BB6::new(0); 36];
     let mut sq = 0;
-    while sq < 64 {
-        table[sq] = BB8::new(sliding_attacks(sq as i32, deltas));
+    while sq < 36 {
+        table[sq] = BB6::new(sliding_attacks(sq as i32, deltas));
         sq += 1;
     }
     table
 }
 
-const fn sliding_attacks(square: i32, deltas: &[i32]) -> u64 {
+pub fn sliding_attacks2(square: i32, deltas: &[i32]) -> u64 {
     let mut attack = 0;
 
     let mut i = 0;
@@ -34,7 +34,8 @@ const fn sliding_attacks(square: i32, deltas: &[i32]) -> u64 {
         let mut previous = square;
         loop {
             let sq = previous + deltas[i];
-            let file_diff = (sq & 0x7) - (previous & 0x7);
+            let file_diff = (sq % 6) - (previous % 6);
+            // let file_diff = (sq & 0x6) - (previous & 0x6);
             if file_diff > 2 || file_diff < -2 || sq < 0 || sq > 63 {
                 break;
             }
@@ -51,24 +52,50 @@ const fn sliding_attacks(square: i32, deltas: &[i32]) -> u64 {
     attack
 }
 
-pub static KNIGHT_ATTACKS: [BB8<Square8>; 64] =
+const fn sliding_attacks(square: i32, deltas: &[i32]) -> u64 {
+    let mut attack = 0;
+
+    let mut i = 0;
+    let len = deltas.len();
+    while i < len {
+        let mut previous = square;
+        loop {
+            let sq = previous + deltas[i];
+            let file_diff = (sq % 6) - (previous % 6);
+            // let file_diff = (sq & 0x5) - (previous & 0x5);
+            if file_diff > 2 || file_diff < -2 || sq < 0 || sq > 35 {
+                break;
+            }
+            let bb = 1 << sq;
+            attack |= bb;
+            if attack & bb != 0 {
+                break;
+            }
+            previous = sq;
+        }
+        i += 1;
+    }
+
+    attack
+}
+pub static KNIGHT_ATTACKS: [BB6<Square6>; 36] =
     init_stepping_attacks(&KNIGHT_DELTAS);
-pub static GIRAFFE_ATTACKS: [BB8<Square8>; 64] =
+pub static GIRAFFE_ATTACKS: [BB6<Square6>; 36] =
     init_stepping_attacks(&GIRAFFE_DELTAS);
-pub static WHITE_PAWN_ATTACKS: [BB8<Square8>; 64] =
+pub static WHITE_PAWN_ATTACKS: [BB6<Square6>; 36] =
     init_stepping_attacks(&WHITE_PAWN_DELTAS);
-pub static BLACK_PAWN_ATTACKS: [BB8<Square8>; 64] =
+pub static BLACK_PAWN_ATTACKS: [BB6<Square6>; 36] =
     init_stepping_attacks(&BLACK_PAWN_DELTAS);
-pub static KING_MOVES: [BB8<Square8>; 64] = init_stepping_attacks(&KING_DELTAS);
-static mut PAWN_MOVES: [[BB8<Square8>; 64]; 2] =
-    [init_stepping_attacks(&[-8]), init_stepping_attacks(&[8])];
+pub static KING_MOVES: [BB6<Square6>; 36] = init_stepping_attacks(&KING_DELTAS);
+static mut PAWN_MOVES: [[BB6<Square6>; 36]; 2] =
+    [init_stepping_attacks(&[-6]), init_stepping_attacks(&[6])];
 
-pub static mut RAYS: [[BB8<Square8>; 64]; 8] = [[BB8::new(0); 64]; 8];
+pub static mut RAYS: [[BB6<Square6>; 36]; 8] = [[BB6::new(0); 36]; 8];
 
-static mut BETWEEN_BB: [[BB8<Square8>; 64]; 64] = [[BB8::new(0); 64]; 64];
+static mut BETWEEN_BB: [[BB6<Square6>; 36]; 36] = [[BB6::new(0); 36]; 36];
 
 #[derive(Clone)]
-pub struct Attacks8<S, B>
+pub struct Attacks6<S, B>
 where
     S: Square,
     B: BitBoard<S>,
@@ -77,7 +104,7 @@ where
     _s: PhantomData<S>,
 }
 
-impl Attacks8<Square8, BB8<Square8>> {
+impl Attacks6<Square6, BB6<Square6>> {
     pub fn new() -> Self {
         Self {
             _a: PhantomData,
@@ -86,26 +113,26 @@ impl Attacks8<Square8, BB8<Square8>> {
     }
 }
 
-impl Default for Attacks8<Square8, BB8<Square8>> {
+impl Default for Attacks6<Square6, BB6<Square6>> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
+impl Attacks<Square6, BB6<Square6>> for Attacks6<Square6, BB6<Square6>> {
     fn init_pawn_moves() {
-        for color in [(Color::White, 0, 8), (Color::Black, 56, -8_isize)] {
+        for color in [(Color::White, 0, 6), (Color::Black, 30, -6_isize)] {
             let index = color.0.index();
             match color.0 {
                 Color::NoColor => (),
                 _ => {
-                    for i in color.1..color.1 + 8 {
+                    for i in color.1..color.1 + 6 {
                         unsafe {
-                            PAWN_MOVES[index][i as usize] = BB8::empty();
+                            PAWN_MOVES[index][i as usize] = BB6::empty();
                         }
                     }
                     let start = color.1 + color.2;
-                    let end = start + 8;
+                    let end = start + 6;
                     for i in start..end {
                         let first = i + color.2;
                         let second = i + (color.2 * 2);
@@ -123,10 +150,10 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     fn init_quick() {}
 
     fn init_north_ray() {
-        let empty = &BB8::empty();
-        for sq in 0..64 {
-            let file = FILE_BB[sq % 8];
-            let rank = sq / 8;
+        let empty = &BB6::empty();
+        for sq in 0..36 {
+            let file = FILE_BB[sq % 6];
+            let rank = sq / 6;
             let mut bb = file | empty;
             (0..rank).for_each(|j| {
                 bb &= &!&RANK_BB[j];
@@ -139,12 +166,12 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_south_ray() {
-        let empty = &BB8::empty();
-        for sq in 0..64 {
-            let file = FILE_BB[sq % 8];
-            let rank = sq / 8;
+        let empty = &BB6::empty();
+        for sq in 0..36 {
+            let file = FILE_BB[sq % 6];
+            let rank = sq / 6;
             let mut bb = file | empty;
-            (rank..8).for_each(|j| {
+            (rank..6).for_each(|j| {
                 bb &= &!&RANK_BB[j];
             });
             bb &= &!&SQUARE_BB[sq];
@@ -155,11 +182,11 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_east_ray() {
-        let empty = &BB8::empty();
-        for sq in 0..64 {
-            let rank = RANK_BB[sq / 8];
+        let empty = &BB6::empty();
+        for sq in 0..36 {
+            let rank = RANK_BB[sq / 6];
             let mut bb = rank | empty;
-            (0..sq % 8).for_each(|j| {
+            (0..sq % 6).for_each(|j| {
                 bb &= &!&FILE_BB[j];
             });
             bb &= &!&SQUARE_BB[sq];
@@ -170,11 +197,11 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_west_ray() {
-        let empty = &BB8::empty();
-        for sq in 0..64 {
-            let rank = RANK_BB[sq / 8];
+        let empty = &BB6::empty();
+        for sq in 0..36 {
+            let rank = RANK_BB[sq / 6];
             let mut bb = rank | empty;
-            (sq % 8..8).for_each(|j| {
+            (sq % 6..6).for_each(|j| {
                 bb &= &!&FILE_BB[j];
             });
             bb &= &!&SQUARE_BB[sq];
@@ -185,9 +212,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_north_east_ray() {
-        let delta = &[9];
-        for sq in Square8::iter() {
-            let bb = diagonal_ray(sq.index() as i32, delta, 9);
+        let delta = &[7];
+        for sq in Square6::iter() {
+            let bb = diagonal_ray(sq.index() as i32, delta, 7);
             unsafe {
                 RAYS[Ray::NorthEast as usize][sq.index()] = bb;
             }
@@ -195,9 +222,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_north_west_ray() {
-        let delta = &[7];
-        for sq in Square8::iter() {
-            let bb = diagonal_ray(sq.index() as i32, delta, 7);
+        let delta = &[5];
+        for sq in Square6::iter() {
+            let bb = diagonal_ray(sq.index() as i32, delta, 5);
             unsafe {
                 RAYS[Ray::NorthWest as usize][sq.index()] = bb;
             }
@@ -205,9 +232,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_south_east_ray() {
-        let delta = &[-7];
-        for sq in Square8::iter() {
-            let bb = diagonal_ray(sq.index() as i32, delta, -7);
+        let delta = &[-5];
+        for sq in Square6::iter() {
+            let bb = diagonal_ray(sq.index() as i32, delta, -5);
             unsafe {
                 RAYS[Ray::SouthEast as usize][sq.index()] = bb;
             }
@@ -215,9 +242,9 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_south_west_ray() {
-        let delta = &[-9];
-        for sq in Square8::iter() {
-            let bb = diagonal_ray(sq.index() as i32, delta, -9);
+        let delta = &[-7];
+        for sq in Square6::iter() {
+            let bb = diagonal_ray(sq.index() as i32, delta, -7);
             unsafe {
                 RAYS[Ray::SouthWest as usize][sq.index()] = bb;
             }
@@ -225,8 +252,8 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
 
     fn init_between() {
-        for from in Square8::iter() {
-            for to in Square8::iter() {
+        for from in Square6::iter() {
+            for to in Square6::iter() {
                 if from == to {
                     continue;
                 }
@@ -235,22 +262,22 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
                 unsafe {
                     if df == 0 || dr == 0 {
                         BETWEEN_BB[from.index()][to.index()] =
-                            Attacks8::get_sliding_attacks(
+                            Attacks6::get_sliding_attacks(
                                 PieceType::Rook,
                                 &from,
                                 SQUARE_BB[to.index()],
-                            ) & &Attacks8::get_sliding_attacks(
+                            ) & &Attacks6::get_sliding_attacks(
                                 PieceType::Rook,
                                 &to,
                                 SQUARE_BB[from.index()],
                             );
                     } else if df.abs() == dr.abs() {
                         BETWEEN_BB[from.index()][to.index()] =
-                            Attacks8::get_sliding_attacks(
+                            Attacks6::get_sliding_attacks(
                                 PieceType::Bishop,
                                 &from,
                                 SQUARE_BB[to.index()],
-                            ) & &Attacks8::get_sliding_attacks(
+                            ) & &Attacks6::get_sliding_attacks(
                                 PieceType::Bishop,
                                 &to,
                                 SQUARE_BB[from.index()],
@@ -262,10 +289,10 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     }
     fn get_non_sliding_attacks(
         piece_type: PieceType,
-        square: &Square8,
+        square: &Square6,
         color: Color,
-        _blockers: BB8<Square8>,
-    ) -> BB8<Square8> {
+        _blockers: BB6<Square6>,
+    ) -> BB6<Square6> {
         match piece_type {
             PieceType::King => KING_MOVES[square.index()],
             PieceType::Knight => KNIGHT_ATTACKS[square.index()],
@@ -273,41 +300,41 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
             PieceType::Pawn => match color {
                 Color::Black => BLACK_PAWN_ATTACKS[square.index()],
                 Color::White => WHITE_PAWN_ATTACKS[square.index()],
-                Color::NoColor => BB8::empty(),
+                Color::NoColor => BB6::empty(),
             },
-            _ => BB8::empty(),
+            _ => BB6::empty(),
         }
     }
 
-    fn get_giraffe_attacks(square: &Square8) -> BB8<Square8> {
+    fn get_giraffe_attacks(square: &Square6) -> BB6<Square6> {
         GIRAFFE_ATTACKS[square.index()]
     }
 
     fn get_sliding_attacks(
         piece_type: PieceType,
-        square: &Square8,
-        blockers: BB8<Square8>,
-    ) -> BB8<Square8> {
+        square: &Square6,
+        blockers: BB6<Square6>,
+    ) -> BB6<Square6> {
         match piece_type {
             PieceType::Bishop | PieceType::ArchBishop => {
-                Attacks8::get_bishop_attacks(square.index(), blockers)
+                Attacks6::get_bishop_attacks(square.index(), blockers)
             }
             PieceType::Rook | PieceType::Chancellor => {
-                Attacks8::get_rook_attacks(square.index(), blockers)
+                Attacks6::get_rook_attacks(square.index(), blockers)
             }
             PieceType::Queen => {
-                Attacks8::get_bishop_attacks(square.index(), blockers)
-                    | &Attacks8::get_rook_attacks(square.index(), blockers)
+                Attacks6::get_bishop_attacks(square.index(), blockers)
+                    | &Attacks6::get_rook_attacks(square.index(), blockers)
             }
-            _ => BB8::empty(),
+            _ => BB6::empty(),
         }
     }
 
     fn get_positive_ray_attacks(
         dir: Ray,
         square: usize,
-        blockers: BB8<Square8>,
-    ) -> BB8<Square8> {
+        blockers: BB6<Square6>,
+    ) -> BB6<Square6> {
         unsafe {
             let attacks = RAYS[dir as usize][square];
             let mut blocked = attacks & &blockers;
@@ -322,8 +349,8 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
     fn get_negative_ray_attacks(
         dir: Ray,
         square: usize,
-        blockers: BB8<Square8>,
-    ) -> BB8<Square8> {
+        blockers: BB6<Square6>,
+    ) -> BB6<Square6> {
         unsafe {
             let attacks = RAYS[dir as usize][square];
             let mut blocked = attacks & &blockers;
@@ -335,27 +362,27 @@ impl Attacks<Square8, BB8<Square8>> for Attacks8<Square8, BB8<Square8>> {
         }
     }
 
-    fn between(square1: Square8, square2: Square8) -> BB8<Square8> {
+    fn between(square1: Square6, square2: Square6) -> BB6<Square6> {
         unsafe { BETWEEN_BB[square1.index()][square2.index()] }
     }
 
-    fn get_pawn_moves(square: usize, color: Color) -> BB8<Square8> {
+    fn get_pawn_moves(square: usize, color: Color) -> BB6<Square6> {
         unsafe {
             match color {
                 Color::White | Color::Black => {
                     PAWN_MOVES[color.index()][square]
                 }
-                Color::NoColor => BB8::empty(),
+                Color::NoColor => BB6::empty(),
             }
         }
     }
 }
 
-fn diagonal_ray(start: i32, delta: &[i32; 1], new_sq: i32) -> BB8<Square8> {
+fn diagonal_ray(start: i32, delta: &[i32; 1], new_sq: i32) -> BB6<Square6> {
     let mut sq = start;
-    let mut bb = BB8::new(0);
+    let mut bb = BB6::new(0);
     loop {
-        let b = BB8::new(sliding_attacks(sq, delta));
+        let b = BB6::new(sliding_attacks(sq, delta));
         if b.len() == 0 {
             break;
         }
@@ -371,22 +398,22 @@ pub mod tests {
     use crate::{
         attacks::Ray,
         bitboard::BitBoard,
-        shuuro8::{
-            attacks8::{
+        shuuro6::{
+            attacks6::{
                 BLACK_PAWN_ATTACKS, KNIGHT_ATTACKS, WHITE_PAWN_ATTACKS,
             },
-            bitboard8::square_bb,
+            bitboard6::square_bb,
             board_defs::EMPTY_BB,
-            square8::consts::*,
+            square6::consts::*,
         },
         Color, Square,
     };
 
-    use super::{Attacks, Attacks8, KING_MOVES, PAWN_MOVES, RAYS};
+    use super::{Attacks, Attacks6, KING_MOVES, PAWN_MOVES, RAYS};
 
     #[test]
     fn pawn_moves() {
-        Attacks8::init_pawn_moves();
+        Attacks6::init_pawn_moves();
         let ok_cases = [
             (A1, EMPTY_BB, Color::White, false, 0),
             (
@@ -396,14 +423,14 @@ pub mod tests {
                 true,
                 2,
             ),
-            (H7, square_bb(&H8), Color::White, true, 1),
-            (C8, EMPTY_BB, Color::White, false, 0),
-            (G8, EMPTY_BB, Color::White, false, 0),
-            (D7, square_bb(&D6) | &square_bb(&D5), Color::Black, true, 2),
-            (H8, EMPTY_BB, Color::Black, false, 0),
+            (F5, square_bb(&F6), Color::White, true, 1),
+            (C6, EMPTY_BB, Color::White, false, 0),
+            (E6, EMPTY_BB, Color::White, false, 0),
+            (D5, square_bb(&D4) | &square_bb(&D3), Color::Black, true, 2),
+            (F6, EMPTY_BB, Color::Black, false, 0),
             (D4, square_bb(&D3), Color::Black, true, 1),
             (A2, square_bb(&A1), Color::Black, true, 1),
-            (H1, EMPTY_BB, Color::Black, false, 0),
+            (F1, EMPTY_BB, Color::Black, false, 0),
         ];
         for case in ok_cases {
             unsafe {
@@ -420,12 +447,12 @@ pub mod tests {
         let ok_cases = [
             (A1, [Some(B2), None], 1, Color::White),
             (D1, [Some(E2), Some(C2)], 2, Color::White),
-            (F7, [Some(G8), Some(E8)], 2, Color::White),
-            (C8, [None, None], 0, Color::White),
-            (A7, [Some(B6), None], 1, Color::Black),
-            (C7, [Some(B6), Some(D6)], 2, Color::Black),
-            (G2, [Some(H1), Some(F1)], 2, Color::Black),
-            (H1, [None, None], 0, Color::Black),
+            (E5, [Some(F6), Some(D6)], 2, Color::White),
+            (C6, [None, None], 0, Color::White),
+            (A5, [Some(B4), None], 1, Color::Black),
+            (C5, [Some(B4), Some(D4)], 2, Color::Black),
+            (E2, [Some(D1), Some(F1)], 2, Color::Black),
+            (F1, [None, None], 0, Color::Black),
         ];
 
         for case in ok_cases {
@@ -454,9 +481,9 @@ pub mod tests {
     fn knight_attacks() {
         let knight_cases = [
             (A1, vec![B3, C2], Color::White),
-            (E4, vec![D2, F2, C3, G3, C5, G5, D6, F6], Color::White),
-            (B7, vec![D8, D6, C5, A5], Color::Black),
-            (H7, vec![F8, F6, G5], Color::Black),
+            (E4, vec![F6, D6, C5, C3, D2, F2], Color::White),
+            (B5, vec![D6, D4, C3, A3], Color::Black),
+            (F5, vec![D6, D4, E3], Color::Black),
         ];
         for case in knight_cases {
             let sq = case.0.index();
@@ -472,9 +499,9 @@ pub mod tests {
     #[test]
     fn king_attacks() {
         let king_cases = [
-            (H1, vec![H2, G2, G2], Color::White),
-            (C8, vec![D8, B8, D7, B7, C7], Color::White),
-            (D7, vec![C8, D8, E8, C7, E7, C6, D6, E6], Color::Black),
+            (F1, vec![E1, E2, F2], Color::White),
+            (C6, vec![B6, B5, C5, D5, D6], Color::White),
+            (D5, vec![C6, D6, E6, C5, E5, C4, D4, E4], Color::Black),
             (A5, vec![A6, B6, B5, B4, A4], Color::Black),
         ];
 
@@ -489,26 +516,26 @@ pub mod tests {
 
     #[test]
     fn rays() {
-        Attacks8::init();
+        Attacks6::init();
         let ok_cases = [
-            (A1, A8, 6, Ray::North),
-            (D6, D8, 1, Ray::North),
-            (H7, H8, 0, Ray::North),
+            (A1, A6, 4, Ray::North),
+            (D4, D6, 1, Ray::North),
+            (F5, F6, 0, Ray::North),
             (E3, A3, 3, Ray::West),
-            (G6, B6, 4, Ray::West),
-            (H8, A8, 6, Ray::West),
-            (D1, H1, 3, Ray::East),
-            (C8, H8, 4, Ray::East),
-            (F5, G5, 0, Ray::East),
-            (E8, E3, 4, Ray::South),
-            (B8, B6, 1, Ray::South),
-            (F7, F4, 2, Ray::South),
+            (E6, B6, 2, Ray::West),
+            (F6, A6, 4, Ray::West),
+            (B1, F1, 3, Ray::East),
+            (C6, F6, 2, Ray::East),
+            (F5, E5, 0, Ray::East),
+            (E6, E3, 2, Ray::South),
+            (B6, B4, 1, Ray::South),
+            (F6, F3, 2, Ray::South),
         ];
 
         for case in ok_cases {
             unsafe {
                 let ray = &RAYS[case.3 as usize][case.0.index()];
-                let between = Attacks8::between(case.0, case.1);
+                let between = Attacks6::between(case.0, case.1);
                 let calc = *ray & &between;
                 assert_eq!(calc.count(), case.2);
             }

@@ -1,30 +1,34 @@
-use std::{fmt, marker::PhantomData};
+use crate::attacks::Attacks;
+use crate::position::Board;
+use crate::position::Placement;
+use crate::position::Play;
+use crate::position::Position;
+use crate::position::Rules;
+use crate::position::Sfen;
+use crate::Move;
+use crate::MoveData;
+use crate::Piece;
+use crate::PieceType;
+use crate::SfenError;
+use std::fmt;
+use std::marker::PhantomData;
 
 use crate::{
-    attacks::Attacks,
-    bitboard::BitBoard,
-    position::{Board, Outcome, Placement, Play, Position, Rules, Sfen},
-    Color, Hand, Move, MoveData, Piece, PieceType, SfenError, Square, Variant,
+    bitboard::BitBoard, position::Outcome, Color, Hand, Square, Variant,
 };
 
-use super::{
-    attacks8::Attacks8,
-    bitboard8::BB8,
-    board_defs::{FILE_BB, RANK_BB},
-    plinths_set8::PlinthGen8,
-    square8::{
-        consts::{A1, A8, H1, H8},
-        Square8,
-    },
-};
-
-impl Position<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
-    for P8<Square8, BB8<Square8>>
-{
-}
+use super::attacks6::Attacks6;
+use super::board_defs::FILE_BB;
+use super::board_defs::RANK_BB;
+use super::plinths_set6::PlinthGen6;
+use super::square6::consts::A1;
+use super::square6::consts::A6;
+use super::square6::consts::F1;
+use super::square6::consts::F6;
+use super::{bitboard6::BB6, square6::Square6};
 
 #[derive(Clone, Debug)]
-pub struct P8<S, B>
+pub struct P6<S, B>
 where
     S: Square,
     B: BitBoard<S>,
@@ -33,52 +37,72 @@ where
     hand: Hand,
     ply: u16,
     side_to_move: Color,
-    move_history: Vec<Move<Square8>>,
-    occupied_bb: BB8<Square8>,
-    color_bb: [BB8<Square8>; 3],
+    move_history: Vec<Move<Square6>>,
+    occupied_bb: BB6<Square6>,
+    color_bb: [BB6<Square6>; 3],
     game_status: Outcome,
     variant: Variant,
-    pub type_bb: [BB8<Square8>; 10],
+    pub type_bb: [BB6<Square6>; 10],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
 }
 
-impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
-    for P8<Square8, BB8<Square8>>
+impl Default for P6<Square6, BB6<Square6>> {
+    fn default() -> P6<Square6, BB6<Square6>> {
+        P6 {
+            side_to_move: Color::Black,
+            board: PieceGrid([None; 36]),
+            hand: Default::default(),
+            ply: 0,
+            move_history: Default::default(),
+            // sfen_history: Default::default(),
+            occupied_bb: Default::default(),
+            color_bb: Default::default(),
+            type_bb: Default::default(),
+            game_status: Outcome::MoveOk,
+            variant: Variant::Standard,
+            _a: PhantomData,
+            _s: PhantomData,
+        }
+    }
+}
+
+impl Board<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
+    for P6<Square6, BB6<Square6>>
 {
     fn new() -> Self {
         Default::default()
     }
 
-    fn set_piece(&mut self, sq: Square8, p: Option<Piece>) {
+    fn set_piece(&mut self, sq: Square6, p: Option<Piece>) {
         self.board.set(sq, p)
     }
 
-    fn piece_at(&self, sq: Square8) -> &Option<Piece> {
+    fn piece_at(&self, sq: Square6) -> &Option<Piece> {
         self.board.get(sq)
     }
 
-    fn player_bb(&self, c: Color) -> BB8<Square8> {
+    fn player_bb(&self, c: Color) -> BB6<Square6> {
         self.color_bb[c.index()]
     }
 
-    fn occupied_bb(&self) -> BB8<Square8> {
+    fn occupied_bb(&self) -> BB6<Square6> {
         self.occupied_bb
     }
 
-    fn type_bb(&self, pt: &PieceType) -> BB8<Square8> {
+    fn type_bb(&self, pt: &PieceType) -> BB6<Square6> {
         self.type_bb[pt.index()]
     }
 
-    fn xor_player_bb(&mut self, color: Color, sq: Square8) {
+    fn xor_player_bb(&mut self, color: Color, sq: Square6) {
         self.color_bb[color.index()] ^= &sq;
     }
 
-    fn xor_type_bb(&mut self, piece_type: PieceType, sq: Square8) {
+    fn xor_type_bb(&mut self, piece_type: PieceType, sq: Square6) {
         self.type_bb[piece_type.index()] ^= &sq;
     }
 
-    fn xor_occupied(&mut self, sq: Square8) {
+    fn xor_occupied(&mut self, sq: Square6) {
         self.occupied_bb ^= &sq;
     }
 
@@ -87,12 +111,12 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     }
 
     fn empty_all_bb(&mut self) {
-        self.occupied_bb = BB8::empty();
+        self.occupied_bb = BB6::empty();
         self.color_bb = Default::default();
         self.type_bb = Default::default();
     }
 
-    fn sfen_to_bb(&mut self, piece: Piece, sq: &Square8) {
+    fn sfen_to_bb(&mut self, piece: Piece, sq: &Square6) {
         self.set_piece(*sq, Some(piece));
         self.occupied_bb |= sq;
         self.color_bb[piece.color.index()] |= sq;
@@ -131,11 +155,11 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.variant = variant;
     }
 
-    fn insert_sfen(&mut self, sfen: Move<Square8>) {
+    fn insert_sfen(&mut self, sfen: Move<Square6>) {
         self.move_history.push(sfen);
     }
 
-    fn insert_move(&mut self, move_record: Move<Square8>) {
+    fn insert_move(&mut self, move_record: Move<Square6>) {
         self.move_history.push(move_record)
     }
 
@@ -143,11 +167,11 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.move_history.clear();
     }
 
-    fn set_move_history(&mut self, history: Vec<Move<Square8>>) {
+    fn set_move_history(&mut self, history: Vec<Move<Square6>>) {
         self.move_history = history;
     }
 
-    fn move_history(&self) -> &[Move<Square8>] {
+    fn move_history(&self) -> &[Move<Square6>] {
         &self.move_history
     }
 
@@ -182,12 +206,12 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     }
 
     fn dimensions(&self) -> u8 {
-        8
+        6
     }
 }
 
-impl Sfen<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
-    for P8<Square8, BB8<Square8>>
+impl Sfen<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
+    for P6<Square6, BB6<Square6>>
 {
     fn clear_hand(&mut self) {
         self.hand.clear();
@@ -206,7 +230,7 @@ impl Sfen<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         Ok(())
     }
 
-    fn update_player(&mut self, piece: Piece, sq: &Square8) {
+    fn update_player(&mut self, piece: Piece, sq: &Square6) {
         self.set_piece(*sq, Some(piece));
         self.occupied_bb |= sq;
         self.color_bb[piece.color.index()] |= sq;
@@ -214,18 +238,18 @@ impl Sfen<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     }
 }
 
-impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
-    for P8<Square8, BB8<Square8>>
+impl Placement<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
+    for P6<Square6, BB6<Square6>>
 {
     fn generate_plinths(&mut self) {
-        self.color_bb[Color::NoColor.index()] = PlinthGen8::default().start();
+        self.color_bb[Color::NoColor.index()] = PlinthGen6::default().start();
     }
 
-    fn rank_bb(&self, file: usize) -> BB8<Square8> {
+    fn rank_bb(&self, file: usize) -> BB6<Square6> {
         RANK_BB[file]
     }
 
-    fn update_bb(&mut self, p: Piece, sq: Square8) {
+    fn update_bb(&mut self, p: Piece, sq: Square6) {
         self.set_piece(sq, Some(p));
         self.occupied_bb |= &sq;
         self.color_bb[p.color.index()] |= &sq;
@@ -233,37 +257,38 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     }
 
     fn empty_placement_board() -> String {
-        String::from("8/8/8/8/8/8/8/8 w")
+        String::from("6/6/6/6/6/6/6/6 w")
     }
 
-    fn king_files(&self, c: Color) -> BB8<Square8> {
+    fn king_files(&self, c: Color) -> BB6<Square6> {
         match c {
-            Color::Black => Attacks8::between(A8, H8),
-            Color::White => Attacks8::between(A1, H1),
-            Color::NoColor => BB8::empty(),
+            Color::Black => Attacks6::between(A6, F6),
+            Color::White => Attacks6::between(A1, F1),
+            Color::NoColor => BB6::empty(),
         }
     }
 }
-impl Rules<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
-    for P8<Square8, BB8<Square8>>
+
+impl Rules<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
+    for P6<Square6, BB6<Square6>>
 {
 }
 
-impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
-    for P8<Square8, BB8<Square8>>
+impl Play<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
+    for P6<Square6, BB6<Square6>>
 {
     fn game_status(&self) -> Outcome {
         self.game_status.clone()
     }
 
-    fn file_bb(&self, file: usize) -> BB8<Square8> {
+    fn file_bb(&self, file: usize) -> BB6<Square6> {
         FILE_BB[file]
     }
 
     fn update_after_move(
         &mut self,
-        from: Square8,
-        to: Square8,
+        from: Square6,
+        to: Square6,
         placed: Piece,
         moved: Piece,
         captured: Option<Piece>,
@@ -294,66 +319,35 @@ impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
 }
 
 #[derive(Clone)]
-pub struct PieceGrid([Option<Piece>; 64]);
+pub struct PieceGrid([Option<Piece>; 36]);
 
 impl PieceGrid {
-    pub fn get(&self, sq: Square8) -> &Option<Piece> {
+    pub fn get(&self, sq: Square6) -> &Option<Piece> {
         &self.0[sq.index()]
     }
 
-    pub fn set(&mut self, sq: Square8, pc: Option<Piece>) {
+    pub fn set(&mut self, sq: Square6, pc: Option<Piece>) {
         self.0[sq.index()] = pc;
     }
 }
 
 impl Default for PieceGrid {
     fn default() -> Self {
-        PieceGrid([None; 64])
+        PieceGrid([None; 36])
     }
 }
 
-impl fmt::Debug for PieceGrid {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(fmt, "PieceGrid {{ ")?;
-
-        for pc in self.0.iter() {
-            write!(fmt, "{pc:?} ")?;
-        }
-        write!(fmt, "}}")
-    }
-}
-
-impl Default for P8<Square8, BB8<Square8>> {
-    fn default() -> P8<Square8, BB8<Square8>> {
-        P8 {
-            side_to_move: Color::Black,
-            board: PieceGrid([None; 64]),
-            hand: Default::default(),
-            ply: 0,
-            move_history: Default::default(),
-            // sfen_history: Default::default(),
-            occupied_bb: Default::default(),
-            color_bb: Default::default(),
-            type_bb: Default::default(),
-            game_status: Outcome::MoveOk,
-            variant: Variant::Standard,
-            _a: PhantomData,
-            _s: PhantomData,
-        }
-    }
-}
-
-impl fmt::Display for P8<Square8, BB8<Square8>> {
+impl fmt::Display for P6<Square6, BB6<Square6>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "+---+---+---+---+---+---+---+---+")?;
+        writeln!(f, "+---+---+---+---+---+---+")?;
 
-        for rank in (0..8).rev() {
+        for rank in (0..6).rev() {
             write!(f, "|")?;
-            for file in 0..8 {
-                if let Some(sq) = Square8::new(file, rank) {
+            for file in 0..6 {
+                if let Some(sq) = Square6::new(file, rank) {
                     if let Some(ref piece) = *self.piece_at(sq) {
                         write!(f, "{piece}")?;
-                        let plinth: BB8<Square8> =
+                        let plinth: BB6<Square6> =
                             self.player_bb(Color::NoColor) & &sq;
                         if plinth.is_any() {
                             write!(f, " L|")?;
@@ -361,7 +355,7 @@ impl fmt::Display for P8<Square8, BB8<Square8>> {
                             write!(f, "  |")?;
                         }
                     } else {
-                        let plinth: BB8<Square8> =
+                        let plinth: BB6<Square6> =
                             self.player_bb(Color::NoColor) & &sq;
                         if plinth.is_any() {
                             write!(f, "{:>3}|", "L")?;
@@ -373,9 +367,9 @@ impl fmt::Display for P8<Square8, BB8<Square8>> {
             }
 
             //writeln!(f, " {}", (('a' as usize + row as usize) as u8) as char)?;
-            writeln!(f, "\n+---+---+---+---+---+---+---+---+")?;
+            writeln!(f, "\n+---+---+---+---+---+---+")?;
         }
-        writeln!(f, "a   b   c   d   e   f   g   h")?;
+        writeln!(f, "a   b   c   d   e   f")?;
         writeln!(
             f,
             "Side to move: {}",
@@ -414,42 +408,52 @@ impl fmt::Display for P8<Square8, BB8<Square8>> {
     }
 }
 
+impl fmt::Debug for PieceGrid {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(fmt, "PieceGrid {{ ")?;
+
+        for pc in self.0.iter() {
+            write!(fmt, "{pc:?} ")?;
+        }
+        write!(fmt, "}}")
+    }
+}
+
+impl Position<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
+    for P6<Square6, BB6<Square6>>
+{
+}
+
 #[cfg(test)]
 pub mod tests {
     use crate::{
         attacks::Attacks,
         bitboard::BitBoard,
         position::{Board, Play},
-        shuuro8::{
-            attacks8::Attacks8,
-            square8::{
-                consts::{
-                    A6, A7, B4, B5, B6, B7, D6, E7, F4, F5, F6, F8, G2, G3,
-                },
-                Square8,
+        shuuro6::{
+            attacks6::Attacks6,
+            square6::{
+                consts::{C4, D2, D3, D4, E1, E4},
+                Square6,
             },
         },
         Color, Variant,
     };
 
-    use super::P8;
+    use super::P6;
 
     fn setup() {
-        Attacks8::init();
+        Attacks6::init();
     }
 
     #[test]
     fn legal_moves_bishop() {
         setup();
-        let cases = [(
-            "n1rnkb2/3p1p1p/4pn_.1/ppp1_n3/3_.1P2/1_NP1PN2/PP1P2PP/1KQ1NN2 b - 1",
-            F8,
-            4,
-        )];
+        let cases = [("b2k2/2p1_.1/6/3B2/PP_.3/2K1N1 w - 1", D3, 7)];
         for case in cases {
-            let mut pos = P8::default();
+            let mut pos = P6::default();
             pos.set_sfen(case.0).expect("failed to parse sfen string");
-            let legal_moves = pos.legal_moves(Color::Black);
+            let legal_moves = pos.legal_moves(Color::White);
             if let Some(b) = legal_moves.get(&case.1) {
                 assert_eq!(b.len(), case.2);
             }
@@ -460,16 +464,13 @@ pub mod tests {
     fn pinned_bb() {
         setup();
 
-        let cases: &[(&str, &[Square8], &[Square8])] = &[
-            ("q4k1n/8/3R1q2/6Q1/2b5/5Q2/8/1Q2K3 w - 1", &[F6], &[]),
-            ("q4k1n/5_.2/3R1q2/6Q1/2b5/5Q2/8/1Q2K3 w - 1", &[], &[]),
-            ("5k1n/4q3/8/q1R3Q1/1Qb5/8/8/1Q2K3 b - 1", &[], &[B4]),
-            ("5k1n/2R1r3/8/7Q/1Qb2q2/5Q2/7q/3K4 b - 1", &[E7, F4], &[]),
-            ("5k1n/2R1r3/_.2_.4/7Q/1Qb2q2/5Q2/7q/3K4 b - 1", &[F4], &[]),
-            ("5k1n/2RP4/3p4/7Q/1Qb2q2/5Q2/7q/3K4 b - 1", &[D6, F4], &[]),
+        let cases: &[(&str, &[Square6], &[Square6])] = &[
+            ("4k1/ppb3/2p1q1/1BP2P/4Q1/1NK1R1 b - 1", &[C4, E4], &[]),
+            ("5k/1pp1b1/p3_.b/1BP2P/3Q2/1_.K1Rr w - 1", &[], &[D2, E1]),
+            ("5k/1pp1b1/p3_.b/1BP1QP/3_.2/1_.K1Rr w - 1", &[], &[E1]),
         ];
 
-        let mut pos = P8::new();
+        let mut pos = P6::new();
         for case in cases {
             pos.set_sfen(case.0).expect("faled to parse SFEN string");
             let black = pos.pinned_bb(Color::Black);
@@ -491,60 +492,16 @@ pub mod tests {
     fn pinned_and_in_check() {
         setup();
 
-        let cases = [
-            ("5k1n/2RP4/3p2N1/5q2/1Qb4Q/5Q2/7q/3K4 b - 1", F5, 0, false),
-            ("5k1n/2RP4/3p2A1/5q2/1Qb4Q/5Q2/7q/3K4 b - 1", F5, 0, true),
-            ("5k1n/2RP4/3p2C1/5q2/1Qb4Q/5Q2/7q/3K4 b - 1", F5, 0, true),
-        ];
-        let mut pos = P8::new();
+        let cases = [("5k/Pb1C2/1Rqb2/2Q2P/_.4_A/2K3 b - 1", D4, 0, true)];
+        let mut pos = P6::new();
         for case in cases {
             pos.set_sfen(case.0).expect("faled to parse SFEN string");
             if case.3 {
-                pos.update_variant(Variant::StandardFairy);
+                pos.update_variant(Variant::ShuuroMiniFairy);
             }
             let moves = pos.legal_moves(Color::Black);
             if let Some(moves) = moves.get(&case.1) {
                 assert_eq!(moves.len(), case.2);
-            }
-        }
-    }
-
-    #[test]
-    fn pawn_moves() {
-        setup();
-        let cases: &[(&str, Color, Square8, &[Square8])] = &[
-            (
-                "5k1n/ppRP2N1/B2p4/5q2/1Qb4Q/5Q2/7q/3K4 b - 1",
-                Color::Black,
-                B7,
-                &[B6, B5, A6],
-            ),
-            (
-                "5k1n/ppRP2N1/B2p4/5q2/1Qb4Q/5Q2/7q/3K4 b - 1",
-                Color::Black,
-                A7,
-                &[],
-            ),
-            (
-                "5k1n/ppRP2N1/B2p1p2/5q2/1Qb4Q/5Qp1/7q/3K4  b - 1",
-                Color::Black,
-                F6,
-                &[],
-            ),
-            (
-                "5k1n/ppRP2N1/B2p1p2/5q2/1Qb4Q/5Qp1/7q/3K4  b - 1",
-                Color::Black,
-                G3,
-                &[G2],
-            ),
-        ];
-        let mut pos = P8::new();
-        for case in cases {
-            pos.set_sfen(case.0).expect("failed to parse SFEN string");
-
-            let moves = pos.legal_moves(case.1);
-            if let Some(moves) = moves.get(&case.2) {
-                assert_eq!(moves.len(), case.3.len() as u32);
             }
         }
     }

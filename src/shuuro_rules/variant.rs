@@ -7,6 +7,7 @@ pub enum Variant {
     ShuuroMini,
     Standard,
     StandardFairy,
+    ShuuroMiniFairy,
 }
 
 impl From<&String> for Variant {
@@ -17,6 +18,7 @@ impl From<&String> for Variant {
             "shuuroMini" => Self::ShuuroMini,
             "standard" => Self::Standard,
             "standardFairy" => Self::StandardFairy,
+            "shuuroMiniFairy" => Self::ShuuroMiniFairy,
             _ => Self::Shuuro,
         }
     }
@@ -32,7 +34,9 @@ impl Variant {
             return false;
         }
         match &self {
-            Self::Shuuro | Self::Standard => !piece.is_fairy_piece(),
+            Self::Shuuro | Self::Standard | Self::ShuuroMini => {
+                !piece.is_fairy_piece()
+            }
             _ => true,
         }
     }
@@ -44,6 +48,7 @@ impl Variant {
             Self::ShuuroMini => 200,
             Self::Standard => 350,
             Self::StandardFairy => 400,
+            Self::ShuuroMiniFairy => 250,
         }
     }
 }
@@ -56,6 +61,7 @@ impl ToString for Variant {
             Self::ShuuroMini => String::from("shuuroMini"),
             Self::Standard => String::from("standard"),
             Self::StandardFairy => String::from("standardFairy"),
+            Variant::ShuuroMiniFairy => String::from("shuuroMiniFairy"),
         }
     }
 }

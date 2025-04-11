@@ -54,6 +54,8 @@
 #![recursion_limit = "144"]
 #[cfg(feature = "shuuro12")]
 pub mod shuuro12;
+#[cfg(feature = "shuuro6")]
+pub mod shuuro6;
 #[cfg(feature = "shuuro8")]
 pub mod shuuro8;
 pub mod shuuro_rules;

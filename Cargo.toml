@@ -1,6 +1,6 @@
 [package]
 name = "shuuro"
-version = "0.9.0"
+version = "1.0.0"
 authors = ["uros-5"]
 edition = "2021"
 description = "Bitboard based Shuuro library."
@@ -16,6 +16,7 @@ repository = "https://github.com/uros-5/shuuro"
 default = []
 shuuro12 = []
 shuuro8 = []
+shuuro6 = []
 standard = []
 
 [dependencies]
