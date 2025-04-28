@@ -4,10 +4,24 @@ use crate::shuuro_rules::PieceType;
 pub enum Variant {
     Shuuro,
     ShuuroFairy,
-    ShuuroMini,
     Standard,
     StandardFairy,
+    ShuuroMini,
     ShuuroMiniFairy,
+}
+
+impl From<u8> for Variant {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Self::Shuuro,
+            1 => Self::ShuuroFairy,
+            2 => Self::Standard,
+            3 => Self::StandardFairy,
+            4 => Self::ShuuroMini,
+            5 => Self::ShuuroMiniFairy,
+            _ => Self::Shuuro,
+        }
+    }
 }
 
 impl From<&String> for Variant {
@@ -16,9 +30,9 @@ impl From<&String> for Variant {
             "shuuro" => Self::Shuuro,
             "shuuroFairy" => Self::ShuuroFairy,
             "shuuroMini" => Self::ShuuroMini,
+            "shuuroMiniFairy" => Self::ShuuroMiniFairy,
             "standard" => Self::Standard,
             "standardFairy" => Self::StandardFairy,
-            "shuuroMiniFairy" => Self::ShuuroMiniFairy,
             _ => Self::Shuuro,
         }
     }
@@ -46,9 +60,17 @@ impl Variant {
             Self::Shuuro => 800,
             Self::ShuuroFairy => 870,
             Self::ShuuroMini => 200,
+            Self::ShuuroMiniFairy => 250,
             Self::Standard => 350,
             Self::StandardFairy => 400,
-            Self::ShuuroMiniFairy => 250,
+        }
+    }
+
+    pub fn min_credit(&self) -> i32 {
+        match &self {
+            Self::Shuuro | Self::ShuuroFairy => 700,
+            Self::ShuuroMini | Self::ShuuroMiniFairy => 150,
+            Self::Standard | Self::StandardFairy => 270,
         }
     }
 }

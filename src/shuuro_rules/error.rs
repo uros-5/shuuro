@@ -9,7 +9,7 @@ pub enum SfenError {
     #[error("an illegal piece notation is found")]
     IllegalPieceType,
 
-    #[error("the side to move needs to be blue or red")]
+    #[error("the side to move needs to be white or black")]
     IllegalSideToMove,
 
     #[error("this square does not exist")]

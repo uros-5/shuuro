@@ -7,21 +7,9 @@ use std::fmt;
 /// Represents a move which either is a select move, drop move or normal move.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Move<S: Square> {
-    Select {
-        piece: Piece,
-    },
-    Put {
-        to: S,
-        piece: Piece,
-        fen: String,
-    },
-    Normal {
-        from: S,
-        to: S,
-        placed: Piece,
-        move_data: MoveData,
-        fen: String,
-    },
+    Select { piece: Piece },
+    Put { to: S, piece: Piece },
+    Normal { from: S, to: S, placed: Piece },
 }
 
 impl<S: Square> Move<S> {
@@ -34,8 +22,6 @@ impl<S: Square> Move<S> {
                 piece_type: crate::PieceType::Rook,
                 color: Color::Black,
             },
-            move_data: MoveData::default(),
-            fen: String::new(),
         }
     }
 
@@ -44,16 +30,22 @@ impl<S: Square> Move<S> {
         if s.len() > 7 {
             return None;
         }
-
-        if s.contains('_') {
-            Self::get_normal_move(s)
-        } else {
-            let buy_move = Self::get_buy_move(s);
-            match buy_move {
-                Some(m) => Some(m),
-                None => Self::get_put_move(s),
-            }
+        let select_move = Self::parse_select_move(s);
+        if !select_move.is_none() {
+            return select_move;
         }
+
+        let place_move = Self::parse_place_move(s);
+        if !place_move.is_none() {
+            return place_move;
+        }
+
+        let normal_move = Self::get_normal_move(s);
+        if !normal_move.is_none() {
+            return normal_move;
+        }
+
+        None
     }
 
     /// Information about normal move.
@@ -64,8 +56,8 @@ impl<S: Square> Move<S> {
         }
     }
 
-    /// Getting buy move from str.
-    pub fn get_buy_move(s: &str) -> Option<Self> {
+    /// Getting select move from str.
+    pub fn parse_select_move(s: &str) -> Option<Self> {
         if s.len() == 2 && s.starts_with('+') {
             if let Some(piece) = Piece::from_sfen(s.chars().nth(1).unwrap()) {
                 return Some(Self::Select { piece });
@@ -75,18 +67,13 @@ impl<S: Square> Move<S> {
     }
 
     /// Getting put move from str.
-    pub fn get_put_move(s: &str) -> Option<Self> {
-        let mut fen_parts = s.split('@');
-        let piece_str = fen_parts.next()?;
-        let piece_char = piece_str.chars().next()?;
-        let piece = Piece::from_sfen(piece_char)?;
-        let to = fen_parts.next()?;
-        let to = Square::from_sfen(to)?;
-        Some(Self::Put {
-            piece,
-            to,
-            fen: String::new(),
-        })
+    pub fn parse_place_move(s: &str) -> Option<Self> {
+        let mut place_move = s.split("@");
+        let piece = place_move.next()?.chars().next()?;
+        let piece = Piece::from_sfen(piece)?;
+        let to = place_move.next()?;
+        let to = S::from_sfen(to)?;
+        Some(Self::Put { piece, to })
     }
 
     /// Getting normal move from str.
@@ -101,82 +88,76 @@ impl<S: Square> Move<S> {
 
     pub fn to_fen(&self) -> String {
         match &self {
-            Move::Put { fen, .. } => String::from(fen),
-            Move::Normal { fen, .. } => String::from(fen),
-            Move::Select { .. } => self.to_string(),
+            Move::Put { piece, to } => format!("{}@{}", piece, to),
+            Move::Normal { from, to, .. } => {
+                format!("{}_{}", from, to)
+            }
+            Move::Select { piece } => format!("+{}", piece),
         }
     }
 
-    pub fn format(&self) -> String {
-        if let Move::Normal {
-            from,
-            to,
-            move_data,
-            ..
-        } = &self
-        {
-            let piece = move_data.piece.unwrap().to_string().to_uppercase();
-            let move_to = to.to_string();
+    pub fn format(&self, from: &S, to: &S, move_data: MoveData) -> String {
+        let piece = move_data.piece.unwrap().to_string().to_uppercase();
+        let move_to = to.to_string();
 
-            let action = {
-                if move_data.checkmate {
-                    "#"
-                } else if move_data.check {
-                    "+"
-                } else {
-                    ""
-                }
-            };
-            let piece = {
-                if piece == "P" {
-                    String::from("")
-                } else {
-                    piece
-                }
-            };
-            let promote = {
-                if move_data.promoted && piece.is_empty() {
-                    "=Q"
-                } else {
-                    ""
-                }
-            };
+        let action = {
+            if move_data.checkmate {
+                "#"
+            } else if move_data.check {
+                "+"
+            } else {
+                ""
+            }
+        };
+        let piece = {
+            if piece == "P" {
+                String::from("")
+            } else {
+                piece
+            }
+        };
+        let promote = {
+            if move_data.promoted && piece.is_empty() {
+                "=Q"
+            } else {
+                ""
+            }
+        };
 
-            let same = {
+        let same = {
+            if piece.is_empty() {
+                piece.to_string()
+            } else if move_data.same_rank && move_data.same_file {
+                let file = self.same_format(&from, 0, false);
+                let rank = self.same_format(&from, 1, true);
+                format!("{file}{rank}")
+            } else if move_data.same_file {
+                self.same_format(&from, 1, true)
+            } else if move_data.same_rank {
+                from.to_string().chars().next().unwrap().to_string()
+            } else {
+                "".to_string()
+            }
+        };
+
+        let captures = {
+            if move_data.captured.is_some() {
                 if piece.is_empty() {
-                    piece.to_string()
-                } else if move_data.same_rank && move_data.same_file {
-                    let file = self.same_format(from, 0, false);
-                    let rank = self.same_format(from, 1, true);
-                    format!("{file}{rank}")
-                } else if move_data.same_file {
-                    self.same_format(from, 1, true)
-                } else if move_data.same_rank {
-                    from.to_string().chars().next().unwrap().to_string()
+                    format!("{}x", self.same_format(&from, 0, false))
                 } else {
-                    "".to_string()
+                    "x".to_string()
                 }
-            };
+            } else {
+                "".to_string()
+            }
+        };
 
-            let captures = {
-                if move_data.captured.is_some() {
-                    if piece.is_empty() {
-                        format!("{}x", self.same_format(from, 0, false))
-                    } else {
-                        "x".to_string()
-                    }
-                } else {
-                    "".to_string()
-                }
-            };
-
-            return format!(
-                "{}{}{}{}{}{}",
-                piece, same, captures, move_to, promote, action
-            );
-        }
-        " ".to_string()
+        return format!(
+            "{}{}{}{}{}{}",
+            piece, same, captures, move_to, promote, action
+        );
     }
+
     fn same_format(&self, from: &S, skip: usize, is_numeric: bool) -> String {
         let c = |x: &char| -> bool {
             if is_numeric {
@@ -197,7 +178,7 @@ impl<S: Square> TryFrom<String> for Move<S> {
     fn try_from(value: String) -> Result<Self, Self::Error> {
         if value.contains('@') {
             if let Some(m) = value.split('_').next() {
-                if let Some(m) = Self::get_put_move(m) {
+                if let Some(m) = Self::parse_place_move(m) {
                     return Ok(m);
                 }
             }
@@ -211,7 +192,7 @@ impl<S: Square> TryFrom<String> for Move<S> {
                     return Ok(m);
                 }
             }
-        } else if let Some(m) = Self::get_buy_move(&value) {
+        } else if let Some(m) = Self::parse_select_move(&value) {
             return Ok(m);
         }
         Err(())
@@ -227,19 +208,8 @@ impl<S: Square> fmt::Display for Move<S> {
             Move::Put { to, piece, .. } => {
                 write!(f, "{piece}@{to}")
             }
-            Move::Normal {
-                from,
-                to,
-                move_data,
-                ..
-            } => {
-                write!(
-                    f,
-                    "{}_{}{}",
-                    from,
-                    to,
-                    if move_data.promoted { "fixthis" } else { "" }
-                )
+            Move::Normal { from, to, .. } => {
+                write!(f, "{}_{}", from, to,)
             }
         }
     }

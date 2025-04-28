@@ -124,7 +124,7 @@ impl Square for Square6 {
 
     fn in_promotion_zone(&self, c: Color) -> bool {
         match c {
-            Color::White => self.rank() == 6,
+            Color::White => self.rank() == 5,
             Color::Black => self.rank() == 0,
             Color::NoColor => false,
         }

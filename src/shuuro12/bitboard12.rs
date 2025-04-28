@@ -8,7 +8,7 @@ use std::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not,
 };
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct BB12<S: Square>(pub (u128, u16), PhantomData<S>);
 
 impl BB12<Square12> {

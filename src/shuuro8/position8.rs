@@ -1,9 +1,11 @@
-use std::{fmt, marker::PhantomData};
+use std::{collections::HashMap, fmt, marker::PhantomData};
 
 use crate::{
     attacks::Attacks,
     bitboard::BitBoard,
-    position::{Board, Outcome, Placement, Play, Position, Rules, Sfen},
+    position::{
+        Board, Outcome, Placement, Play, Position, Rules, Sfen, SfenHistory,
+    },
     Color, Hand, Move, MoveData, Piece, PieceType, SfenError, Square, Variant,
 };
 
@@ -34,10 +36,13 @@ where
     ply: u16,
     side_to_move: Color,
     move_history: Vec<Move<Square8>>,
+    history: SfenHistory<BB8<Square8>>,
     occupied_bb: BB8<Square8>,
     color_bb: [BB8<Square8>; 3],
     game_status: Outcome,
     variant: Variant,
+    placement_moves: HashMap<usize, BB8<Square8>>,
+    legal_moves: HashMap<Square8, BB8<Square8>>,
     pub type_bb: [BB8<Square8>; 10],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
@@ -131,12 +136,16 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.variant = variant;
     }
 
-    fn insert_sfen(&mut self, sfen: Move<Square8>) {
+    fn insert_move(&mut self, sfen: Move<Square8>) {
         self.move_history.push(sfen);
     }
 
-    fn insert_move(&mut self, move_record: Move<Square8>) {
-        self.move_history.push(move_record)
+    fn insert_sfen(&mut self, fen: String) {
+        self.history.add_move((
+            self.player_bb(Color::White),
+            self.player_bb(Color::Black),
+            fen,
+        ));
     }
 
     fn clear_sfen_history(&mut self) {
@@ -149,20 +158,6 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
 
     fn move_history(&self) -> &[Move<Square8>] {
         &self.move_history
-    }
-
-    fn update_last_move(&mut self, m: &str) {
-        if let Some(last) = self.move_history.last_mut() {
-            match last {
-                Move::Put { ref mut fen, .. } => {
-                    *fen = String::from(m);
-                }
-                Move::Normal { ref mut fen, .. } => {
-                    *fen = String::from(m);
-                }
-                _ => (),
-            }
-        }
     }
 
     fn hand(&self, p: Piece) -> u8 {
@@ -183,6 +178,10 @@ impl Board<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
 
     fn dimensions(&self) -> u8 {
         8
+    }
+
+    fn get_sfen_history(&self) -> &SfenHistory<BB8<Square8>> {
+        &self.history
     }
 }
 
@@ -243,6 +242,17 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
             Color::NoColor => BB8::empty(),
         }
     }
+
+    fn new_placement_squares(
+        &mut self,
+        placement: std::collections::HashMap<usize, BB8<Square8>>,
+    ) {
+        self.placement_moves = placement;
+    }
+
+    fn get_placement_squares(&self) -> &HashMap<usize, BB8<Square8>> {
+        &self.placement_moves
+    }
 }
 impl Rules<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     for P8<Square8, BB8<Square8>>
@@ -280,16 +290,28 @@ impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.color_bb[placed.color.index()] ^= &to;
 
         if let Some(ref cap) = captured {
-            self.occupied_bb ^= &to;
-            self.type_bb[cap.piece_type.index()] ^= &to;
-            self.color_bb[cap.color.index()] ^= &to;
-            move_data = move_data.captured(captured);
-            //self.hand.increment(pc);
+            if cap.piece_type != PieceType::Plinth {
+                self.occupied_bb ^= &to;
+                self.type_bb[cap.piece_type.index()] ^= &to;
+                self.color_bb[cap.color.index()] ^= &to;
+                move_data = move_data.captured(captured);
+            }
         }
 
         self.side_to_move = opponent;
         self.ply += 1;
         move_data
+    }
+
+    fn new_legal_moves(
+        &mut self,
+        lm: std::collections::HashMap<Square8, BB8<Square8>>,
+    ) {
+        self.legal_moves = lm;
+    }
+
+    fn get_legal_moves(&self) -> &HashMap<Square8, BB8<Square8>> {
+        &self.legal_moves
     }
 }
 
@@ -331,7 +353,7 @@ impl Default for P8<Square8, BB8<Square8>> {
             hand: Default::default(),
             ply: 0,
             move_history: Default::default(),
-            // sfen_history: Default::default(),
+            history: SfenHistory::default(),
             occupied_bb: Default::default(),
             color_bb: Default::default(),
             type_bb: Default::default(),
@@ -339,6 +361,8 @@ impl Default for P8<Square8, BB8<Square8>> {
             variant: Variant::Standard,
             _a: PhantomData,
             _s: PhantomData,
+            placement_moves: Default::default(),
+            legal_moves: Default::default(),
         }
     }
 }

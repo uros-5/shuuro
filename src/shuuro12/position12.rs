@@ -1,9 +1,11 @@
-use std::{fmt, marker::PhantomData};
+use std::{collections::HashMap, fmt, marker::PhantomData};
 
 use crate::{
     attacks::Attacks,
     bitboard::BitBoard,
-    position::{Board, Outcome, Placement, Play, Position, Rules, Sfen},
+    position::{
+        Board, Outcome, Placement, Play, Position, Rules, Sfen, SfenHistory,
+    },
     Color, Hand, Move, MoveData, Piece, PieceType, SfenError, Square, Variant,
 };
 
@@ -34,10 +36,13 @@ where
     ply: u16,
     side_to_move: Color,
     move_history: Vec<Move<Square12>>,
+    history: SfenHistory<BB12<Square12>>,
     occupied_bb: BB12<Square12>,
     color_bb: [BB12<Square12>; 3],
     game_status: Outcome,
     variant: Variant,
+    placement_moves: HashMap<usize, BB12<Square12>>,
+    legal_moves: HashMap<Square12, BB12<Square12>>,
     pub type_bb: [BB12<Square12>; 10],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
@@ -144,12 +149,16 @@ impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         self.variant = variant;
     }
 
-    fn insert_sfen(&mut self, sfen: Move<Square12>) {
+    fn insert_move(&mut self, sfen: Move<Square12>) {
         self.move_history.push(sfen);
     }
 
-    fn insert_move(&mut self, move_record: Move<Square12>) {
-        self.move_history.push(move_record)
+    fn insert_sfen(&mut self, fen: String) {
+        self.history.add_move((
+            self.player_bb(Color::White),
+            self.player_bb(Color::Black),
+            fen,
+        ));
     }
 
     fn clear_sfen_history(&mut self) {
@@ -162,20 +171,6 @@ impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
 
     fn move_history(&self) -> &[Move<Square12>] {
         &self.move_history
-    }
-
-    fn update_last_move(&mut self, m: &str) {
-        if let Some(last) = self.move_history.last_mut() {
-            match last {
-                Move::Put { ref mut fen, .. } => {
-                    *fen = String::from(m);
-                }
-                Move::Normal { ref mut fen, .. } => {
-                    *fen = String::from(m);
-                }
-                _ => (),
-            }
-        }
     }
 
     fn hand(&self, p: Piece) -> u8 {
@@ -196,6 +191,10 @@ impl Board<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
 
     fn dimensions(&self) -> u8 {
         12
+    }
+
+    fn get_sfen_history(&self) -> &SfenHistory<BB12<Square12>> {
+        &self.history
     }
 }
 
@@ -255,7 +254,18 @@ impl Placement<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
     }
 
     fn empty_placement_board() -> String {
-        String::from("57/57/57/57/57/57/57/57/57/57/57/57 w")
+        String::from("12/12/12/12/12/12/12/12/12/12/12/12 w")
+    }
+
+    fn new_placement_squares(
+        &mut self,
+        placement: std::collections::HashMap<usize, BB12<Square12>>,
+    ) {
+        self.placement_moves = placement;
+    }
+
+    fn get_placement_squares(&self) -> &HashMap<usize, BB12<Square12>> {
+        &self.placement_moves
     }
 }
 
@@ -290,16 +300,28 @@ impl Play<Square12, BB12<Square12>, Attacks12<Square12, BB12<Square12>>>
         self.color_bb[placed.color.index()] ^= &to;
 
         if let Some(ref cap) = captured {
-            self.occupied_bb ^= &to;
-            self.type_bb[cap.piece_type.index()] ^= &to;
-            self.color_bb[cap.color.index()] ^= &to;
-            move_data = move_data.captured(captured);
-            //self.hand.increment(pc);
+            if cap.piece_type != PieceType::Plinth {
+                self.occupied_bb ^= &to;
+                self.type_bb[cap.piece_type.index()] ^= &to;
+                self.color_bb[cap.color.index()] ^= &to;
+                move_data = move_data.captured(captured);
+            }
         }
 
         self.side_to_move = opponent;
         self.ply += 1;
         move_data
+    }
+
+    fn new_legal_moves(
+        &mut self,
+        lm: std::collections::HashMap<Square12, BB12<Square12>>,
+    ) {
+        self.legal_moves = lm;
+    }
+
+    fn get_legal_moves(&self) -> &HashMap<Square12, BB12<Square12>> {
+        &self.legal_moves
     }
 }
 
@@ -341,6 +363,7 @@ impl Default for P12<Square12, BB12<Square12>> {
             hand: Default::default(),
             ply: 0,
             move_history: Default::default(),
+            history: SfenHistory::default(),
             // sfen_history: Default::default(),
             occupied_bb: Default::default(),
             color_bb: Default::default(),
@@ -349,6 +372,8 @@ impl Default for P12<Square12, BB12<Square12>> {
             variant: Variant::Shuuro,
             _a: PhantomData,
             _s: PhantomData,
+            placement_moves: Default::default(),
+            legal_moves: Default::default(),
         }
     }
 }
@@ -685,7 +710,7 @@ pub mod position_tests {
                 },
             );
             assert_eq!(case.3, bb.len());
-            let result = pos.play(case.0, case.4);
+            let result = pos.play(&format!("{}_{}", case.0, case.4));
             if let Ok(result) = result {
                 assert_eq!(result.to_string(), case.5);
             } else {
@@ -746,7 +771,7 @@ pub mod position_tests {
                 .set_sfen(case.0)
                 .expect("failed to parse sfen string");
 
-            let played = position.play(case.1, case.2);
+            let played = position.play(&format!("{}_{}", case.1, case.2));
             assert!(played.is_ok());
         }
 
@@ -756,7 +781,7 @@ pub mod position_tests {
                 .set_sfen(case.0)
                 .expect("failed to parse sfen string");
 
-            let played = position.play(case.1, case.2);
+            let played = position.play(&format!("{}_{}", case.1, case.2));
             assert!(played.is_err());
         }
     }
@@ -774,7 +799,7 @@ pub mod position_tests {
         if let Some(b) = pawn_moves.get(&B11) {
             assert_eq!(b.len(), 2);
         }
-        let result = position.play("b11", "c12");
+        let result = position.play("b11_c12");
         assert!(result.is_ok());
         assert_eq!(
             position.piece_at(C12).unwrap().piece_type,
@@ -819,7 +844,7 @@ pub mod position_tests {
             .set_sfen(sfen)
             .expect("failed to parse sfen string");
 
-        let result = position.play("l1", "j2");
+        let result = position.play("l1_j2");
         assert!(result.is_ok());
     }
 
@@ -865,7 +890,7 @@ pub mod position_tests {
         let sfen = "12/12/12/11k/12/12/12/12/3q8/K11/2r9/12 b - 1";
         let mut pos = P12::new();
         pos.set_sfen(sfen).expect("failed to parse sfen string");
-        let res = pos.play("d4", "c4");
+        let res = pos.play("d4_c4");
         if let Ok(res) = res {
             assert_eq!(res.to_string(), "Stalemate");
         }
@@ -916,7 +941,7 @@ pub mod position_tests {
             assert!(pos.make_move(Move::new(I9, D9)).is_ok());
             assert!(pos.make_move(Move::new(A4, H4)).is_ok());
             if i == 1 {
-                assert!(pos.make_move(Move::new(A4, H4)).is_err());
+                assert!(pos.make_move(Move::new(D9, I9)).is_err());
                 break;
             }
         }
@@ -926,36 +951,35 @@ pub mod position_tests {
     fn make_move() {
         setup();
 
-        let base_sfen =
-            "12/12/6k5/12/qbbn8/12/12/12/12/5PP5/3KRRB5/12 w K2RB2P 1";
+        let base_sfen = "12/12/6k5/12/qbbn8/12/12/12/12/5PP5/3KRRB5/12 w - 1";
         let test_cases = [
             (
                 D2,
                 E1,
                 false,
                 true,
-                "12/12/6k5/12/qbbn8/12/12/12/12/5PP5/4RRB5/4K7 b K2RB2P 2",
+                "12/12/6k5/12/qbbn8/12/12/12/12/5PP5/4RRB5/4K7 b - 2",
             ),
             (
                 E2,
                 E7,
                 false,
                 true,
-                "12/12/6k5/12/qbbn8/4R7/12/12/12/5PP5/3K1RB5/12 b K2RB2P 2",
+                "12/12/6k5/12/qbbn8/4R7/12/12/12/5PP5/3K1RB5/12 b - 2",
             ),
             (
                 G2,
                 I4,
                 false,
                 true,
-                "12/12/6k5/12/qbbn8/12/12/12/8B3/5PP5/3KRR6/12 b K2RB2P 2",
+                "12/12/6k5/12/qbbn8/12/12/12/8B3/5PP5/3KRR6/12 b - 2",
             ),
             (
                 F2,
                 F1,
                 false,
                 true,
-                "12/12/6k5/12/qbbn8/12/12/12/12/5PP5/3KR1B5/5R6 b K2RB2P 2",
+                "12/12/6k5/12/qbbn8/12/12/12/12/5PP5/3KR1B5/5R6 b - 2",
             ),
             (G3, H3, false, false, base_sfen),
         ];
@@ -971,12 +995,12 @@ pub mod position_tests {
 
         let mut pos = P12::new();
         // Leaving the checked king is illegal.
-        pos.set_sfen("12/12/12/12/12/12/r9k1/12/12/12/1K8RR/12 b kr 1")
+        pos.set_sfen("12/12/12/12/12/12/r9k1/12/12/12/1K8RR/12 b - 1")
             .expect("failed to parse SFEN string");
         let move_ = Move::new(A6, A1);
         assert!(pos.make_move(move_).is_err());
 
-        pos.set_sfen("12/12/12/12/12/12/r9k1/12/12/12/1RR9/7K4 b kr 1")
+        pos.set_sfen("12/12/12/12/12/12/r9k1/12/12/12/1RR9/7K4 b - 1")
             .expect("failed to parse SFEN string");
         let move_ = Move::new(K6, K5);
         assert!(pos.make_move(move_).is_ok());
@@ -1158,9 +1182,8 @@ pub mod position_tests {
         setup();
         let mut position_set = P12::default();
         position_set
-            .parse_sfen_board("7k4/12/12/12/12/12/12/12/12/12/12/6K5")
+            .set_sfen("7k4/12/12/12/12/12/12/12/12/12/12/6K5 b rrRqNqq 1")
             .expect("error while parsing sfen");
-        position_set.set_hand("rrRqNqq");
         let cases = [
             (PieceType::Queen, Color::Black, D12),
             (PieceType::Rook, Color::White, C1),
@@ -1170,6 +1193,7 @@ pub mod position_tests {
             (PieceType::Rook, Color::Black, G12),
             (PieceType::Queen, Color::Black, F12),
         ];
+
         for case in cases {
             position_set.place(
                 Piece {
@@ -1240,11 +1264,10 @@ pub mod position_tests {
         setup();
         let mut position_set = P12::default();
         position_set
-            .parse_sfen_board(
-                "_.4kqq_n3/12/12/12/12/12/12/12/5_.6/12/4PPPP4/5KRRR3",
+            .set_sfen(
+                "_.4kqq_n3/12/12/12/12/12/12/12/5_.6/12/4PPPP4/5KRRR3 b NrNNbrn 1",
             )
             .expect("error while parsing sfen");
-        position_set.set_hand("NrNNbrn");
         let cases = [
             (PieceType::Knight, Color::Black, 8),
             (PieceType::Bishop, Color::Black, 7),
@@ -1556,5 +1579,14 @@ pub mod position_tests {
             let correct_position = position.set_sfen(&fen);
             assert!(correct_position.is_ok());
         }
+    }
+
+    #[test]
+    fn starting_placement() {
+        setup();
+        let mut position = P12::default();
+        position
+            .set_sfen("12/12/12/12/12/12/12/12/12/12/12/12 w KRBNPkrbp 1")
+            .unwrap();
     }
 }

@@ -25,6 +25,7 @@ pub trait BitBoard<S: Square>:
     + for<'a> BitOr<&'a S, Output = Self>
     + for<'a> BitAnd<&'a S, Output = Self>
     + for<'a> BitOrAssign<&'a S>
+    + for<'a> PartialEq<Self>
     + Iterator<Item = S>
 {
     fn empty() -> Self;

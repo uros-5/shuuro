@@ -25,10 +25,9 @@ pub static BLACK_PAWN_ATTACKS: [BB12<Square12>; 144] =
     init_stepping_attacks(&BLACK_PAWN_DELTAS);
 pub static KING_MOVES: [BB12<Square12>; 144] =
     init_stepping_attacks(&KING_DELTAS);
-pub static mut ABC: BB12<Square12> = BB12::new(0, 0);
 
 static mut PAWN_MOVES: [[BB12<Square12>; 144]; 2] =
-    [init_stepping_attacks(&[-12]), init_stepping_attacks(&[12])];
+    [init_stepping_attacks(&[12]), init_stepping_attacks(&[-12])];
 
 pub static mut RAYS: [[BB12<Square12>; 144]; 8] = [[BB12::new(0, 0); 144]; 8];
 

@@ -1,4 +1,8 @@
-use std::{clone::Clone, collections::HashMap, hash::Hash};
+use std::{
+    clone::Clone,
+    collections::{HashMap, VecDeque},
+    hash::Hash,
+};
 
 use crate::{
     attacks::Attacks, bitboard::BitBoard, Color, Hand, Move, MoveData,
@@ -12,9 +16,12 @@ use super::piece_type::PieceTypeIter;
 pub enum Outcome {
     Check { color: Color },
     Checkmate { color: Color },
-    Draw,
+    DrawByAgreement,
     DrawByRepetition,
     DrawByMaterial,
+    Resign { color: Color },
+    LostOnTime { color: Color },
+    FirstMoveError { color: Color },
     Stalemate,
     MoveNotOk,
     MoveOk,
@@ -23,16 +30,27 @@ pub enum Outcome {
 impl ToString for Outcome {
     fn to_string(&self) -> String {
         match &self {
-            Outcome::Check { color } => format!("Check_{}", color.to_string()),
-            Outcome::Checkmate { color } => {
-                format!("Checkmate_{}", color.to_string())
+            Outcome::Check { color } => {
+                format!("Check by {}", color.to_string())
             }
-            Outcome::Draw => "Draw".to_string(),
-            Outcome::DrawByRepetition => "RepetitionDraw".to_string(),
-            Outcome::DrawByMaterial => "MaterialDraw".to_string(),
+            Outcome::Checkmate { color } => {
+                format!("Checkmate. {} won.", color.to_string())
+            }
+            Outcome::DrawByAgreement => "Draw by agreement".to_string(),
+            Outcome::DrawByRepetition => "Draw by repetition".to_string(),
+            Outcome::DrawByMaterial => "Draw by material".to_string(),
             Outcome::Stalemate => "Stalemate".to_string(),
             Outcome::MoveOk => "Live".to_string(),
             Outcome::MoveNotOk => "Illegal move".to_string(),
+            Outcome::Resign { color } => {
+                format!("Resignation by {}", color.to_string())
+            }
+            Outcome::LostOnTime { color } => {
+                format!("{} lost on time", color.to_string())
+            }
+            Outcome::FirstMoveError { color } => {
+                format!("{} lost on first move.", color.to_string())
+            }
         }
     }
 }
@@ -47,8 +65,11 @@ impl Into<i32> for Outcome {
             Outcome::Checkmate { color: _ } => 1,
             Outcome::Stalemate => 3,
             Outcome::DrawByRepetition => 4,
-            Outcome::Draw => 5,
+            Outcome::DrawByAgreement => 5,
             Outcome::DrawByMaterial => 6,
+            Outcome::Resign { color: _ } => 7,
+            Outcome::LostOnTime { color: _ } => 8,
+            Outcome::FirstMoveError { color: _ } => 9,
         }
     }
 }
@@ -118,17 +139,17 @@ where
     /// Changing to other variant.
     fn update_variant(&mut self, variant: Variant);
     /// Insert new sfen to sfen history.
-    fn insert_sfen(&mut self, sfen: Move<S>);
-    /// Insert new Move2 to move_history.
-    fn insert_move(&mut self, m: Move<S>);
+    fn insert_move(&mut self, sfen: Move<S>);
+    /// Insert sfen move
+    fn insert_sfen(&mut self, m: String);
     /// Clear sfen_history
     fn clear_sfen_history(&mut self);
     /// Set sfen history.
     fn set_sfen_history(&mut self, history: Vec<String>) {
         for i in history {
             let m: Result<Move<S>, ()> = Move::try_from(i);
-            if let Ok(m) = m {
-                self.insert_sfen(m);
+            if let Ok(_) = m {
+                // self.insert_sfen(m);
             }
         }
     }
@@ -136,16 +157,8 @@ where
     fn set_move_history(&mut self, history: Vec<Move<S>>);
     /// Returns history of all moves in `Move2` format.
     fn move_history(&self) -> &[Move<S>];
-    /// Update last move.
-    fn update_last_move(&mut self, m: &str);
     /// Returns history of all moves in `Vec` format.
-    fn get_sfen_history(&self) -> Vec<String> {
-        let mut v = Vec::new();
-        for i in self.move_history() {
-            v.push(i.to_fen());
-        }
-        v
-    }
+    fn get_sfen_history(&self) -> &SfenHistory<B>;
     /// Get hand count for Piece.
     fn hand(&self, p: Piece) -> u8;
     /// Get hand in form of String
@@ -184,11 +197,11 @@ where
             return self.generate_sfen();
         }
         if move_history.is_empty() {
-            return format!("{} {}", sfen_history.first().unwrap(), ply);
+            return format!("{} {}", sfen_history.first().2, ply);
         }
         format!(
             "{} {}",
-            &sfen_history.first().unwrap(),
+            &sfen_history.first().2,
             ply - move_history.len() as u16
         )
     }
@@ -206,6 +219,11 @@ where
                     Some(piece) => {
                         row_item = self.add_space(space, row_item);
                         space = 0;
+                        if piece.piece_type == PieceType::Plinth {
+                            row_item.push_str(&piece.to_string());
+                            row_item.push('.');
+                            continue;
+                        }
                         if piece.piece_type.is_knight_piece() {
                             if (self.player_bb(Color::NoColor) & &sq).is_any() {
                                 row_item.push('_');
@@ -233,11 +251,6 @@ where
                 fen.push('/');
             }
         }
-        let color = if self.side_to_move() == Color::Black {
-            "b"
-        } else {
-            "w"
-        };
 
         let black = self.get_hand(Color::Black, false);
         let white = self.get_hand(Color::White, false);
@@ -247,7 +260,13 @@ where
         if hand.is_empty() {
             hand = "-".to_string();
         }
-        format!("{} {} {} {}", fen, color, hand, self.ply())
+        format!(
+            "{} {} {} {}",
+            fen,
+            self.side_to_move().to_string(),
+            hand,
+            self.ply()
+        )
     }
 
     fn add_space(&self, n: u8, mut s: String) -> String {
@@ -319,6 +338,9 @@ where
             if rank >= dimension {
                 return Err(SfenError::IllegalBoardState);
             }
+
+            // '1rkb2/p5/4_.1/1n4/1KPP2/2B1R1 b - 15',
+
             let mut current_file = 0;
             let mut current_number = String::new();
             let mut is_plinth = false;
@@ -358,6 +380,7 @@ where
                             PieceType::Plinth => {
                                 self.update_player(piece, &sq);
                                 is_plinth = true;
+                                self.set_piece(sq, None);
                             }
                             _ => {
                                 self.update_player(piece, &sq);
@@ -389,14 +412,23 @@ where
     }
 
     /// Saves position in sfen_history.
-    fn save_position(&mut self) {
-        let mut sfen = self.generate_sfen();
+    fn save_position(&mut self, move_data: Option<MoveData>) {
+        let Some(move_data) = move_data else { return };
+
         let move_history = self.move_history();
-        if let Some(last) = move_history.last() {
-            sfen.push_str(&format!(" {}", &last.format()));
-        }
-        self.update_last_move(&sfen);
-        // self.insert_sfen(&sfen);
+        let Some(last) = move_history.last() else {
+            return;
+        };
+        let Move::Normal { from, to, .. } = last else {
+            return;
+        };
+
+        let mut sfen = self.generate_sfen();
+        sfen.push(' ');
+        sfen.push_str(&last.format(from, to, move_data));
+        sfen.push(' ');
+        sfen.push_str(&format!("{}_{}", from, to));
+        self.insert_sfen(sfen);
     }
 
     fn is_hand_empty(&self, c: Color, excluded: PieceType) -> bool {
@@ -456,6 +488,10 @@ where
     fn can_pawn_move(&self, p: Piece) -> bool {
         self.is_hand_empty(p.color, PieceType::Pawn)
     }
+
+    fn new_placement_squares(&mut self, placement: HashMap<usize, B>);
+
+    fn get_placement_squares(&self) -> &HashMap<usize, B>;
 
     /// All squares for current `Color`.
     fn placement_squares(&self, color: Color) -> HashMap<usize, B> {
@@ -608,24 +644,25 @@ where
     fn place(&mut self, p: Piece, sq: S) -> Option<String> {
         if p.color != self.side_to_move()
             || self.hand(p) == 0
-            || !(self.empty_squares(p).unwrap_or_default() & &sq).is_any()
+            || !(**&self
+                .get_placement_squares()
+                .get(&(p.piece_type as usize))
+                .unwrap_or(&B::empty())
+                & &sq)
+                .is_any()
         {
             return None;
         }
 
         self.update_bb(p, sq);
         self.decrement_hand(p);
-        let move_record = Move::Put {
-            to: sq,
-            piece: p,
-            fen: String::new(),
-        };
+        let move_record = Move::Put { to: sq, piece: p };
         let sfen = self.generate_sfen().split(' ').next().unwrap().to_string();
         let hand = {
             let s = self.get_hand(Color::White, false)
                 + &self.get_hand(Color::Black, false);
             if s.is_empty() {
-                String::from(" ")
+                String::from("-")
             } else {
                 s
             }
@@ -645,8 +682,8 @@ where
             ply,
             &move_record.to_string(),
         );
-        self.update_last_move(&record);
-        // self.insert_sfen(&record);
+        self.new_placement_squares(self.placement_squares(self.side_to_move()));
+        self.insert_sfen(record.to_string());
         return Some(record);
     }
 
@@ -658,17 +695,20 @@ where
     S: Square + Hash,
     B: BitBoard<S>,
     A: Attacks<S, B>,
-    Self: Sized + Clone + Board<S, B, A> + Sfen<S, B, A> + Rules<S, B, A>,
+    Self: Sized
+        + Clone
+        + Board<S, B, A>
+        + Sfen<S, B, A>
+        + Rules<S, B, A>
+        + Placement<S, B, A>,
 {
     // Play part.
 
     /// Create move from `&str`.
-    fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError> {
-        let from = S::from_sfen(from).ok_or(SfenError::IllegalPieceFound)?;
-        let to = S::from_sfen(to).ok_or(SfenError::IllegalPieceFound)?;
-
-        let m = Move::new(from, to);
-        let outcome = self.make_move(m);
+    fn play(&mut self, game_move: &str) -> Result<&Outcome, SfenError> {
+        let game_move = Move::<S>::from_sfen(game_move)
+            .ok_or(SfenError::IllegalPieceFound)?;
+        let outcome = self.make_move(game_move);
         match outcome {
             Ok(i) => {
                 self.update_outcome(i);
@@ -677,7 +717,9 @@ where
                 MoveError::RepetitionDraw => {
                     self.update_outcome(Outcome::DrawByRepetition)
                 }
-                MoveError::Draw => self.update_outcome(Outcome::Draw),
+                MoveError::Draw => {
+                    self.update_outcome(Outcome::DrawByAgreement)
+                }
                 MoveError::DrawByInsufficientMaterial => {
                     self.update_outcome(Outcome::DrawByMaterial)
                 }
@@ -694,30 +736,11 @@ where
 
     /// If last position has appeared three times then it's draw.
     fn detect_repetition(&self) -> Result<(), MoveError> {
-        let sfen_history = self.move_history();
-        let mut h = Vec::new();
-        for i in sfen_history {
-            if let Move::Normal { fen, .. } = i {
-                h.push(fen);
-                if h.len() > 10 {
-                    break;
-                }
-            }
+        let sfen_history = self.get_sfen_history();
+        match sfen_history.repetition() {
+            Some(_) => Err(MoveError::RepetitionDraw),
+            None => Ok(()),
         }
-        let sfen_history: Vec<&&String> = h.iter().rev().take(15).collect();
-        let cur = sfen_history.last().unwrap();
-        let last_sfen = cur.split_whitespace().rev().last().unwrap();
-        let mut cnt = 0;
-        for entry in sfen_history.iter().rev() {
-            let s = entry.split_whitespace().rev().last().unwrap();
-            if s == last_sfen {
-                cnt += 1;
-                if cnt == 3 {
-                    return Err(MoveError::RepetitionDraw);
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Check if one of the players don't have enough pieces.
@@ -782,10 +805,10 @@ where
         Err(MoveError::DrawByInsufficientMaterial)
     }
 
-    fn check_moves(&self, me: Color) -> Result<B, ()> {
+    fn check_moves(&self, me: Color) -> B {
         let king = self.player_bb(me) & &self.type_bb(&PieceType::King);
         if king.is_empty() {
-            return Err(());
+            return B::empty();
         }
 
         let king_sq = &king.clone().pop().unwrap();
@@ -810,17 +833,16 @@ where
             let them = moves & &them;
             checkers |= &them;
         }
-        Ok(checkers)
+        checkers
     }
 
-    // fn my_moves(&self, me: Color) {
-    //     for sq in self.player_bb(me) {}
-    // }
+    fn new_legal_moves(&mut self, lm: HashMap<S, B>);
+    fn get_legal_moves(&self) -> &HashMap<S, B>;
 
     /// Returns all legal moves where piece can be moved.
     fn legal_moves(&self, my_color: Color) -> HashMap<S, B> {
         let mut map = HashMap::new();
-        let checkers = self.check_moves(my_color).expect("no king");
+        let checkers = self.check_moves(my_color);
         let enemy_moves = self.enemy_moves(my_color);
         let king = self.find_king(my_color).expect("no king");
         if checkers.len() > 1 {
@@ -950,14 +972,30 @@ where
             .ok_or(SfenError::MissingDataFields)
             .and_then(|s| self.parse_sfen_ply(s))?;
         self.clear_sfen_history();
-        self.save_position();
+        self.save_position(None);
+        let king = self.find_king(self.side_to_move());
         if self.in_check(self.side_to_move().flip()) {
             let checkmate = Outcome::Checkmate {
                 color: self.side_to_move(),
             };
             self.update_outcome(checkmate.clone());
             return Ok(checkmate);
+        } else if self.is_hand_empty(self.side_to_move(), PieceType::Plinth)
+            == false
+        {
+            let placement = self.placement_squares(self.side_to_move());
+            self.new_placement_squares(placement);
+            return Ok(Outcome::MoveOk);
+        } else if king.is_none()
+            && (self.occupied_bb() & &!self.player_bb(Color::NoColor)).len()
+                == 0
+        {
+            return Ok(Outcome::MoveOk);
+        } else if king.is_none() {
+            return Err(SfenError::IllegalBoardState);
         }
+        let lm = self.legal_moves(self.side_to_move());
+        self.new_legal_moves(lm);
         Ok(Outcome::MoveOk)
     }
 
@@ -1111,7 +1149,6 @@ where
             .ok_or(MoveError::Inconsistent("No piece found"))?;
         let captured = *self.piece_at(to);
         let outcome = Outcome::Checkmate { color: opponent };
-        let legal_moves = self.legal_moves(stm);
 
         if moved.color != stm {
             return Err(MoveError::Inconsistent(
@@ -1137,9 +1174,12 @@ where
                 }
             }
         }
-        let attacks = legal_moves
-            .get(&from)
-            .ok_or(MoveError::Inconsistent("The piece cannot move to there"))?;
+
+        let legal_moves = self.get_legal_moves().clone();
+
+        let attacks = legal_moves.get(&from).ok_or(MoveError::Inconsistent(
+            "The piece cannot move from there",
+        ))?;
 
         if (*attacks & &to).is_empty() {
             return Err(MoveError::Inconsistent(
@@ -1192,23 +1232,21 @@ where
 
         move_data =
             self.gen_move_data(&legal_moves, (from, to), moved, move_data);
-        let move_record = Move::Normal {
-            from,
-            to,
-            placed,
-            move_data,
-            fen: String::new(),
-        };
+        let move_record = Move::Normal { from, to, placed };
 
         self.insert_move(move_record);
 
-        self.save_position();
+        self.save_position(Some(move_data));
         self.detect_repetition()?;
         self.detect_insufficient_material()?;
 
         if outcome == Outcome::MoveOk {
             self.is_stalemate(stm)?;
         }
+
+        let lm = self.legal_moves(self.side_to_move());
+        self.new_legal_moves(lm);
+
         Ok(outcome)
     }
 }
@@ -1345,5 +1383,41 @@ where
             return Some(moves);
         }
         return Some(moves);
+    }
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct SfenHistory<B: PartialEq + Clone> {
+    moves: VecDeque<(B, B, String)>,
+}
+
+impl<B: PartialEq + Clone + std::fmt::Debug> SfenHistory<B> {
+    pub fn add_move(&mut self, m: (B, B, String)) {
+        self.moves.push_front(m);
+        if self.moves.len() == 16 {
+            self.moves.pop_back();
+        }
+    }
+
+    pub fn repetition(&self) -> Option<()> {
+        let mut count = 0;
+        let last = self.moves.front()?;
+        for i in &self.moves {
+            if i.0 == last.0 && i.1 == last.1 {
+                count += 1;
+            }
+            if count == 3 {
+                return Some(());
+            }
+        }
+        None
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.moves.len() == 0
+    }
+
+    pub fn first(&self) -> (B, B, String) {
+        return self.moves.front().unwrap().clone();
     }
 }

@@ -16,8 +16,8 @@ use std::iter;
 /// ```
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Color {
-    Black = 0,
-    White = 1,
+    White = 0,
+    Black = 1,
     NoColor = 2,
 }
 
@@ -128,8 +128,8 @@ mod tests {
 
     #[test]
     fn from_index() {
-        assert_eq!(Color::Black.index(), 0);
-        assert_eq!(Color::White.index(), 1);
+        assert_eq!(Color::White.index(), 0);
+        assert_eq!(Color::Black.index(), 1);
         assert_eq!(Color::NoColor.index(), 2);
     }
 }

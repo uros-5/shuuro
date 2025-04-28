@@ -53,7 +53,7 @@ impl<S: Square> Selection<S> {
         self.variant
     }
 
-    /// Buying piece with specific color.
+    /// Selecting piece with specific color.
     pub fn play(&mut self, mv: Move<S>) -> Option<[bool; 2]> {
         if let Move::Select { piece } = mv {
             if !self.variant.can_select(&piece.piece_type)
@@ -94,7 +94,7 @@ impl<S: Square> Selection<S> {
 
     /// Confirm your choice of pieces.
     pub fn confirm(&mut self, c: Color) {
-        if self.credit(c) < 700 {
+        if self.credit(c) < self.variant.min_credit() {
             self.confirmed[c.index()] = true;
         }
     }

@@ -61,7 +61,7 @@ pub static BLACK_PAWN_ATTACKS: [BB8<Square8>; 64] =
     init_stepping_attacks(&BLACK_PAWN_DELTAS);
 pub static KING_MOVES: [BB8<Square8>; 64] = init_stepping_attacks(&KING_DELTAS);
 static mut PAWN_MOVES: [[BB8<Square8>; 64]; 2] =
-    [init_stepping_attacks(&[-8]), init_stepping_attacks(&[8])];
+    [init_stepping_attacks(&[8]), init_stepping_attacks(&[-8])];
 
 pub static mut RAYS: [[BB8<Square8>; 64]; 8] = [[BB8::new(0); 64]; 8];
 

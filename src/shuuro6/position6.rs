@@ -5,11 +5,13 @@ use crate::position::Play;
 use crate::position::Position;
 use crate::position::Rules;
 use crate::position::Sfen;
+use crate::position::SfenHistory;
 use crate::Move;
 use crate::MoveData;
 use crate::Piece;
 use crate::PieceType;
 use crate::SfenError;
+use std::collections::HashMap;
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -38,10 +40,14 @@ where
     ply: u16,
     side_to_move: Color,
     move_history: Vec<Move<Square6>>,
+    history: SfenHistory<BB6<Square6>>,
     occupied_bb: BB6<Square6>,
     color_bb: [BB6<Square6>; 3],
     game_status: Outcome,
     variant: Variant,
+    placement_moves: HashMap<usize, BB6<Square6>>,
+    legal_moves: HashMap<Square6, BB6<Square6>>,
+
     pub type_bb: [BB6<Square6>; 10],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
@@ -55,7 +61,7 @@ impl Default for P6<Square6, BB6<Square6>> {
             hand: Default::default(),
             ply: 0,
             move_history: Default::default(),
-            // sfen_history: Default::default(),
+            history: SfenHistory::default(),
             occupied_bb: Default::default(),
             color_bb: Default::default(),
             type_bb: Default::default(),
@@ -63,6 +69,8 @@ impl Default for P6<Square6, BB6<Square6>> {
             variant: Variant::Standard,
             _a: PhantomData,
             _s: PhantomData,
+            placement_moves: Default::default(),
+            legal_moves: Default::default(),
         }
     }
 }
@@ -155,12 +163,16 @@ impl Board<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
         self.variant = variant;
     }
 
-    fn insert_sfen(&mut self, sfen: Move<Square6>) {
+    fn insert_move(&mut self, sfen: Move<Square6>) {
         self.move_history.push(sfen);
     }
 
-    fn insert_move(&mut self, move_record: Move<Square6>) {
-        self.move_history.push(move_record)
+    fn insert_sfen(&mut self, fen: String) {
+        self.history.add_move((
+            self.player_bb(Color::White),
+            self.player_bb(Color::Black),
+            fen,
+        ));
     }
 
     fn clear_sfen_history(&mut self) {
@@ -173,20 +185,6 @@ impl Board<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
 
     fn move_history(&self) -> &[Move<Square6>] {
         &self.move_history
-    }
-
-    fn update_last_move(&mut self, m: &str) {
-        if let Some(last) = self.move_history.last_mut() {
-            match last {
-                Move::Put { ref mut fen, .. } => {
-                    *fen = String::from(m);
-                }
-                Move::Normal { ref mut fen, .. } => {
-                    *fen = String::from(m);
-                }
-                _ => (),
-            }
-        }
     }
 
     fn hand(&self, p: Piece) -> u8 {
@@ -207,6 +205,10 @@ impl Board<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
 
     fn dimensions(&self) -> u8 {
         6
+    }
+
+    fn get_sfen_history(&self) -> &SfenHistory<BB6<Square6>> {
+        &self.history
     }
 }
 
@@ -257,7 +259,7 @@ impl Placement<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
     }
 
     fn empty_placement_board() -> String {
-        String::from("6/6/6/6/6/6/6/6 w")
+        String::from("6/6/6/6/6/6 w")
     }
 
     fn king_files(&self, c: Color) -> BB6<Square6> {
@@ -266,6 +268,17 @@ impl Placement<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
             Color::White => Attacks6::between(A1, F1),
             Color::NoColor => BB6::empty(),
         }
+    }
+
+    fn new_placement_squares(
+        &mut self,
+        placement: std::collections::HashMap<usize, BB6<Square6>>,
+    ) {
+        self.placement_moves = placement;
+    }
+
+    fn get_placement_squares(&self) -> &HashMap<usize, BB6<Square6>> {
+        &self.placement_moves
     }
 }
 
@@ -305,16 +318,29 @@ impl Play<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
         self.color_bb[placed.color.index()] ^= &to;
 
         if let Some(ref cap) = captured {
-            self.occupied_bb ^= &to;
-            self.type_bb[cap.piece_type.index()] ^= &to;
-            self.color_bb[cap.color.index()] ^= &to;
-            move_data = move_data.captured(captured);
+            if cap.piece_type != PieceType::Plinth {
+                self.occupied_bb ^= &to;
+                self.type_bb[cap.piece_type.index()] ^= &to;
+                self.color_bb[cap.color.index()] ^= &to;
+                move_data = move_data.captured(captured);
+            }
             //self.hand.increment(pc);
         }
 
         self.side_to_move = opponent;
         self.ply += 1;
         move_data
+    }
+
+    fn new_legal_moves(
+        &mut self,
+        lm: std::collections::HashMap<Square6, BB6<Square6>>,
+    ) {
+        self.legal_moves = lm;
+    }
+
+    fn get_legal_moves(&self) -> &HashMap<Square6, BB6<Square6>> {
+        &self.legal_moves
     }
 }
 
@@ -429,15 +455,15 @@ pub mod tests {
     use crate::{
         attacks::Attacks,
         bitboard::BitBoard,
-        position::{Board, Play},
+        position::{Board, Placement, Play, Sfen},
         shuuro6::{
             attacks6::Attacks6,
             square6::{
-                consts::{C4, D2, D3, D4, E1, E4},
+                consts::{B3, C4, C5, C6, D2, D3, D4, E1, E4, E5, E6, F6},
                 Square6,
             },
         },
-        Color, Variant,
+        Color, Move, Piece, PieceType, Variant,
     };
 
     use super::P6;
@@ -503,6 +529,120 @@ pub mod tests {
             if let Some(moves) = moves.get(&case.1) {
                 assert_eq!(moves.len(), case.2);
             }
+        }
+    }
+
+    #[test]
+    fn placement2() {
+        setup();
+        let cases = [
+            (
+                "6/6/4_.1/5_./6/6 w kr2bnKRBNP 0",
+                PieceType::King,
+                Color::White,
+                E1,
+                "6/6/4_.1/5_./6/4K1 b RBNPkr2bn 1 K@e1",
+            ),
+            (
+                "1b1k2/3_.2/6/6/2_.3/N1NK2 b n 6",
+                PieceType::Knight,
+                Color::Black,
+                F6,
+                "1b1k1n/3_.2/6/6/2_.3/N1NK2 b - 7 n@f6",
+            ),
+        ];
+        for case in cases {
+            let mut pos = P6::new();
+            pos.set_sfen(case.0).expect("failed to parse SFEN string");
+            let m = pos.place(
+                Piece {
+                    piece_type: case.1,
+                    color: case.2,
+                },
+                case.3,
+            );
+            assert!(!m.is_none());
+            assert_eq!(case.4, m.unwrap());
+        }
+    }
+
+    #[test]
+    fn normal_move() {
+        setup();
+        let cases = [
+            (
+                "3k_n1/2pn2/6/6/5_/2RRK1 b - 0",
+                PieceType::Knight,
+                Color::Black,
+                E6,
+                D4,
+            ),
+            (
+                "2kr1b/6/_.5/6/3_.2/2NKN1 b - 7",
+                PieceType::Bishop,
+                Color::Black,
+                F6,
+                E5,
+            ),
+        ];
+        for case in cases {
+            let mut pos = P6::new();
+            pos.set_sfen(case.0).expect("failed to parse");
+            let _ = Move::Normal {
+                from: case.3,
+                to: case.4,
+                placed: Piece {
+                    color: case.2,
+                    piece_type: case.1,
+                },
+            };
+            let outcome = pos.play(&format!(
+                "{}_{}",
+                case.3.to_string(),
+                case.4.to_string()
+            ));
+            assert!(outcome.is_ok());
+        }
+    }
+
+    #[test]
+    fn pawn_promotion() {
+        setup();
+        let cases = [(
+            "k3b1/1_.P3/6/P4_./1PNb2/1K4 w - 17",
+            Piece {
+                piece_type: PieceType::Pawn,
+                color: Color::White,
+            },
+            C5,
+            C6,
+        )];
+        for case in cases {
+            let mut position = P6::default();
+            position.set_sfen(case.0).ok();
+            position.play(&format!("{}_{}", case.2, case.3)).ok();
+            let sfen = position.generate_sfen();
+            assert!(sfen.contains("Q"));
+        }
+    }
+
+    #[test]
+    fn plinth_count() {
+        setup();
+        let cases = [(
+            "1rkb2/p1n3/4_.1/1_.4/1KPP2/2BR2 b - 13",
+            Piece {
+                piece_type: PieceType::Knight,
+                color: Color::Black,
+            },
+            C5,
+            B3,
+        )];
+        for case in cases {
+            let mut position = P6::default();
+            position.set_sfen(case.0).ok();
+            position.play(&format!("{}_{}", case.2, case.3)).ok();
+            assert_eq!(position.player_bb(Color::NoColor).len(), 2)
         }
     }
 }
