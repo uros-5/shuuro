@@ -10,6 +10,7 @@ use crate::MoveData;
 use crate::Piece;
 use crate::PieceType;
 use crate::SfenError;
+use std::collections::HashMap;
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -42,6 +43,9 @@ where
     color_bb: [BB6<Square6>; 3],
     game_status: Outcome,
     variant: Variant,
+    placement_moves: HashMap<usize, BB6<Square6>>,
+    legal_moves: HashMap<Square6, BB6<Square6>>,
+
     pub type_bb: [BB6<Square6>; 10],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
@@ -63,6 +67,8 @@ impl Default for P6<Square6, BB6<Square6>> {
             variant: Variant::Standard,
             _a: PhantomData,
             _s: PhantomData,
+            placement_moves: Default::default(),
+            legal_moves: Default::default(),
         }
     }
 }
@@ -267,6 +273,17 @@ impl Placement<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
             Color::NoColor => BB6::empty(),
         }
     }
+
+    fn new_placement_squares(
+        &mut self,
+        placement: std::collections::HashMap<usize, BB6<Square6>>,
+    ) {
+        self.placement_moves = placement;
+    }
+
+    fn get_placement_squares(&self) -> &HashMap<usize, BB6<Square6>> {
+        &self.placement_moves
+    }
 }
 
 impl Rules<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
@@ -315,6 +332,17 @@ impl Play<Square6, BB6<Square6>, Attacks6<Square6, BB6<Square6>>>
         self.side_to_move = opponent;
         self.ply += 1;
         move_data
+    }
+
+    fn new_legal_moves(
+        &mut self,
+        lm: std::collections::HashMap<Square6, BB6<Square6>>,
+    ) {
+        self.legal_moves = lm;
+    }
+
+    fn get_legal_moves(&self) -> &HashMap<Square6, BB6<Square6>> {
+        &self.legal_moves
     }
 }
 

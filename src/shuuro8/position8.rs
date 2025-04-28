@@ -1,4 +1,4 @@
-use std::{fmt, marker::PhantomData};
+use std::{collections::HashMap, fmt, marker::PhantomData};
 
 use crate::{
     attacks::Attacks,
@@ -38,6 +38,8 @@ where
     color_bb: [BB8<Square8>; 3],
     game_status: Outcome,
     variant: Variant,
+    placement_moves: HashMap<usize, BB8<Square8>>,
+    legal_moves: HashMap<Square8, BB8<Square8>>,
     pub type_bb: [BB8<Square8>; 10],
     _a: PhantomData<B>,
     _s: PhantomData<S>,
@@ -243,6 +245,17 @@ impl Placement<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
             Color::NoColor => BB8::empty(),
         }
     }
+
+    fn new_placement_squares(
+        &mut self,
+        placement: std::collections::HashMap<usize, BB8<Square8>>,
+    ) {
+        self.placement_moves = placement;
+    }
+
+    fn get_placement_squares(&self) -> &HashMap<usize, BB8<Square8>> {
+        &self.placement_moves
+    }
 }
 impl Rules<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
     for P8<Square8, BB8<Square8>>
@@ -290,6 +303,17 @@ impl Play<Square8, BB8<Square8>, Attacks8<Square8, BB8<Square8>>>
         self.side_to_move = opponent;
         self.ply += 1;
         move_data
+    }
+
+    fn new_legal_moves(
+        &mut self,
+        lm: std::collections::HashMap<Square8, BB8<Square8>>,
+    ) {
+        self.legal_moves = lm;
+    }
+
+    fn get_legal_moves(&self) -> &HashMap<Square8, BB8<Square8>> {
+        &self.legal_moves
     }
 }
 
@@ -339,6 +363,8 @@ impl Default for P8<Square8, BB8<Square8>> {
             variant: Variant::Standard,
             _a: PhantomData,
             _s: PhantomData,
+            placement_moves: Default::default(),
+            legal_moves: Default::default(),
         }
     }
 }

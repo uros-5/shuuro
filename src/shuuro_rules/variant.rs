@@ -4,9 +4,9 @@ use crate::shuuro_rules::PieceType;
 pub enum Variant {
     Shuuro,
     ShuuroFairy,
-    ShuuroMini,
     Standard,
     StandardFairy,
+    ShuuroMini,
     ShuuroMiniFairy,
 }
 
@@ -16,9 +16,9 @@ impl From<&String> for Variant {
             "shuuro" => Self::Shuuro,
             "shuuroFairy" => Self::ShuuroFairy,
             "shuuroMini" => Self::ShuuroMini,
+            "shuuroMiniFairy" => Self::ShuuroMiniFairy,
             "standard" => Self::Standard,
             "standardFairy" => Self::StandardFairy,
-            "shuuroMiniFairy" => Self::ShuuroMiniFairy,
             _ => Self::Shuuro,
         }
     }
@@ -46,9 +46,9 @@ impl Variant {
             Self::Shuuro => 800,
             Self::ShuuroFairy => 870,
             Self::ShuuroMini => 200,
+            Self::ShuuroMiniFairy => 250,
             Self::Standard => 350,
             Self::StandardFairy => 400,
-            Self::ShuuroMiniFairy => 250,
         }
     }
 }

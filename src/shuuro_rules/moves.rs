@@ -48,8 +48,8 @@ impl<S: Square> Move<S> {
         if s.contains('_') {
             Self::get_normal_move(s)
         } else {
-            let buy_move = Self::get_buy_move(s);
-            match buy_move {
+            let select_move = Self::get_select_move(s);
+            match select_move {
                 Some(m) => Some(m),
                 None => Self::get_put_move(s),
             }
@@ -64,8 +64,8 @@ impl<S: Square> Move<S> {
         }
     }
 
-    /// Getting buy move from str.
-    pub fn get_buy_move(s: &str) -> Option<Self> {
+    /// Getting select move from str.
+    pub fn get_select_move(s: &str) -> Option<Self> {
         if s.len() == 2 && s.starts_with('+') {
             if let Some(piece) = Piece::from_sfen(s.chars().nth(1).unwrap()) {
                 return Some(Self::Select { piece });
@@ -211,7 +211,7 @@ impl<S: Square> TryFrom<String> for Move<S> {
                     return Ok(m);
                 }
             }
-        } else if let Some(m) = Self::get_buy_move(&value) {
+        } else if let Some(m) = Self::get_select_move(&value) {
             return Ok(m);
         }
         Err(())

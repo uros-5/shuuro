@@ -12,9 +12,12 @@ use super::piece_type::PieceTypeIter;
 pub enum Outcome {
     Check { color: Color },
     Checkmate { color: Color },
-    Draw,
+    DrawByAgreement,
     DrawByRepetition,
     DrawByMaterial,
+    Resign { color: Color },
+    LostOnTime { color: Color },
+    FirstMoveError { color: Color },
     Stalemate,
     MoveNotOk,
     MoveOk,
@@ -23,16 +26,27 @@ pub enum Outcome {
 impl ToString for Outcome {
     fn to_string(&self) -> String {
         match &self {
-            Outcome::Check { color } => format!("Check_{}", color.to_string()),
-            Outcome::Checkmate { color } => {
-                format!("Checkmate_{}", color.to_string())
+            Outcome::Check { color } => {
+                format!("Check by {}", color.to_string())
             }
-            Outcome::Draw => "Draw".to_string(),
-            Outcome::DrawByRepetition => "RepetitionDraw".to_string(),
-            Outcome::DrawByMaterial => "MaterialDraw".to_string(),
+            Outcome::Checkmate { color } => {
+                format!("Checkmate. {} won.", color.to_string())
+            }
+            Outcome::DrawByAgreement => "Draw by agreement".to_string(),
+            Outcome::DrawByRepetition => "Draw by repetition".to_string(),
+            Outcome::DrawByMaterial => "Draw by material".to_string(),
             Outcome::Stalemate => "Stalemate".to_string(),
             Outcome::MoveOk => "Live".to_string(),
             Outcome::MoveNotOk => "Illegal move".to_string(),
+            Outcome::Resign { color } => {
+                format!("Resignation by {}", color.to_string())
+            }
+            Outcome::LostOnTime { color } => {
+                format!("{} lost on time", color.to_string())
+            }
+            Outcome::FirstMoveError { color } => {
+                format!("{} lost on first move.", color.to_string())
+            }
         }
     }
 }
@@ -47,8 +61,11 @@ impl Into<i32> for Outcome {
             Outcome::Checkmate { color: _ } => 1,
             Outcome::Stalemate => 3,
             Outcome::DrawByRepetition => 4,
-            Outcome::Draw => 5,
+            Outcome::DrawByAgreement => 5,
             Outcome::DrawByMaterial => 6,
+            Outcome::Resign { color: _ } => 7,
+            Outcome::LostOnTime { color: _ } => 8,
+            Outcome::FirstMoveError { color: _ } => 9,
         }
     }
 }
@@ -233,11 +250,6 @@ where
                 fen.push('/');
             }
         }
-        let color = if self.side_to_move() == Color::Black {
-            "b"
-        } else {
-            "w"
-        };
 
         let black = self.get_hand(Color::Black, false);
         let white = self.get_hand(Color::White, false);
@@ -247,7 +259,13 @@ where
         if hand.is_empty() {
             hand = "-".to_string();
         }
-        format!("{} {} {} {}", fen, color, hand, self.ply())
+        format!(
+            "{} {} {} {}",
+            fen,
+            self.side_to_move().to_string(),
+            hand,
+            self.ply()
+        )
     }
 
     fn add_space(&self, n: u8, mut s: String) -> String {
@@ -457,6 +475,10 @@ where
         self.is_hand_empty(p.color, PieceType::Pawn)
     }
 
+    fn new_placement_squares(&mut self, placement: HashMap<usize, B>);
+
+    fn get_placement_squares(&self) -> &HashMap<usize, B>;
+
     /// All squares for current `Color`.
     fn placement_squares(&self, color: Color) -> HashMap<usize, B> {
         let mut placement = HashMap::new();
@@ -608,7 +630,12 @@ where
     fn place(&mut self, p: Piece, sq: S) -> Option<String> {
         if p.color != self.side_to_move()
             || self.hand(p) == 0
-            || !(self.empty_squares(p).unwrap_or_default() & &sq).is_any()
+            || !(**&self
+                .get_placement_squares()
+                .get(&(p.piece_type as usize))
+                .unwrap_or(&B::empty())
+                & &sq)
+                .is_any()
         {
             return None;
         }
@@ -646,6 +673,7 @@ where
             &move_record.to_string(),
         );
         self.update_last_move(&record);
+        self.new_placement_squares(self.placement_squares(self.side_to_move()));
         // self.insert_sfen(&record);
         return Some(record);
     }
@@ -658,17 +686,20 @@ where
     S: Square + Hash,
     B: BitBoard<S>,
     A: Attacks<S, B>,
-    Self: Sized + Clone + Board<S, B, A> + Sfen<S, B, A> + Rules<S, B, A>,
+    Self: Sized
+        + Clone
+        + Board<S, B, A>
+        + Sfen<S, B, A>
+        + Rules<S, B, A>
+        + Placement<S, B, A>,
 {
     // Play part.
 
     /// Create move from `&str`.
-    fn play(&mut self, from: &str, to: &str) -> Result<&Outcome, SfenError> {
-        let from = S::from_sfen(from).ok_or(SfenError::IllegalPieceFound)?;
-        let to = S::from_sfen(to).ok_or(SfenError::IllegalPieceFound)?;
-
-        let m = Move::new(from, to);
-        let outcome = self.make_move(m);
+    fn play(&mut self, game_move: &str) -> Result<&Outcome, SfenError> {
+        let game_move = Move::<S>::from_sfen(game_move)
+            .ok_or(SfenError::IllegalPieceFound)?;
+        let outcome = self.make_move(game_move);
         match outcome {
             Ok(i) => {
                 self.update_outcome(i);
@@ -677,7 +708,9 @@ where
                 MoveError::RepetitionDraw => {
                     self.update_outcome(Outcome::DrawByRepetition)
                 }
-                MoveError::Draw => self.update_outcome(Outcome::Draw),
+                MoveError::Draw => {
+                    self.update_outcome(Outcome::DrawByAgreement)
+                }
                 MoveError::DrawByInsufficientMaterial => {
                     self.update_outcome(Outcome::DrawByMaterial)
                 }
@@ -782,10 +815,10 @@ where
         Err(MoveError::DrawByInsufficientMaterial)
     }
 
-    fn check_moves(&self, me: Color) -> Result<B, ()> {
+    fn check_moves(&self, me: Color) -> B {
         let king = self.player_bb(me) & &self.type_bb(&PieceType::King);
         if king.is_empty() {
-            return Err(());
+            return B::empty();
         }
 
         let king_sq = &king.clone().pop().unwrap();
@@ -810,17 +843,16 @@ where
             let them = moves & &them;
             checkers |= &them;
         }
-        Ok(checkers)
+        checkers
     }
 
-    // fn my_moves(&self, me: Color) {
-    //     for sq in self.player_bb(me) {}
-    // }
+    fn new_legal_moves(&mut self, lm: HashMap<S, B>);
+    fn get_legal_moves(&self) -> &HashMap<S, B>;
 
     /// Returns all legal moves where piece can be moved.
     fn legal_moves(&self, my_color: Color) -> HashMap<S, B> {
         let mut map = HashMap::new();
-        let checkers = self.check_moves(my_color).expect("no king");
+        let checkers = self.check_moves(my_color);
         let enemy_moves = self.enemy_moves(my_color);
         let king = self.find_king(my_color).expect("no king");
         if checkers.len() > 1 {
@@ -951,13 +983,29 @@ where
             .and_then(|s| self.parse_sfen_ply(s))?;
         self.clear_sfen_history();
         self.save_position();
+        let king = self.find_king(self.side_to_move());
         if self.in_check(self.side_to_move().flip()) {
             let checkmate = Outcome::Checkmate {
                 color: self.side_to_move(),
             };
             self.update_outcome(checkmate.clone());
             return Ok(checkmate);
+        } else if self.is_hand_empty(self.side_to_move(), PieceType::Plinth)
+            == false
+        {
+            let placement = self.placement_squares(self.side_to_move());
+            self.new_placement_squares(placement);
+            return Ok(Outcome::MoveOk);
+        } else if king.is_none()
+            && (self.occupied_bb() & &!self.player_bb(Color::NoColor)).len()
+                == 0
+        {
+            return Ok(Outcome::MoveOk);
+        } else if king.is_none() {
+            return Err(SfenError::IllegalBoardState);
         }
+        let lm = self.legal_moves(self.side_to_move());
+        self.new_legal_moves(lm);
         Ok(Outcome::MoveOk)
     }
 
@@ -1111,7 +1159,6 @@ where
             .ok_or(MoveError::Inconsistent("No piece found"))?;
         let captured = *self.piece_at(to);
         let outcome = Outcome::Checkmate { color: opponent };
-        let legal_moves = self.legal_moves(stm);
 
         if moved.color != stm {
             return Err(MoveError::Inconsistent(
@@ -1137,6 +1184,9 @@ where
                 }
             }
         }
+
+        let legal_moves = self.get_legal_moves().clone();
+
         let attacks = legal_moves
             .get(&from)
             .ok_or(MoveError::Inconsistent("The piece cannot move to there"))?;
@@ -1209,6 +1259,10 @@ where
         if outcome == Outcome::MoveOk {
             self.is_stalemate(stm)?;
         }
+
+        let lm = self.legal_moves(self.side_to_move());
+        self.new_legal_moves(lm);
+
         Ok(outcome)
     }
 }
