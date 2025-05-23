@@ -1,6 +1,7 @@
 use std::{
     clone::Clone,
     collections::{HashMap, VecDeque},
+    fmt::Display,
     hash::Hash,
 };
 
@@ -80,6 +81,7 @@ where
     B: BitBoard<S>,
     A: Attacks<S, B>,
     Self: Sized
+        + Display
         + Clone
         + Board<S, B, A>
         + Sfen<S, B, A>

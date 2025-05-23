@@ -17,12 +17,6 @@ pub struct SquareIter {
 }
 
 impl Square12 {
-    pub fn iter() -> SquareIter {
-        SquareIter {
-            current: Square12 { inner: 0 },
-        }
-    }
-
     pub fn incr(&mut self) {
         self.inner += 1;
     }
@@ -139,6 +133,12 @@ impl Square for Square12 {
 
     fn index(&self) -> usize {
         self.inner as usize
+    }
+
+    fn iter() -> impl Iterator<Item = Self> {
+        SquareIter {
+            current: Square12 { inner: 0 },
+        }
     }
 }
 

@@ -24,4 +24,5 @@ where
     fn rank(&self) -> u8;
     fn file(&self) -> u8;
     fn index(&self) -> usize;
+    fn iter() -> impl Iterator<Item = Self>;
 }
