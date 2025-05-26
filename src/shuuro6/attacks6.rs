@@ -1,3 +1,5 @@
+// https://github.com/niklasf/shakmaty/blob/master/src/bootstrap.rs
+
 use std::marker::PhantomData;
 
 pub use crate::attacks::Attacks;
@@ -11,7 +13,7 @@ use super::{
 
 const KING_DELTAS: [i32; 8] = [7, 6, 5, 1, -7, -6, -5, -1];
 const KNIGHT_DELTAS: [i32; 8] = [13, 11, 8, 4, -13, -11, -8, -4];
-const GIRAFFE_DELTAS: [i32; 8] = [25, 23, 10, 2, -25, -23, -10, -2];
+const _GIRAFFE_DELTAS: [i32; 8] = [25, 23, 10, 2, -25, -23, -10, -2];
 const WHITE_PAWN_DELTAS: [i32; 2] = [5, 7];
 const BLACK_PAWN_DELTAS: [i32; 2] = [-5, -7];
 
@@ -25,31 +27,45 @@ const fn init_stepping_attacks(deltas: &[i32]) -> [BB6<Square6>; 36] {
     table
 }
 
-pub fn sliding_attacks2(square: i32, deltas: &[i32]) -> u64 {
-    let mut attack = 0;
-
-    let mut i = 0;
-    let len = deltas.len();
-    while i < len {
-        let mut previous = square;
+pub const fn init_giraffe_attacks() -> [BB6<Square6>; 36] {
+    let mut table = [BB6::new(0); 36];
+    let mut sq = 0;
+    let deltas: [(i32, i32); 8] = [
+        (4, -1),
+        (4, 1),
+        (1, 4),
+        (-1, 4),
+        (-4, 1),
+        (-4, -1),
+        (1, -4),
+        (-1, -4),
+    ];
+    while sq < 36 {
+        let rank = sq / 6;
+        let file = sq % 6;
+        let mut attack = 0;
+        let mut i = 0;
         loop {
-            let sq = previous + deltas[i];
-            let file_diff = (sq % 6) - (previous % 6);
-            // let file_diff = (sq & 0x6) - (previous & 0x6);
-            if file_diff > 2 || file_diff < -2 || sq < 0 || sq > 63 {
+            if i == 8 {
                 break;
             }
-            let bb = 1 << sq;
-            attack |= bb;
-            if attack & bb != 0 {
-                break;
+            let delta = deltas[i];
+            i += 1;
+            let new_sq = ((rank + delta.0) * 6) + file + delta.1;
+            if new_sq < 0 || new_sq > 36 {
+                continue;
             }
-            previous = sq;
+            let rank_diff = rank - (new_sq / 6);
+            let file_diff = (sq % 6) - (new_sq % 6);
+            if rank_diff.abs() == 4 || file_diff.abs() == 4 {
+                let bb = 1 << new_sq as u64;
+                attack |= bb;
+            }
         }
-        i += 1;
+        table[sq as usize] = BB6::new(attack);
+        sq += 1;
     }
-
-    attack
+    table
 }
 
 const fn sliding_attacks(square: i32, deltas: &[i32]) -> u64 {
@@ -80,8 +96,7 @@ const fn sliding_attacks(square: i32, deltas: &[i32]) -> u64 {
 }
 pub static KNIGHT_ATTACKS: [BB6<Square6>; 36] =
     init_stepping_attacks(&KNIGHT_DELTAS);
-pub static GIRAFFE_ATTACKS: [BB6<Square6>; 36] =
-    init_stepping_attacks(&GIRAFFE_DELTAS);
+pub static GIRAFFE_ATTACKS: [BB6<Square6>; 36] = init_giraffe_attacks();
 pub static WHITE_PAWN_ATTACKS: [BB6<Square6>; 36] =
     init_stepping_attacks(&WHITE_PAWN_DELTAS);
 pub static BLACK_PAWN_ATTACKS: [BB6<Square6>; 36] =

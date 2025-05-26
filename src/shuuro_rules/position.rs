@@ -501,10 +501,18 @@ where
         let pieces = PieceTypeIter::default();
 
         for pt in pieces {
-            let bb = self.empty_squares(Piece {
+            if pt == PieceType::Plinth {
+                continue;
+            }
+            let piece = Piece {
                 piece_type: pt,
                 color,
-            });
+            };
+            let hand = self.hand(piece);
+            if hand == 0 {
+                continue;
+            }
+            let bb = self.empty_squares(piece);
             if let Ok(bb) = bb {
                 placement.insert(pt as usize, bb);
             }

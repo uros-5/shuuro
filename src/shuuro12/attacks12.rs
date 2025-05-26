@@ -1,3 +1,5 @@
+// https://github.com/niklasf/shakmaty/blob/master/src/bootstrap.rs
+
 use std::marker::PhantomData;
 
 pub use crate::attacks::Attacks;

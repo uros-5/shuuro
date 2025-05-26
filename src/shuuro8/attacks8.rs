@@ -1,3 +1,5 @@
+// https://github.com/niklasf/shakmaty/blob/master/src/bootstrap.rs
+
 use std::marker::PhantomData;
 
 pub use crate::attacks::Attacks;
@@ -11,7 +13,7 @@ use super::{
 
 const KING_DELTAS: [i32; 8] = [9, 8, 7, 1, -9, -8, -7, -1];
 const KNIGHT_DELTAS: [i32; 8] = [17, 15, 10, 6, -17, -15, -10, -6];
-const GIRAFFE_DELTAS: [i32; 8] = [33, 31, 12, 4, -33, -31, -12, -4];
+const _GIRAFFE_DELTAS: [i32; 8] = [33, 31, 12, 4, -33, -31, -12, -4];
 const WHITE_PAWN_DELTAS: [i32; 2] = [7, 9];
 const BLACK_PAWN_DELTAS: [i32; 2] = [-7, -9];
 
@@ -51,10 +53,55 @@ const fn sliding_attacks(square: i32, deltas: &[i32]) -> u64 {
     attack
 }
 
+const fn init_giraffe_attacks() -> [BB8<Square8>; 64] {
+    let mut table = [BB8::new(0); 64];
+    let mut sq = 0;
+    let deltas: [(i32, i32); 8] = [
+        (4, -1),
+        (4, 1),
+        (1, 4),
+        (-1, 4),
+        (-4, 1),
+        (-4, -1),
+        (1, -4),
+        (-1, -4),
+    ];
+    while sq < 64 {
+        let rank = sq / 8;
+        let file = sq % 8;
+        let mut attack = 0;
+        let mut i = 0;
+        loop {
+            if i == 8 {
+                break;
+            }
+            let delta = deltas[i];
+            i += 1;
+            let new_sq = ((rank + delta.0) * 8) + file + delta.1;
+            if new_sq < 0 || new_sq > 63 {
+                continue;
+            }
+
+            if new_sq / 8 == rank {
+                continue;
+            }
+            if delta.1 > 0 && new_sq % 8 > file {
+                let bb = 1 << new_sq as u64;
+                attack |= bb;
+            } else if delta.1 < 0 && new_sq % 8 < file {
+                let bb = 1 << new_sq as u64;
+                attack |= bb;
+            }
+        }
+        table[sq as usize] = BB8::new(attack);
+        sq += 1;
+    }
+    table
+}
+
 pub static KNIGHT_ATTACKS: [BB8<Square8>; 64] =
     init_stepping_attacks(&KNIGHT_DELTAS);
-pub static GIRAFFE_ATTACKS: [BB8<Square8>; 64] =
-    init_stepping_attacks(&GIRAFFE_DELTAS);
+pub static GIRAFFE_ATTACKS: [BB8<Square8>; 64] = init_giraffe_attacks();
 pub static WHITE_PAWN_ATTACKS: [BB8<Square8>; 64] =
     init_stepping_attacks(&WHITE_PAWN_DELTAS);
 pub static BLACK_PAWN_ATTACKS: [BB8<Square8>; 64] =
